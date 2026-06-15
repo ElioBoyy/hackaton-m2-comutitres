@@ -1,0 +1,28 @@
+# --- Build : install deps + build SSR (Vite / TanStack Start) ---
+FROM node:22-alpine AS build
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+# VITE_API_URL est inline au build par Vite : il DOIT etre fourni ici (build arg),
+# pas au runtime. Passe par la CI depuis le secret VITE_API_URL.
+ARG VITE_API_URL
+ENV VITE_API_URL=$VITE_API_URL
+
+COPY . .
+RUN npm run build
+
+# --- Runtime : sert le build SSR avec srvx (cf. script "start") ---
+FROM node:22-alpine
+WORKDIR /app
+ENV NODE_ENV=production
+ENV PORT=3000
+
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev && npm install -g srvx
+COPY --from=build /app/dist ./dist
+
+EXPOSE 3000
+# srvx ecoute sur $PORT (defaut 3000). "npm start" -> npx srvx --prod ...
+CMD ["npm", "start"]
