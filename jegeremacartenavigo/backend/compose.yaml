@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: jegeremacartenavigo
+      POSTGRES_USER: jgmcn
+      POSTGRES_PASSWORD: jgmcn
+    # Port hote 5434 (5432/5433 sont deja pris sur ce poste par d'autres projets).
+    # Pour revenir au standard : mettre "5432:5432" ici ET adapter spring.datasource.url.
+    ports:
+      - "5434:5432"
+    volumes:
+      - jegeremacartenavigo-pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jgmcn -d jegeremacartenavigo"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  jegeremacartenavigo-pg-data:

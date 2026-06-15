@@ -1,0 +1,60 @@
+spring:
+  application:
+    name: jegeremacartenavigo-backend
+
+  # --- Persistance : PostgreSQL ---
+  # Ces valeurs servent quand vous pointez vers une base externe. En dev, le
+  # support docker-compose ci-dessous demarre Postgres et surcharge la datasource.
+  datasource:
+    # Port 5434 cote hote (cf. compose.yaml : 5432/5433 deja utilises sur ce poste).
+    url: jdbc:postgresql://localhost:5434/jegeremacartenavigo
+    username: jgmcn
+    password: jgmcn
+  jpa:
+    open-in-view: false
+    hibernate:
+      # Aucune entite pour l'instant (setup sans exemples). Passez a 'validate'
+      # puis pilotez le schema avec Flyway/Liquibase quand vous aurez des entites.
+      ddl-auto: none
+    properties:
+      hibernate:
+        format_sql: true
+
+  # --- Docker Compose (dev) ---
+  # Au demarrage, Spring Boot lance compose.yaml (situe a la racine backend) et
+  # cable automatiquement la datasource sur le conteneur Postgres.
+  docker:
+    compose:
+      enabled: true
+      file: ../compose.yaml
+      lifecycle-management: start-and-stop
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+# --- CORS (consomme par CorsProperties) ---
+app:
+  cors:
+    allowed-origins:
+      - http://localhost:3000   # TanStack Start (dev)
+      - http://localhost:5173   # Vite (port par defaut, au cas ou)
+    allowed-methods:
+      - GET
+      - POST
+      - PUT
+      - PATCH
+      - DELETE
+      - OPTIONS
+    allowed-headers:
+      - "*"
+    allow-credentials: true
+
+logging:
+  level:
+    fr.jegeremacartenavigo: DEBUG

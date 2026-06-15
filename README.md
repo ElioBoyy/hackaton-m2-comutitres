@@ -1,18 +1,16 @@
 # Hackaton — monorepo
 
-Deux applications, mises en place et câblées (setup initial, sans features) :
+Application **jegeremacartenavigo** (back + front), mise en place et câblée (setup initial, sans features) :
 
 | Dossier | Quoi | Stack |
 |---|---|---|
 | [`jegeremacartenavigo/backend`](jegeremacartenavigo/backend) | API | Spring Boot 4.1 — Clean Architecture multi-module + CQRS |
 | [`jegeremacartenavigo/frontend`](jegeremacartenavigo/frontend) | App web | TanStack Start (Vite 8, React 19) — câblé au backend |
-| [`comutitres.fr`](comutitres.fr) | Site vitrine statique | Astro 6 (sortie statique) |
 
 ## Versions (vérifiées le 2026-06-15)
 
 Spring Boot **4.1.0** · Java **25** (LTS, compilé via le JDK 26 installé) · Maven **3.9.16**
-· TanStack Start `@tanstack/react-start` **1.168** · TanStack Router **1.170** · Vite **8.0.16** · React **19.2** · TypeScript **6.0**
-· Astro **6.4.7** · Node **24.16**
+· TanStack Start `@tanstack/react-start` **1.168** · TanStack Router **1.170** · Vite **8.0.16** · React **19.2** · TypeScript **6.0** · Node **24.16**
 
 > Sources : `start.spring.io/metadata/client` (défaut Spring Boot + cibles Java) et le registre npm. Le setup TanStack Start reprend l'exemple officiel `start-bare` du dépôt TanStack (version-matched).
 
@@ -86,16 +84,3 @@ npm run dev        # http://localhost:3000
 - **Câblage backend** : client HTTP dans [`src/lib/api.ts`](jegeremacartenavigo/frontend/src/lib/api.ts), base URL via `VITE_API_URL` (`.env`, défaut `http://localhost:8080`). `credentials: 'include'` (le CORS backend autorise les credentials). Aucune route ne consomme l'API pour l'instant — c'est le point de départ à utiliser.
 - Routage fichier (`src/routes/`), `routeTree.gen.ts` généré par le plugin TanStack Start.
 - `npm run build` (build SSR + `tsc --noEmit`), `npm run start` (sert le build de prod).
-
----
-
-## 3) comutitres.fr — `comutitres.fr`
-
-```sh
-cd comutitres.fr
-npm install
-npm run dev        # http://localhost:4321 (dev)
-npm run build      # génère dist/ (HTML statique, déployable partout)
-```
-
-> `npm install` signale 3 vulnérabilités « high » : ce sont des avis **esbuild** tirés transitivement par le Vite épinglé d'Astro (lecture de fichier via dev-server Windows ; RCE en contexte Deno). Failles **dev-only**, absentes du build statique. Ne pas faire `npm audit fix --force` (rétrograderait Astro en v2). Se résorbera quand Astro montera son Vite.
