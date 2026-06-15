@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>4.1.0</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>fr.jegeremacartenavigo</groupId>
+    <artifactId>backend</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>jegeremacartenavigo-backend</name>
+    <description>Backend modulaire (Clean Architecture + CQRS) pour jegeremacartenavigo</description>
+
+    <!--
+      Multi-module par couches (Clean Architecture). La regle de dependance est
+      imposee par le build : chaque module ne peut dependre que des couches plus internes.
+
+        bootstrap  -> infrastructure -> application -> domain
+        (frameworks)  (adapters)         (use cases)   (entites, regles metier pures)
+
+      domain      : Java pur, aucune dependance framework.
+      application : use cases + CQRS (Request/Response) + middleware applicatif (pipeline).
+      infrastructure : adapters entrants (web) et sortants (JPA), bus CQRS Spring.
+      bootstrap   : composition root (main), config web, CORS, middleware web, application.yml.
+    -->
+
+    <modules>
+        <module>domain</module>
+        <module>application</module>
+        <module>infrastructure</module>
+        <module>bootstrap</module>
+    </modules>
+
+    <properties>
+        <java.version>25</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Versions internes des modules : centralisees ici. -->
+            <dependency>
+                <groupId>fr.jegeremacartenavigo</groupId>
+                <artifactId>domain</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>fr.jegeremacartenavigo</groupId>
+                <artifactId>application</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>fr.jegeremacartenavigo</groupId>
+                <artifactId>infrastructure</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+</project>

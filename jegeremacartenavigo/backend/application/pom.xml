@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>fr.jegeremacartenavigo</groupId>
+        <artifactId>backend</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>application</artifactId>
+    <name>application</name>
+    <description>Couche application : use cases, abstractions CQRS (Request/Response), middleware applicatif (pipeline).</description>
+
+    <!--
+      Depend uniquement de 'domain'. Pas de Spring : on utilise seulement des API
+      standards (jakarta.validation, slf4j-api) pour rester portable. Les
+      implementations concretes (bus Spring, validateur Hibernate) vivent dans
+      les couches externes.
+    -->
+    <dependencies>
+        <dependency>
+            <groupId>fr.jegeremacartenavigo</groupId>
+            <artifactId>domain</artifactId>
+        </dependency>
+
+        <!-- API de validation (spec Jakarta) : pas d'implementation ici. -->
+        <dependency>
+            <groupId>jakarta.validation</groupId>
+            <artifactId>jakarta.validation-api</artifactId>
+        </dependency>
+
+        <!-- Facade de logging : pas de binding ici. -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+</project>
