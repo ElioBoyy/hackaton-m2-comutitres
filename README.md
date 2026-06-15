@@ -4,8 +4,8 @@ Application **jegeremacartenavigo** (back + front), mise en place et câblée (s
 
 | Dossier | Quoi | Stack |
 |---|---|---|
-| [`jegeremacartenavigo/backend`](jegeremacartenavigo/backend) | API | Spring Boot 4.1 — Clean Architecture multi-module + CQRS |
-| [`jegeremacartenavigo/frontend`](jegeremacartenavigo/frontend) | App web | TanStack Start (Vite 8, React 19) — câblé au backend |
+| [`backend`](backend) | API | Spring Boot 4.1 — Clean Architecture multi-module + CQRS |
+| [`frontend`](frontend) | App web | TanStack Start (Vite 8, React 19) — câblé au backend |
 
 ## Versions (vérifiées le 2026-06-15)
 
@@ -26,7 +26,7 @@ Spring Boot **4.1.0** · Java **25** (LTS, compilé via le JDK 26 installé) · 
 
 ---
 
-## 1) Backend — `jegeremacartenavigo/backend`
+## 1) Backend — `backend`
 
 ### Architecture (multi-module par couches, règle de dépendance imposée par le build)
 
@@ -46,7 +46,7 @@ bootstrap  ──▶ infrastructure ──▶ application ──▶ domain
 ### Lancer
 
 ```sh
-cd jegeremacartenavigo/backend
+cd backend
 export JAVA_HOME=/opt/homebrew/opt/openjdk/libexec/openjdk.jdk/Contents/Home
 
 # 1re fois : installer les modules internes dans le repo local
@@ -73,14 +73,14 @@ export JAVA_HOME=/opt/homebrew/opt/openjdk/libexec/openjdk.jdk/Contents/Home
 
 ---
 
-## 2) Frontend — `jegeremacartenavigo/frontend`
+## 2) Frontend — `frontend`
 
 ```sh
-cd jegeremacartenavigo/frontend
+cd frontend
 npm install
 npm run dev        # http://localhost:3000
 ```
 
-- **Câblage backend** : client HTTP dans [`src/lib/api.ts`](jegeremacartenavigo/frontend/src/lib/api.ts), base URL via `VITE_API_URL` (`.env`, défaut `http://localhost:8080`). `credentials: 'include'` (le CORS backend autorise les credentials). Aucune route ne consomme l'API pour l'instant — c'est le point de départ à utiliser.
+- **Câblage backend** : client HTTP dans [`src/lib/api.ts`](frontend/src/lib/api.ts), base URL via `VITE_API_URL` (`.env`, défaut `http://localhost:8080`). `credentials: 'include'` (le CORS backend autorise les credentials). Aucune route ne consomme l'API pour l'instant — c'est le point de départ à utiliser.
 - Routage fichier (`src/routes/`), `routeTree.gen.ts` généré par le plugin TanStack Start.
 - `npm run build` (build SSR + `tsc --noEmit`), `npm run start` (sert le build de prod).
