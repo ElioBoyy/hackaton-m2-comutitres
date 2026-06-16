@@ -1,6 +1,12 @@
-import { Bell } from 'lucide-react'
+import { Bell, LogOut } from 'lucide-react'
 
-export function BackofficeHeader({ agentName }: { agentName: string }) {
+export function BackofficeHeader({
+  agentName,
+  onLogout,
+}: {
+  agentName: string
+  onLogout: () => void
+}) {
   const initiale = agentName.charAt(0).toUpperCase()
 
   return (
@@ -20,6 +26,15 @@ export function BackofficeHeader({ agentName }: { agentName: string }) {
         </div>
         <span className="text-sm font-medium text-gray-900">{agentName}</span>
       </div>
+
+      <button
+        type="button"
+        onClick={onLogout}
+        aria-label="Se deconnecter"
+        className="flex h-9 w-9 items-center justify-center rounded-full text-gray-700 transition hover:bg-blue-pale"
+      >
+        <LogOut size={18} />
+      </button>
     </header>
   )
 }

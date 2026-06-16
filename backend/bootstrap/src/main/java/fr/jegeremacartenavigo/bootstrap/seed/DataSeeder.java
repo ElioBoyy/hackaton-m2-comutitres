@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Profile;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -64,6 +65,7 @@ public class DataSeeder implements ApplicationRunner {
     private final AdresseJpaRepository adresseRepository;
     private final RelationUtilisateurJpaRepository relationUtilisateurRepository;
     private final DossierJpaRepository dossierRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public DataSeeder(
             DepartementJpaRepository departementRepository,
@@ -77,7 +79,8 @@ public class DataSeeder implements ApplicationRunner {
             UtilisateurJpaRepository utilisateurRepository,
             AdresseJpaRepository adresseRepository,
             RelationUtilisateurJpaRepository relationUtilisateurRepository,
-            DossierJpaRepository dossierRepository
+            DossierJpaRepository dossierRepository,
+            PasswordEncoder passwordEncoder
     ) {
         this.departementRepository = departementRepository;
         this.situationRepository = situationRepository;
@@ -91,6 +94,7 @@ public class DataSeeder implements ApplicationRunner {
         this.adresseRepository = adresseRepository;
         this.relationUtilisateurRepository = relationUtilisateurRepository;
         this.dossierRepository = dossierRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
@@ -315,6 +319,11 @@ public class DataSeeder implements ApplicationRunner {
         a.setRole(role);
         a.setEquipe(equipe);
         a.setActif(true);
+        // Mot de passe de demo par defaut = identifiant pro + suffixe (aucun flow de
+        // creation de compte agent aujourd'hui, les agents sont uniquement crees par
+        // ce seed). Suffixe necessaire car identifiantPro seul fait moins de 8
+        // caracteres (regle de validation du formulaire de login).
+        a.setMotDePasseHash(passwordEncoder.encode(identifiantPro + "-demo"));
         return a;
     }
 

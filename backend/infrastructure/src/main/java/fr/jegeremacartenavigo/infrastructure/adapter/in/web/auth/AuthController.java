@@ -1,11 +1,15 @@
 package fr.jegeremacartenavigo.infrastructure.adapter.in.web.auth;
 
+import fr.jegeremacartenavigo.application.auth.AgentLoginCommand;
 import fr.jegeremacartenavigo.application.auth.LoginCommand;
 import fr.jegeremacartenavigo.application.auth.RegisterCommand;
 import fr.jegeremacartenavigo.application.auth.TokenResponse;
 import fr.jegeremacartenavigo.application.cqrs.CommandBus;
+import fr.jegeremacartenavigo.domain.auth.exception.AgentIntrouvableException;
 import fr.jegeremacartenavigo.domain.auth.exception.UtilisateurIntrouvableException;
+import fr.jegeremacartenavigo.domain.auth.model.AgentAuth;
 import fr.jegeremacartenavigo.domain.auth.model.UtilisateurAuth;
+import fr.jegeremacartenavigo.domain.auth.port.AgentAuthRepository;
 import fr.jegeremacartenavigo.domain.auth.port.UtilisateurAuthRepository;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -26,10 +30,14 @@ public class AuthController {
 
     private final CommandBus commandBus;
     private final UtilisateurAuthRepository repository;
+    private final AgentAuthRepository agentRepository;
 
-    public AuthController(CommandBus commandBus, UtilisateurAuthRepository repository) {
+    public AuthController(CommandBus commandBus,
+                           UtilisateurAuthRepository repository,
+                           AgentAuthRepository agentRepository) {
         this.commandBus = commandBus;
         this.repository = repository;
+        this.agentRepository = agentRepository;
     }
 
     @PostMapping("/register")
@@ -43,6 +51,11 @@ public class AuthController {
         return commandBus.send(command);
     }
 
+    @PostMapping("/agent/login")
+    public TokenResponse agentLogin(@RequestBody @Valid AgentLoginCommand command) {
+        return commandBus.send(command);
+    }
+
     @GetMapping("/me")
     public MeResponse me(@AuthenticationPrincipal Jwt jwt) {
         Integer id = Integer.valueOf(jwt.getSubject());
@@ -51,5 +64,15 @@ public class AuthController {
     }
 
     public record MeResponse(Integer id, String email, String nom, String prenom, LocalDate dateNaissance) {
+    }
+
+    @GetMapping("/agent/me")
+    public AgentMeResponse agentMe(@AuthenticationPrincipal Jwt jwt) {
+        Integer id = Integer.valueOf(jwt.getSubject());
+        AgentAuth agent = agentRepository.findById(id).orElseThrow(AgentIntrouvableException::new);
+        return new AgentMeResponse(agent.id(), agent.email(), agent.nom(), agent.prenom());
+    }
+
+    public record AgentMeResponse(Integer id, String email, String nom, String prenom) {
     }
 }
