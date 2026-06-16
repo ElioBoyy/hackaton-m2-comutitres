@@ -1,0 +1,38 @@
+# Stack complete (postgres + backend) en containers, sans rien installer en
+# local (pas besoin de Java/Maven sur la machine).
+#
+# Usage : docker compose -f compose.full.yaml up --build
+#
+# Ne pas confondre avec compose.yaml : ce dernier (postgres seul) est celui
+# que Spring Boot lance lui-meme via spring.docker.compose quand on demarre
+# l'app en local (mvn spring-boot:run / IDE). Le dupliquer ici evite que
+# spring.docker.compose ne tente de (re)lancer le backend depuis lui-meme.
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: jegeremacartenavigo
+      POSTGRES_USER: jgmcn
+      POSTGRES_PASSWORD: jgmcn
+    ports:
+      - "5434:5432"
+    volumes:
+      - jegeremacartenavigo-pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jgmcn -d jegeremacartenavigo"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: .
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  jegeremacartenavigo-pg-data:

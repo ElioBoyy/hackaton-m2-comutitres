@@ -1,0 +1,13 @@
+# Profil "docker" : actif quand le backend tourne lui-meme dans un container
+# (cf. compose.yaml, service "backend"). Le support spring.docker.compose
+# (qui lance compose.yaml depuis l'app) n'a pas de sens ici puisque c'est deja
+# compose qui orchestre tout ; on cable directement la datasource sur le nom
+# de service "postgres" resolu par le reseau docker compose.
+spring:
+  docker:
+    compose:
+      enabled: false
+  datasource:
+    url: jdbc:postgresql://postgres:5432/jegeremacartenavigo
+    username: jgmcn
+    password: jgmcn
