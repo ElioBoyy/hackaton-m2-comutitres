@@ -8,6 +8,7 @@ import {
   createRootRoute,
 } from '@tanstack/react-router'
 import appCss from '~/styles/app.css?url'
+import { ChatWidget } from '~/components/ChatWidget'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -37,6 +38,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         {children}
+        <ChatWidget />
         <TanStackRouterDevtools position="bottom-right" />
         <Scripts />
       </body>

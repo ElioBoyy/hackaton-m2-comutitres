@@ -31,3 +31,8 @@ bin/
 
 ### OS ###
 .DS_Store
+
+### Env (garder .env.example versionne) ###
+.env
+.env.local
+.env.*.local

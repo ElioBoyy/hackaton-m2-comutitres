@@ -9,7 +9,7 @@
 # spring.docker.compose ne tente de (re)lancer le backend depuis lui-meme.
 services:
   postgres:
-    image: postgres:17
+    image: pgvector/pgvector:pg17
     environment:
       POSTGRES_DB: jegeremacartenavigo
       POSTGRES_USER: jgmcn

@@ -79,3 +79,44 @@ input:-webkit-autofill:active {
   caret-color: var(--color-dark);
   transition: background-color 9999s ease-out, color 9999s ease-out;
 }
+
+/* --- Chatbot (widget overlay) --- */
+
+/* Apparition d'une bulle facon messagerie (slide + fondu). */
+@keyframes chat-bubble-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.chat-bubble-in {
+  animation: chat-bubble-in 0.18s ease-out;
+}
+
+/* Ouverture du panneau depuis le coin bas-droit. */
+@keyframes chat-panel-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.chat-panel-in {
+  animation: chat-panel-in 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: bottom right;
+}
+
+/* Indicateur "en train d'ecrire" : trois points qui rebondissent (WhatsApp-like). */
+@keyframes chat-typing {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30%           { transform: translateY(-4px); opacity: 1; }
+}
+.chat-typing-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--color-gray-700);
+  display: inline-block;
+  animation: chat-typing 1.2s infinite ease-in-out;
+}
+.chat-typing-dot:nth-child(2) { animation-delay: 0.15s; }
+.chat-typing-dot:nth-child(3) { animation-delay: 0.3s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-bubble-in, .chat-panel-in, .chat-typing-dot { animation: none; }
+}

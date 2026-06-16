@@ -1,0 +1,82 @@
+[
+  {
+    "question": "Comment resilier mon forfait Navigo Annuel ?",
+    "sourcesAttendues": ["navigo-annuel-comment-resilier"],
+    "horsCorpus": false
+  },
+  {
+    "question": "Quelle est la difference entre suspendre et resilier le Navigo Annuel ?",
+    "sourcesAttendues": ["navigo-annuel-difference-suspension-resiliation", "navigo-annuel-comment-suspendre"],
+    "horsCorpus": false
+  },
+  {
+    "question": "Puis-je suspendre mon abonnement imagine R ?",
+    "sourcesAttendues": ["imagine-r-puis-je-suspendre"],
+    "horsCorpus": false
+  },
+  {
+    "question": "Comment changer les zones de mon Navigo Annuel ?",
+    "sourcesAttendues": ["navigo-annuel-changer-les-zones"],
+    "horsCorpus": false
+  },
+  {
+    "question": "Comment declarer la perte ou le vol de mon passe Liberte+ ?",
+    "sourcesAttendues": ["liberte-plus-declarer-perte-vol-passe"],
+    "horsCorpus": false
+  },
+  {
+    "question": "Quels justificatifs faut-il pour souscrire imagine R etudiant ?",
+    "sourcesAttendues": ["imagine-r-souscrire-renouveler-pieces-justificatives"],
+    "horsCorpus": false
+  },
+  {
+    "question": "Comment choisir la zone de mon titre de transport ?",
+    "sourcesAttendues": ["comment-choisir-la-zone-de-mon-titre-de-transport"],
+    "horsCorpus": false
+  },
+  {
+    "question": "Comment faire une demande de remboursement ?",
+    "sourcesAttendues": ["remboursement-faire-une-demande"],
+    "horsCorpus": false
+  },
+  {
+    "question": "Qu'est-ce que le forfait Amethyste et comment l'obtenir ?",
+    "sourcesAttendues": ["amethyste"],
+    "horsCorpus": false
+  },
+  {
+    "question": "Quelle est la tarification senior du Navigo Annuel ?",
+    "sourcesAttendues": ["navigo-annuel-tarification-senior", "grille-tarifaire-2026"],
+    "horsCorpus": false
+  },
+  {
+    "question": "Comment beneficier de la tarification solidarite transport quand on est au RSA ?",
+    "sourcesAttendues": ["solidarite-transport"],
+    "horsCorpus": false
+  },
+  {
+    "question": "Comment dematerialiser mon passe Navigo Liberte+ sur mon telephone ?",
+    "sourcesAttendues": ["liberte-plus-dematerialiser-passe-sur-telephone", "liberte-plus-souscrire-sur-telephone"],
+    "horsCorpus": false
+  },
+  {
+    "question": "Quelle est la meteo a Paris demain ?",
+    "sourcesAttendues": [],
+    "horsCorpus": true
+  },
+  {
+    "question": "Comment cuisiner des pates a la carbonara ?",
+    "sourcesAttendues": [],
+    "horsCorpus": true
+  },
+  {
+    "question": "Combien coute un ticket de metro a Tokyo ?",
+    "sourcesAttendues": [],
+    "horsCorpus": true
+  },
+  {
+    "question": "Qui a gagne la coupe du monde de football en 2022 ?",
+    "sourcesAttendues": [],
+    "horsCorpus": true
+  }
+]

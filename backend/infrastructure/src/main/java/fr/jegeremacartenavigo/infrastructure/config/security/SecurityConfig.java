@@ -45,6 +45,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/auth/register", "/auth/login").permitAll()
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                        // Chat RAG (bloquant + streaming + escalade) : ouvert a tous
+                        // (widget public, sans compte). L'admin RAG (ingestion) reste authentifie.
+                        .requestMatchers("/api/chat/**").permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(o -> o.jwt(withDefaults()))
                 .build();
