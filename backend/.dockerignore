@@ -1,8 +1,10 @@
 **/target/
+.git/
+.idea/
 .git
 .gitignore
 .idea
 *.iml
-.vscode
+.vscode/
 .DS_Store
 *.log
