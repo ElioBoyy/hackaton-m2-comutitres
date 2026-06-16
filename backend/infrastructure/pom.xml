@@ -33,6 +33,13 @@
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
 
+        <!-- Documentation API (Swagger UI sur /swagger-ui.html, JSON OpenAPI sur /v3/api-docs). -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>${springdoc-openapi.version}</version>
+        </dependency>
+
         <!--
           Migrations de schema (versions geres par le parent Spring Boot).
           En Boot 4.x l'autoconfig Flyway vit dans le module dedie spring-boot-flyway
