@@ -49,8 +49,13 @@ public class SecurityConfig {
                         // Chat RAG (bloquant + streaming + escalade) : ouvert a tous
                         // (widget public, sans compte). L'admin RAG (ingestion) reste authentifie.
                         .requestMatchers("/api/chat/**").permitAll()
-                        .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/dossiers/**", "/auth/agent/me").hasAuthority("ROLE_AGENT")
+                        .requestMatchers(
+                                "/swagger-ui.html",
+                                "/swagger-ui/**",
+                                "/v3/api-docs",
+                                "/v3/api-docs/**"
+                        ).permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(o -> o.jwt(jwt -> jwt.jwtAuthenticationConverter(new JwtRoleConverter())))
                 .build();
