@@ -61,7 +61,16 @@ app:
       - OPTIONS
     allowed-headers:
       - "*"
-    allow-credentials: true
+    # L'auth passe par l'en-tete Authorization (Bearer), pas par cookie -> pas
+    # besoin d'allow-credentials cote CORS.
+    allow-credentials: false
+  # --- JWT (HS256). Le secret doit faire >= 32 octets UTF-8 (256 bits).
+  # En prod : surcharger via la variable d'env APP_SECURITY_JWT_SECRET.
+  security:
+    jwt:
+      secret: ${APP_SECURITY_JWT_SECRET:dev-secret-please-override-32-bytes-min-1234567890}
+      issuer: jegeremacartenavigo
+      expires-minutes: 1440
 
 logging:
   level:

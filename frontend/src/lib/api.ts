@@ -2,11 +2,28 @@
  * Client HTTP minimal vers le backend Spring (jegeremacartenavigo-backend).
  *
  * - Base URL configurable via la variable d'env Vite VITE_API_URL (.env).
- * - credentials: 'include' car le backend autorise allow-credentials sur le CORS.
- * - Aucune route ne l'appelle pour l'instant (setup "sans exemples") : c'est le
- *   point d'entree a utiliser quand vous brancherez des commandes/queries.
+ * - Auth stateless via header Authorization: Bearer <jwt> (aucun cookie).
+ * - Possede aussi le storage du JWT : seul module qui touche a localStorage,
+ *   pour que le support de stockage puisse changer sans impacter les use cases.
  */
 const API_URL: string = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
+
+const TOKEN_KEY: string = import.meta.env.VITE_TOKEN_KEY ?? 'jgmcn.access_token'
+
+export function getToken(): string | null {
+  if (typeof window === 'undefined') return null
+  return window.localStorage.getItem(TOKEN_KEY)
+}
+
+export function setToken(token: string): void {
+  if (typeof window === 'undefined') return
+  window.localStorage.setItem(TOKEN_KEY, token)
+}
+
+export function clearToken(): void {
+  if (typeof window === 'undefined') return
+  window.localStorage.removeItem(TOKEN_KEY)
+}
 
 export class ApiError extends Error {
   constructor(
@@ -20,12 +37,14 @@ export class ApiError extends Error {
 }
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = getToken()
+
   const response = await fetch(`${API_URL}${path}`, {
-    credentials: 'include',
     ...init,
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...init?.headers,
     },
   })
