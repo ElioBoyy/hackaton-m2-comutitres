@@ -57,6 +57,7 @@ export JAVA_HOME=/opt/homebrew/opt/openjdk/libexec/openjdk.jdk/Contents/Home
 ```
 
 - API sur **http://localhost:8080**, santé : **http://localhost:8080/actuator/health**.
+- Doc API (Swagger UI) : **http://localhost:8080/swagger-ui.html** (JSON OpenAPI : `/v3/api-docs`).
 - Au démarrage, Spring lance le conteneur `postgres:17` défini dans `compose.yaml` et câble la datasource. À l'arrêt, il l'arrête.
 
 > **Port PostgreSQL = 5434 (côté hôte)** : `5432` et `5433` sont déjà occupés sur ce poste par d'autres projets (`scruti-*`). Pour revenir au standard `5432`, éditez `compose.yaml` (`"5432:5432"`) **et** `spring.datasource.url` dans `application.yml`.
