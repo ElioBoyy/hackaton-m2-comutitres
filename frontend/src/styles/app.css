@@ -50,8 +50,9 @@
 
 body {
   margin: 0;
-  padding: 2rem;
-  max-width: 48rem;
+  background: var(--color-gray-100);
+  color: var(--color-dark);
+  min-height: 100vh;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -63,4 +64,18 @@ code {
   background: color-mix(in srgb, currentColor 12%, transparent);
   padding: 0.1em 0.35em;
   border-radius: 4px;
+}
+
+/* Override de l'autofill Chromium (Arc / Chrome / Edge) : sans cela le
+ * navigateur peint un fond opaque qui ecrase notre bg-white. Le hack standard
+ * est box-shadow inset (l'autofill ne pouvant pas etre style via background).
+ */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--color-dark);
+  -webkit-box-shadow: 0 0 0 1000px var(--color-white) inset;
+  caret-color: var(--color-dark);
+  transition: background-color 9999s ease-out, color 9999s ease-out;
 }
