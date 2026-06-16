@@ -71,6 +71,16 @@ export JAVA_HOME=/opt/homebrew/opt/openjdk/libexec/openjdk.jdk/Contents/Home
 
 > Vérifié : build sans warning, et démarrage end-to-end (Postgres + JPA + Tomcat + CORS + middleware) confirmé.
 
+### Données de seed (dev/démo)
+
+```sh
+./mvnw -pl bootstrap spring-boot:run -Dspring-boot.run.profiles=seed
+```
+
+- Insère les référentiels (départements, situations, types d'abonnement, statuts, etc.) + quelques agents/utilisateurs/un dossier de démo.
+- Idempotent : ne rejoue rien si la base contient déjà des départements (`DataSeeder`, profil `seed`).
+- Code : [`DataSeeder`](backend/bootstrap/src/main/java/fr/jegeremacartenavigo/bootstrap/seed/DataSeeder.java).
+
 ---
 
 ## 2) Frontend — `frontend`
