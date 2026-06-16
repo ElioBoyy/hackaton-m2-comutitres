@@ -1,6 +1,50 @@
+@import "tailwindcss";
+
+@import "@fontsource/outfit/400.css";
+@import "@fontsource/outfit/600.css";
+@import "@fontsource/outfit/700.css";
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+
+/* Referentiel couleurs IDF Mobilites (charte signaletique) - cf. slide "Referentiel couleurs" */
+@theme {
+  /* Polices */
+  --font-heading: 'Outfit', system-ui, sans-serif;
+  --font-sans: 'Inter', system-ui, sans-serif;
+
+  /* Couleurs principales -> roles semantiques */
+  --color-primary: #1972d2; /* Bleu d'interaction */
+  --color-primary-light: #64b5f6; /* Bleu Ile-de-France */
+  --color-focus: #0050aa; /* Bleu focus */
+  --color-dark: #25303b; /* Anthracite */
+  --color-blue-pale: #f5f9ff; /* Bleu clair */
+  --color-blue-soft: #deeeff; /* Bleu moyen */
+
+  /* Couleurs secondaires -> roles semantiques */
+  --color-danger: #c52625; /* Rouge fonce */
+  --color-danger-light: #d85454; /* Rouge clair */
+  --color-warning: #f39224; /* Orange fonce */
+  --color-warning-light: #ffe500; /* Orange clair (= Jaune) */
+  --color-accent: #e72f69; /* Rose fonce */
+  --color-accent-light: #ffa3a3; /* Rose clair */
+  --color-secondary: #4f338b; /* Violet fonce */
+  --color-secondary-light: #9185be; /* Violet clair */
+  --color-success: #007d44; /* Vert fonce */
+  --color-success-light: #53b476; /* Vert clair */
+
+  /* Nuances de gris */
+  --color-gray-900: #25303b; /* alias anthracite, le plus fonce du jeu */
+  --color-gray-700: #53606e; /* Gris fonce */
+  --color-gray-300: #dddddd; /* Gris moyen */
+  --color-gray-200: #f0f0f0; /* Gris clair */
+  --color-gray-100: #f9f9f9; /* Gris clair 40% */
+  --color-white: #ffffff; /* Blanc */
+}
+
 :root {
   color-scheme: light dark;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  font-family: var(--font-sans);
   line-height: 1.5;
 }
 
@@ -8,6 +52,10 @@ body {
   margin: 0;
   padding: 2rem;
   max-width: 48rem;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
 }
 
 code {

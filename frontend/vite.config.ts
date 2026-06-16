@@ -1,6 +1,7 @@
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import { defineConfig } from 'vite'
 import viteReact from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   server: {
@@ -12,5 +13,5 @@ export default defineConfig({
     tsconfigPaths: true,
   },
   // L'ordre compte : le plugin TanStack Start avant le plugin React.
-  plugins: [tanstackStart(), viteReact()],
+  plugins: [tanstackStart(), viteReact(), tailwindcss()],
 })
