@@ -6,12 +6,17 @@
 @import "@fontsource/inter/400.css";
 @import "@fontsource/inter/500.css";
 @import "@fontsource/inter/600.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+@import "@fontsource/ibm-plex-mono/600.css";
 
 /* Referentiel couleurs IDF Mobilites (charte signaletique) - cf. slide "Referentiel couleurs" */
 @theme {
   /* Polices */
   --font-heading: 'Outfit', system-ui, sans-serif;
   --font-sans: 'Inter', system-ui, sans-serif;
+  /* Mono : reservee aux accents "ticket" (prix, zones, scores) sur les ecrans
+     resultat/detail du RecommendationWizard. */
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
 
   /* Couleurs principales -> roles semantiques */
   --color-primary: #1972d2; /* Bleu d'interaction */
@@ -43,7 +48,7 @@
 }
 
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
   font-family: var(--font-sans);
   line-height: 1.5;
 }
@@ -53,6 +58,10 @@ body {
   background: var(--color-gray-100);
   color: var(--color-dark);
   min-height: 100vh;
+  padding: 2rem;
+  max-width: 48rem;
+  background-color: var(--color-white);
+  color: var(--color-dark);
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -64,6 +73,47 @@ code {
   background: color-mix(in srgb, currentColor 12%, transparent);
   padding: 0.1em 0.35em;
   border-radius: 4px;
+}
+
+/* --- Effet "ticket de transport" --- */
+/* Reserve aux ecrans resultat/detail du RecommendationWizard (cf. CONTEXT.md) :
+   carte arrondie avec bandeau colore et ligne de perforation, comme un titre
+   de transport, sans casser le reste du design rond/colore de l'app. */
+@layer components {
+  .ticket-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 1rem;
+    background: var(--color-white);
+    border: 1px solid var(--color-blue-soft);
+    box-shadow: 0 16px 32px -20px rgb(25 114 210 / 35%);
+  }
+
+  .ticket-card__band {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-height: 2.5rem;
+    padding: 0.65rem 1.25rem;
+    background: var(--color-primary);
+    color: var(--color-white);
+  }
+
+  .ticket-card__band::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -5px;
+    height: 9px;
+    background-image: radial-gradient(circle at center, var(--color-white) 3px, transparent 3.5px);
+    background-size: 14px 9px;
+    background-repeat: repeat-x;
+  }
+
+  .ticket-card__body {
+    padding: 1.5rem 1.25rem 1.25rem;
+  }
 }
 
 /* Override de l'autofill Chromium (Arc / Chrome / Edge) : sans cela le
@@ -78,4 +128,45 @@ input:-webkit-autofill:active {
   -webkit-box-shadow: 0 0 0 1000px var(--color-white) inset;
   caret-color: var(--color-dark);
   transition: background-color 9999s ease-out, color 9999s ease-out;
+}
+
+/* --- Effet "ticket de transport" --- */
+/* Reserve aux ecrans resultat/detail du RecommendationWizard (cf. CONTEXT.md) :
+   carte arrondie avec bandeau colore et ligne de perforation, comme un titre
+   de transport, sans casser le reste du design rond/colore de l'app. */
+@layer components {
+  .ticket-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 1rem;
+    background: var(--color-white);
+    border: 1px solid var(--color-blue-soft);
+    box-shadow: 0 16px 32px -20px rgb(25 114 210 / 35%);
+  }
+
+  .ticket-card__band {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-height: 2.5rem;
+    padding: 0.65rem 1.25rem;
+    background: var(--color-primary);
+    color: var(--color-white);
+  }
+
+  .ticket-card__band::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -5px;
+    height: 9px;
+    background-image: radial-gradient(circle at center, var(--color-white) 3px, transparent 3.5px);
+    background-size: 14px 9px;
+    background-repeat: repeat-x;
+  }
+
+  .ticket-card__body {
+    padding: 1.5rem 1.25rem 1.25rem;
+  }
 }
