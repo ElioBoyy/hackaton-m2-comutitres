@@ -1,12 +1,19 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { GraduationCap, IdCard, MapPin, Receipt, Sparkles, Ticket, User, Users } from 'lucide-react'
 import * as React from 'react'
 import { Button } from '~/components/ui/Button'
+import { ApiError } from '~/lib/api'
+import { isAuthenticated } from '~/lib/auth'
+import { construirePayloadDossier, creerDossier } from '~/lib/dossier'
 import { piecesSontCompletes } from '~/domain/pieces'
 import { calculerRecommandation, selectionnerAbonnement } from '~/domain/recommendation'
 import { SITUATIONS } from '~/domain/situation'
 import { useAppDispatch, useAppSelector } from '~/store/hooks'
-import { abonnementSauvegarde } from '~/store/wizardSlice'
+import { abonnementSauvegarde, dossierBackendDefini } from '~/store/wizardSlice'
+
+// Erreur d'enregistrement du brouillon : distingue "pas connecte" (lien vers
+// /login) des autres erreurs (message brut de l'API ou reseau).
+type ErreurSauvegarde = { type: 'non-authentifie' } | { type: 'autre'; message: string }
 
 export const Route = createFileRoute('/recommandation/recapitulatif')({
   component: RecapitulatifStep,
@@ -16,6 +23,8 @@ function RecapitulatifStep() {
   const navigate = useNavigate()
   const dispatch = useAppDispatch()
   const wizard = useAppSelector((state) => state.wizard)
+  const [envoiEnCours, setEnvoiEnCours] = React.useState(false)
+  const [erreur, setErreur] = React.useState<ErreurSauvegarde | null>(null)
 
   const resultat = React.useMemo(() => {
     if (!wizard.situation || !wizard.frequenceDeplacement) return null
@@ -39,6 +48,36 @@ function RecapitulatifStep() {
   const situationLabel = SITUATIONS.find((item) => item.value === wizard.situation)?.label
   const { abonnement } = selectionnerAbonnement(resultat, wizard.abonnementSelectionneId)
   const piecesCompletes = piecesSontCompletes(wizard)
+
+  async function sauvegarderEtQuitter() {
+    if (!isAuthenticated()) {
+      setErreur({ type: 'non-authentifie' })
+      return
+    }
+    setErreur(null)
+    setEnvoiEnCours(true)
+    try {
+      // Pas de modePaiement : le dossier est sauvegarde en brouillon
+      // (statut EN_ATTENTE_PAIEMENT, cf. CONTEXT.md / CreerDossier).
+      // idDossierExistant (porte par construirePayloadDossier via
+      // wizard.idDossierBackend) complete un brouillon deja sauvegarde au
+      // lieu d'en creer un nouveau.
+      const reponse = await creerDossier(construirePayloadDossier(wizard, abonnement.id))
+      dispatch(dossierBackendDefini(reponse.idDossier))
+      dispatch(abonnementSauvegarde(abonnement.id))
+      navigate({ to: '/dashboard' })
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        setErreur({ type: 'non-authentifie' })
+      } else if (err instanceof ApiError) {
+        setErreur({ type: 'autre', message: err.message })
+      } else {
+        setErreur({ type: 'autre', message: 'Impossible de joindre le serveur. Réessayez.' })
+      }
+    } finally {
+      setEnvoiEnCours(false)
+    }
+  }
 
   return (
     <main className="mx-auto flex max-w-md flex-col gap-6 py-8">
@@ -125,14 +164,22 @@ function RecapitulatifStep() {
             </button>
           </p>
         ) : null}
-        <Button
-          variant="secondary"
-          onClick={() => {
-            dispatch(abonnementSauvegarde(abonnement.id))
-            navigate({ to: '/dashboard' })
-          }}
-        >
-          Sauvegarder et quitter
+        {erreur ? (
+          <div className="rounded-lg bg-danger-light/15 border border-danger-light/40 px-3 py-2 text-sm text-danger">
+            {erreur.type === 'non-authentifie' ? (
+              <>
+                Vous devez être connecté pour sauvegarder votre demande.{' '}
+                <Link to="/login" className="font-medium underline">
+                  Se connecter
+                </Link>
+              </>
+            ) : (
+              erreur.message
+            )}
+          </div>
+        ) : null}
+        <Button variant="secondary" onClick={sauvegarderEtQuitter} disabled={envoiEnCours}>
+          {envoiEnCours ? 'Enregistrement...' : 'Sauvegarder et quitter'}
         </Button>
       </div>
     </main>

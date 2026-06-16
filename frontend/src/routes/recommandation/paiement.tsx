@@ -1,12 +1,19 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { Building2, CreditCard } from 'lucide-react'
 import * as React from 'react'
 import { Button } from '~/components/ui/Button'
 import { ChoiceCard } from '~/components/ui/ChoiceCard'
+import { ApiError } from '~/lib/api'
+import { isAuthenticated } from '~/lib/auth'
+import { construirePayloadDossier, creerDossier } from '~/lib/dossier'
 import { piecesSontCompletes } from '~/domain/pieces'
 import { calculerRecommandation, selectionnerAbonnement } from '~/domain/recommendation'
 import { useAppDispatch, useAppSelector } from '~/store/hooks'
-import { abonnementSauvegarde, paiementValide } from '~/store/wizardSlice'
+import { abonnementSauvegarde, dossierBackendDefini, paiementValide } from '~/store/wizardSlice'
+
+// Erreur d'envoi du dossier : distingue le cas "pas connecte" (lien vers
+// /login) des autres erreurs (message brut de l'API ou reseau).
+type ErreurPaiement = { type: 'non-authentifie' } | { type: 'autre'; message: string }
 
 export const Route = createFileRoute('/recommandation/paiement')({
   component: PaiementStep,
@@ -27,6 +34,8 @@ function PaiementStep() {
     cvc: '',
   })
   const carteBancaireComplete = Object.values(carteBancaire).every((champ) => champ.trim() !== '')
+  const [envoiEnCours, setEnvoiEnCours] = React.useState(false)
+  const [erreur, setErreur] = React.useState<ErreurPaiement | null>(null)
 
   const resultat = React.useMemo(() => {
     if (!wizard.situation || !wizard.frequenceDeplacement) return null
@@ -63,10 +72,36 @@ function PaiementStep() {
 
   const { abonnement } = selectionnerAbonnement(resultat, wizard.abonnementSelectionneId)
 
-  function confirmerPaiement() {
-    dispatch(paiementValide())
-    dispatch(abonnementSauvegarde(abonnement.id))
-    navigate({ to: '/dashboard' })
+  async function confirmerPaiement() {
+    if (!moyenPaiement) return
+
+    if (!isAuthenticated()) {
+      setErreur({ type: 'non-authentifie' })
+      return
+    }
+
+    setErreur(null)
+    setEnvoiEnCours(true)
+    try {
+      // idDossierExistant (porte par construirePayloadDossier via
+      // wizard.idDossierBackend) complete un brouillon deja sauvegarde
+      // (resultat/recapitulatif) au lieu d'en creer un nouveau dossier.
+      const reponse = await creerDossier(construirePayloadDossier(wizard, abonnement.id, moyenPaiement))
+      dispatch(dossierBackendDefini(reponse.idDossier))
+      dispatch(paiementValide())
+      dispatch(abonnementSauvegarde(abonnement.id))
+      navigate({ to: '/dashboard' })
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        setErreur({ type: 'non-authentifie' })
+      } else if (err instanceof ApiError) {
+        setErreur({ type: 'autre', message: err.message })
+      } else {
+        setErreur({ type: 'autre', message: 'Impossible de joindre le serveur. Réessayez.' })
+      }
+    } finally {
+      setEnvoiEnCours(false)
+    }
   }
 
   return (
@@ -101,6 +136,21 @@ function PaiementStep() {
         />
       ) : null}
 
+      {erreur ? (
+        <div className="rounded-lg bg-danger-light/15 border border-danger-light/40 px-3 py-2 text-sm text-danger">
+          {erreur.type === 'non-authentifie' ? (
+            <>
+              Vous devez être connecté pour finaliser votre demande.{' '}
+              <Link to="/login" className="font-medium underline">
+                Se connecter
+              </Link>
+            </>
+          ) : (
+            erreur.message
+          )}
+        </div>
+      ) : null}
+
       <div className="mt-2 flex items-center justify-between gap-3">
         <Button variant="secondary" onClick={() => navigate({ to: '/recommandation/recapitulatif' })}>
           Retour
@@ -108,13 +158,14 @@ function PaiementStep() {
         <Button
           onClick={confirmerPaiement}
           disabled={
+            envoiEnCours ||
             !moyenPaiement ||
             (moyenPaiement === 'CB' && !carteBancaireComplete) ||
             (moyenPaiement === 'SEPA' && !mandatSepaConsenti)
           }
           className="flex-1"
         >
-          Confirmer le paiement
+          {envoiEnCours ? 'Envoi en cours...' : 'Confirmer le paiement'}
         </Button>
       </div>
     </main>

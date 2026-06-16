@@ -33,16 +33,16 @@ function scoreAbonnement(abonnementId: string, reponses: ReponsesWizard): number
   // volontaire : un etudiant OCCASIONNEL est mieux servi par Liberte+ (pas
   // de bonus etudiant dans ce cas, cf. regle ci-dessous).
   if (
-    abonnementId === 'imagine-r-etudiant' &&
+    abonnementId === 'IMAGINE_R_ETUDIANT' &&
     situation === 'ETUDIANT' &&
     frequenceDeplacement !== 'OCCASIONNEL'
   )
     score += 45
-  if (abonnementId === 'navigo-annuel' && frequenceDeplacement === 'QUOTIDIEN') score += 35
-  if (abonnementId === 'navigo-mois' && frequenceDeplacement === 'REGULIER') score += 25
-  if (abonnementId === 'liberte-plus' && frequenceDeplacement === 'OCCASIONNEL') score += 40
-  if (abonnementId === 'navigo-annuel' && situation === 'ACTIF') score += 15
-  if (abonnementId === 'imagine-r-etudiant' && situation === 'ALTERNANCE') score += 20
+  if (abonnementId === 'NAVIGO_ANNUEL' && frequenceDeplacement === 'QUOTIDIEN') score += 35
+  if (abonnementId === 'NAVIGO_MENSUEL' && frequenceDeplacement === 'REGULIER') score += 25
+  if (abonnementId === 'NAVIGO_LIBERTE_PLUS' && frequenceDeplacement === 'OCCASIONNEL') score += 40
+  if (abonnementId === 'NAVIGO_ANNUEL' && situation === 'ACTIF') score += 15
+  if (abonnementId === 'IMAGINE_R_ETUDIANT' && situation === 'ALTERNANCE') score += 20
 
   return Math.max(5, Math.min(score, 95))
 }

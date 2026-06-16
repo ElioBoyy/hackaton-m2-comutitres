@@ -41,7 +41,7 @@ function SituationStep() {
           <span className="font-sans text-base font-semibold text-dark">Êtes-vous boursier ?</span>
           <input
             type="checkbox"
-            className="h-8 w-8 accent-primary"
+            className="h-6 w-6 accent-primary"
             checked={boursier}
             onChange={(event) => dispatch(boursierDefini(event.target.checked))}
           />

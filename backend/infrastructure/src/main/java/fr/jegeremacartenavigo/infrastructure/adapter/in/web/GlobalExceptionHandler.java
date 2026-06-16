@@ -4,6 +4,8 @@ import fr.jegeremacartenavigo.domain.auth.exception.CompteInactifException;
 import fr.jegeremacartenavigo.domain.auth.exception.EmailDejaUtiliseException;
 import fr.jegeremacartenavigo.domain.auth.exception.IdentifiantsInvalidesException;
 import fr.jegeremacartenavigo.domain.auth.exception.UtilisateurIntrouvableException;
+import fr.jegeremacartenavigo.domain.dossier.exception.DossierIntrouvableException;
+import fr.jegeremacartenavigo.domain.dossier.exception.ReferentielIntrouvableException;
 import fr.jegeremacartenavigo.domain.exception.DomainException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
@@ -42,6 +44,20 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(UtilisateurIntrouvableException.class)
     public ProblemDetail handleUtilisateurIntrouvable(UtilisateurIntrouvableException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+        problem.setTitle("Ressource introuvable");
+        return problem;
+    }
+
+    @ExceptionHandler(ReferentielIntrouvableException.class)
+    public ProblemDetail handleReferentielIntrouvable(ReferentielIntrouvableException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+        problem.setTitle("Ressource introuvable");
+        return problem;
+    }
+
+    @ExceptionHandler(DossierIntrouvableException.class)
+    public ProblemDetail handleDossierIntrouvable(DossierIntrouvableException ex) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
         problem.setTitle("Ressource introuvable");
         return problem;

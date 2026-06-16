@@ -43,6 +43,11 @@ export interface WizardState {
   // le choix de moyen de paiement et les champs saisis restent locaux a la
   // route, seul le fait d'avoir "valide" est conserve.
   paiementEffectue: boolean
+  // Id du Dossier backend une fois sauvegarde au moins une fois (bouton
+  // "Sauvegarder et quitter" ou paiement). Permet de completer ce meme
+  // dossier au lieu d'en creer un nouveau a chaque sauvegarde - evite les
+  // doublons en base (cf. CONTEXT.md / CreerDossier).
+  idDossierBackend: number | null
 }
 
 const initialState: WizardState = {
@@ -60,6 +65,7 @@ const initialState: WizardState = {
   verificationIA: 'NON_DEMANDEE',
   abonnementSauvegardeId: null,
   paiementEffectue: false,
+  idDossierBackend: null,
 }
 
 const wizardSlice = createSlice({
@@ -108,6 +114,9 @@ const wizardSlice = createSlice({
     paiementValide(state) {
       state.paiementEffectue = true
     },
+    dossierBackendDefini(state, action: PayloadAction<number>) {
+      state.idDossierBackend = action.payload
+    },
     wizardReinitialise() {
       return initialState
     },
@@ -128,6 +137,7 @@ export const {
   verificationIAEffectuee,
   abonnementSauvegarde,
   paiementValide,
+  dossierBackendDefini,
   wizardReinitialise,
 } = wizardSlice.actions
 
