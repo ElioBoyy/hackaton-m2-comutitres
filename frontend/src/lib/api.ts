@@ -6,6 +6,8 @@
  * - Possede aussi le storage du JWT : seul module qui touche a localStorage,
  *   pour que le support de stockage puisse changer sans impacter les use cases.
  */
+import type { DossierListResponse, DossierResume } from '~/lib/types/dossier'
+
 const API_URL: string = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
 
 const TOKEN_KEY: string = import.meta.env.VITE_TOKEN_KEY ?? 'jgmcn.access_token'
@@ -75,4 +77,30 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
  */
 export function getHealth(): Promise<{ status: string }> {
   return apiFetch('/actuator/health')
+}
+
+export interface GetDossiersParams {
+  statut?: string
+  page?: number
+  pageSize?: number
+}
+
+/**
+ * Liste des dossiers en attente de verification par un agent backoffice.
+ * Endpoint pas encore implemente cote back (cf. CLAUDE.md, domaine sans controleur REST).
+ */
+export function getDossiers(params: GetDossiersParams = {}): Promise<DossierListResponse> {
+  const query = new URLSearchParams()
+  if (params.statut) query.set('statut', params.statut)
+  if (params.page !== undefined) query.set('page', String(params.page))
+  if (params.pageSize !== undefined) query.set('pageSize', String(params.pageSize))
+  const qs = query.toString()
+  return apiFetch(`/dossiers${qs ? `?${qs}` : ''}`)
+}
+
+/**
+ * Recherche libre d'un dossier/client pour qu'un agent agisse a sa place.
+ */
+export function searchDossiers(q: string): Promise<DossierResume[]> {
+  return apiFetch(`/dossiers/search?q=${encodeURIComponent(q)}`)
 }

@@ -10,8 +10,8 @@
 /* Referentiel couleurs IDF Mobilites (charte signaletique) - cf. slide "Referentiel couleurs" */
 @theme {
   /* Polices */
-  --font-heading: 'Outfit', system-ui, sans-serif;
-  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-heading: "Outfit", system-ui, sans-serif;
+  --font-sans: "Inter", system-ui, sans-serif;
 
   /* Couleurs principales -> roles semantiques */
   --color-primary: #1972d2; /* Bleu d'interaction */
@@ -55,7 +55,12 @@ body {
   min-height: 100vh;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-family: var(--font-heading);
 }
 
@@ -77,5 +82,7 @@ input:-webkit-autofill:active {
   -webkit-text-fill-color: var(--color-dark);
   -webkit-box-shadow: 0 0 0 1000px var(--color-white) inset;
   caret-color: var(--color-dark);
-  transition: background-color 9999s ease-out, color 9999s ease-out;
+  transition:
+    background-color 9999s ease-out,
+    color 9999s ease-out;
 }
