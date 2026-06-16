@@ -16,6 +16,7 @@ spring:
       # Le schema est pilote par Flyway (cf. spring.flyway). Hibernate ne fait que
       # valider que les entites correspondent aux tables migrees, il ne les cree pas.
       ddl-auto: validate
+
     properties:
       hibernate:
         format_sql: true
@@ -49,8 +50,8 @@ management:
 app:
   cors:
     allowed-origins:
-      - http://localhost:3000   # TanStack Start (dev)
-      - http://localhost:5173   # Vite (port par defaut, au cas ou)
+      - http://localhost:3000 # TanStack Start (dev)
+      - http://localhost:5173 # Vite (port par defaut, au cas ou)
     allowed-methods:
       - GET
       - POST
