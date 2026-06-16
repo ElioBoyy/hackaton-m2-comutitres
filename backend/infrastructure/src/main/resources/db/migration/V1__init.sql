@@ -1,6 +1,0 @@
--- baseline flyway
---
--- pas encore d'entite jpa dans le projet, donc rien a creer ici pour l'instant.
--- au fur et a mesure que des entites arrivent, ajouter les tables dans de
--- nouveaux scripts V2__xxx.sql, V3__xxx.sql, ... (ne jamais modifier un script
--- deja joue : flyway en verifie le checksum).
