@@ -20,6 +20,11 @@ export interface RegisterPayload {
   nom: string
   prenom: string
   dateNaissance: string
+  numeroEtVoie: string
+  codePostal: string
+  ville: string
+  departementCode: string
+  departementLibelle: string
 }
 
 export function isAuthenticated(): boolean {

@@ -8,6 +8,9 @@ import java.time.LocalDate;
  * et use cases d'authentification.
  *
  * <p>{@code id} est null pour un compte non encore persiste (avant register).
+ * <p>{@code adresseDomicile} est nullable car non charge par les lectures d'auth
+ * (login / me) : seul le {@link #save(UtilisateurAuth)} du flow register la
+ * renseigne.
  */
 public record UtilisateurAuth(
         Integer id,
@@ -16,6 +19,7 @@ public record UtilisateurAuth(
         String nom,
         String prenom,
         LocalDate dateNaissance,
+        AdresseDomicile adresseDomicile,
         StatutCompte statut
 ) {
     public boolean estActif() {

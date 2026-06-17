@@ -1,5 +1,4 @@
 package fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.dossier;
-
 import fr.jegeremacartenavigo.domain.auth.exception.UtilisateurIntrouvableException;
 import fr.jegeremacartenavigo.domain.dossier.exception.DossierDejaFinaliseException;
 import fr.jegeremacartenavigo.domain.dossier.exception.DossierIntrouvableException;
@@ -39,6 +38,19 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+/**
+ * Adapter JPA unique du port {@link DossierRepository}.
+ *
+ * <p>Couvre :
+ * <ul>
+ *   <li>Lecture backoffice (agent) : {@link #findPage}, {@link #findDetailById}.</li>
+ *   <li>Creation utilisateur (RecommendationWizard) : {@link #enregistrer}.</li>
+ * </ul>
+ *
+ * <p>Sans moyen de paiement, le dossier est cree/maintenu en brouillon
+ * ({@code EN_ATTENTE_PAIEMENT}). Avec paiement, mock immediatement valide
+ * (cf. CONTEXT.md : aucune donnee bancaire reelle).
+ */
 @Component
 public class DossierRepositoryAdapter implements DossierRepository {
 
@@ -87,11 +99,12 @@ public class DossierRepositoryAdapter implements DossierRepository {
         List<Integer> idsDossier = resultat.getContent().stream().map(Dossier::getIdDossier).toList();
         Map<Integer, Long> nbPiecesEnAttenteParDossier = idsDossier.isEmpty()
                 ? Map.of()
-                : pieceJustificativeJpaRepository.countByStatutGroupByDossier(PieceJustificative.StatutValidation.en_attente, idsDossier)
-                    .stream()
-                    .collect(Collectors.toMap(
-                            PieceJustificativeJpaRepository.NbPiecesEnAttenteParDossier::getIdDossier,
-                            PieceJustificativeJpaRepository.NbPiecesEnAttenteParDossier::getTotal));
+                : pieceJustificativeJpaRepository.countByStatutGroupByDossier(
+                                PieceJustificative.StatutValidation.en_attente, idsDossier)
+                        .stream()
+                        .collect(Collectors.toMap(
+                                PieceJustificativeJpaRepository.NbPiecesEnAttenteParDossier::getIdDossier,
+                                PieceJustificativeJpaRepository.NbPiecesEnAttenteParDossier::getTotal));
 
         List<DossierResume> dossiers = resultat.getContent().stream()
                 .map(d -> toResume(d, nbPiecesEnAttenteParDossier.getOrDefault(d.getIdDossier(), 0L)))
@@ -142,92 +155,6 @@ public class DossierRepositoryAdapter implements DossierRepository {
                 nouveauDossier.modePaiement(),
                 dossier.getDateCreation()
         );
-    }
-
-    private Dossier resoudreDossier(NouveauDossier nouveauDossier, Utilisateur connecte) {
-        if (nouveauDossier.idDossierExistant() == null) {
-            return new Dossier();
-        }
-        Dossier existant = dossierJpaRepository.findById(nouveauDossier.idDossierExistant())
-                .orElseThrow(() -> new DossierIntrouvableException(nouveauDossier.idDossierExistant()));
-        if (!existant.getUtilisateurPorteur().getIdUtilisateur().equals(connecte.getIdUtilisateur())) {
-            throw new DossierIntrouvableException(nouveauDossier.idDossierExistant());
-        }
-        if (!STATUT_BROUILLON.equals(existant.getStatutActuel().getCode())) {
-            throw new DossierDejaFinaliseException();
-        }
-        return existant;
-    }
-
-    private void appliquerChamps(Dossier dossier, NouveauDossier nouveauDossier, Utilisateur connecte,
-                                  TypeAbonnement typeAbonnement, StatutDossier statut, boolean paiementFourni) {
-        boolean nouveauDossierVierge = dossier.getIdDossier() == null;
-        dossier.setUtilisateurPorteur(connecte);
-        dossier.setUtilisateurPayeur(connecte);
-        dossier.setTypeAbonnement(typeAbonnement);
-        dossier.setStatutActuel(statut);
-        if (nouveauDossierVierge) {
-            dossier.setCanalCreation(Dossier.CanalCreation.en_ligne);
-            dossier.setDateCreation(LocalDateTime.now());
-            dossier.setDateDebutDroits(LocalDate.now());
-        }
-        if (paiementFourni) {
-            LocalDate debutDroits = dossier.getDateDebutDroits() != null ? dossier.getDateDebutDroits() : LocalDate.now();
-            dossier.setDateFinDroits(debutDroits.plusYears(1));
-        }
-        dossier.setMontantTotal(typeAbonnement.getTarifPlein() != null ? typeAbonnement.getTarifPlein() : BigDecimal.ZERO);
-        dossier.setPeriodicitePaiement(mapPeriodicite(typeAbonnement.getPeriodicite()));
-        dossier.setSituationCode(nouveauDossier.situation().name());
-        dossier.setSituationPrecision(nouveauDossier.situationPrecision());
-        dossier.setBoursier(nouveauDossier.boursier());
-        dossier.setBeneficiaireNomComplet(
-                nouveauDossier.demandePour() == DemandePour.TIERS ? nouveauDossier.beneficiaireNomComplet() : null);
-    }
-
-    private Dossier.PeriodicitePaiement mapPeriodicite(TypeAbonnement.Periodicite periodicite) {
-        return switch (periodicite) {
-            case annuelle -> Dossier.PeriodicitePaiement.annuel;
-            case mensuelle -> Dossier.PeriodicitePaiement.mensuel;
-            default -> Dossier.PeriodicitePaiement.ponctuel;
-        };
-    }
-
-    private void enregistrerOuRemplacerPiece(Dossier dossier, Utilisateur depositaire, String codeTypePiece, String cheminFichier) {
-        if (cheminFichier == null || cheminFichier.isBlank()) {
-            return;
-        }
-        TypePieceJustificative typePiece = typePieceJpaRepository.findByCode(codeTypePiece)
-                .orElseThrow(() -> new ReferentielIntrouvableException("Type de piece introuvable : " + codeTypePiece));
-
-        PieceJustificative piece = dossier.getIdDossier() == null
-                ? null
-                : pieceJustificativeJpaRepository
-                        .findByDossier_IdDossierAndTypePiece_IdTypePiece(dossier.getIdDossier(), typePiece.getIdTypePiece())
-                        .orElse(null);
-        if (piece == null) {
-            piece = new PieceJustificative();
-            piece.setDossier(dossier);
-            piece.setTypePiece(typePiece);
-        }
-        piece.setUtilisateurDepot(depositaire);
-        piece.setCheminFichier(cheminFichier);
-        piece.setDateDepot(LocalDateTime.now());
-        pieceJustificativeJpaRepository.save(piece);
-    }
-
-    private void enregistrerPaiement(Dossier dossier, Utilisateur payeur, ModePaiementDossier modePaiementDossier) {
-        Paiement paiement = new Paiement();
-        paiement.setDossier(dossier);
-        paiement.setUtilisateurPayeur(payeur);
-        paiement.setTypePaiement(Paiement.TypePaiement.paiement_initial);
-        paiement.setMontant(dossier.getMontantTotal());
-        paiement.setDatePaiement(LocalDateTime.now());
-        paiement.setModePaiement(modePaiementDossier == ModePaiementDossier.SEPA
-                ? Paiement.ModePaiement.prelevement_sepa
-                : Paiement.ModePaiement.CB);
-        paiement.setReferenceTransaction("MOCK-" + UUID.randomUUID());
-        paiement.setStatut(Paiement.Statut.valide);
-        paiementJpaRepository.save(paiement);
     }
 
     private static DossierResume toResume(Dossier d, long nbPiecesEnAttente) {
@@ -284,5 +211,99 @@ public class DossierRepositoryAdapter implements DossierRepository {
 
     private static String nomComplet(Utilisateur u) {
         return u.getPrenom() + " " + u.getNom();
+    }
+
+    // idDossierExistant present : on complete un brouillon deja sauvegarde
+    // (evite les doublons quand l'usager revient payer plus tard). Sinon,
+    // nouveau Dossier vierge.
+    private Dossier resoudreDossier(NouveauDossier nouveauDossier, Utilisateur connecte) {
+        if (nouveauDossier.idDossierExistant() == null) {
+            return new Dossier();
+        }
+        Integer id = nouveauDossier.idDossierExistant();
+        Dossier existant = dossierJpaRepository.findById(id)
+                .orElseThrow(() -> new DossierIntrouvableException(id));
+        if (!existant.getUtilisateurPorteur().getIdUtilisateur().equals(connecte.getIdUtilisateur())) {
+            // Meme erreur que "introuvable" : ne pas reveler l'existence du
+            // dossier d'un autre utilisateur.
+            throw new DossierIntrouvableException(id);
+        }
+        if (!STATUT_BROUILLON.equals(existant.getStatutActuel().getCode())) {
+            throw new DossierDejaFinaliseException();
+        }
+        return existant;
+    }
+
+    private void appliquerChamps(Dossier dossier, NouveauDossier nouveauDossier, Utilisateur connecte,
+                                  TypeAbonnement typeAbonnement, StatutDossier statut, boolean paiementFourni) {
+        boolean nouveauDossierVierge = dossier.getIdDossier() == null;
+        dossier.setUtilisateurPorteur(connecte);
+        dossier.setUtilisateurPayeur(connecte);
+        dossier.setTypeAbonnement(typeAbonnement);
+        dossier.setStatutActuel(statut);
+        if (nouveauDossierVierge) {
+            dossier.setCanalCreation(Dossier.CanalCreation.en_ligne);
+            dossier.setDateCreation(LocalDateTime.now());
+            dossier.setDateDebutDroits(LocalDate.now());
+        }
+        if (paiementFourni) {
+            LocalDate debutDroits = dossier.getDateDebutDroits() != null ? dossier.getDateDebutDroits() : LocalDate.now();
+            dossier.setDateFinDroits(debutDroits.plusYears(1));
+        }
+        dossier.setMontantTotal(typeAbonnement.getTarifPlein() != null ? typeAbonnement.getTarifPlein() : BigDecimal.ZERO);
+        dossier.setPeriodicitePaiement(mapPeriodicite(typeAbonnement.getPeriodicite()));
+        dossier.setSituationCode(nouveauDossier.situation().name());
+        dossier.setSituationPrecision(nouveauDossier.situationPrecision());
+        dossier.setBoursier(nouveauDossier.boursier());
+        dossier.setBeneficiaireNomComplet(
+                nouveauDossier.demandePour() == DemandePour.TIERS ? nouveauDossier.beneficiaireNomComplet() : null);
+    }
+
+    private Dossier.PeriodicitePaiement mapPeriodicite(TypeAbonnement.Periodicite periodicite) {
+        return switch (periodicite) {
+            case annuelle -> Dossier.PeriodicitePaiement.annuel;
+            case mensuelle -> Dossier.PeriodicitePaiement.mensuel;
+            default -> Dossier.PeriodicitePaiement.ponctuel;
+        };
+    }
+
+    // Remplace la piece existante du meme type sur ce dossier si on
+    // complete un brouillon (idDossierExistant), au lieu de la dupliquer.
+    private void enregistrerOuRemplacerPiece(Dossier dossier, Utilisateur depositaire, String codeTypePiece, String cheminFichier) {
+        if (cheminFichier == null || cheminFichier.isBlank()) {
+            return;
+        }
+        TypePieceJustificative typePiece = typePieceJpaRepository.findByCode(codeTypePiece)
+                .orElseThrow(() -> new ReferentielIntrouvableException("Type de piece introuvable : " + codeTypePiece));
+
+        PieceJustificative piece = dossier.getIdDossier() == null
+                ? null
+                : pieceJustificativeJpaRepository
+                        .findByDossier_IdDossierAndTypePiece_IdTypePiece(dossier.getIdDossier(), typePiece.getIdTypePiece())
+                        .orElse(null);
+        if (piece == null) {
+            piece = new PieceJustificative();
+            piece.setDossier(dossier);
+            piece.setTypePiece(typePiece);
+        }
+        piece.setUtilisateurDepot(depositaire);
+        piece.setCheminFichier(cheminFichier);
+        piece.setDateDepot(LocalDateTime.now());
+        pieceJustificativeJpaRepository.save(piece);
+    }
+
+    private void enregistrerPaiement(Dossier dossier, Utilisateur payeur, ModePaiementDossier modePaiementDossier) {
+        Paiement paiement = new Paiement();
+        paiement.setDossier(dossier);
+        paiement.setUtilisateurPayeur(payeur);
+        paiement.setTypePaiement(Paiement.TypePaiement.paiement_initial);
+        paiement.setMontant(dossier.getMontantTotal());
+        paiement.setDatePaiement(LocalDateTime.now());
+        paiement.setModePaiement(modePaiementDossier == ModePaiementDossier.SEPA
+                ? Paiement.ModePaiement.prelevement_sepa
+                : Paiement.ModePaiement.CB);
+        paiement.setReferenceTransaction("MOCK-" + UUID.randomUUID());
+        paiement.setStatut(Paiement.Statut.valide);
+        paiementJpaRepository.save(paiement);
     }
 }

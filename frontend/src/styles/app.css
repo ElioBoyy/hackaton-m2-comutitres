@@ -58,10 +58,6 @@ body {
   background: var(--color-gray-100);
   color: var(--color-dark);
   min-height: 100vh;
-  padding: 2rem;
-  max-width: 48rem;
-  background-color: var(--color-white);
-  color: var(--color-dark);
 }
 
 h1,

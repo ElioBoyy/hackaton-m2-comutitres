@@ -1,13 +1,17 @@
 import { createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
+import { deLocalizeUrl, localizeUrl } from './paraglide/runtime'
 
-// Convention TanStack Start : le plugin Vite appelle getRouter() cote serveur
-// et cote client. routeTree.gen.ts est genere automatiquement par le plugin.
 export function getRouter() {
   const router = createRouter({
     routeTree,
     defaultPreload: 'intent',
+    defaultPreloadStaleTime: 0,
     scrollRestoration: true,
+    rewrite: {
+      input: ({ url }) => deLocalizeUrl(url),
+      output: ({ url }) => localizeUrl(url),
+    },
   })
 
   return router

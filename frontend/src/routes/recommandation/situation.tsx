@@ -38,7 +38,7 @@ function SituationStep() {
       ))}
 
       {situation === 'ETUDIANT' ? (
-        <label className="col-span-2 flex items-center justify-between gap-4 rounded-lg border border-gray-200 p-4">
+        <label className="col-span-full flex items-center justify-between gap-4 rounded-lg border border-gray-200 p-4">
           <span className="font-sans text-base font-semibold text-dark">{pourQui === 'TIERS' ? 'Le bénéficiaire est-il boursier ?' : 'Êtes-vous boursier ?'}</span>
           <input
             type="checkbox"

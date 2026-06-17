@@ -1,6 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { AuthLayout } from "~/components/AuthLayout";
-import { Button } from "~/components/Button";
+import { createFileRoute, Link } from '@tanstack/react-router'
+import { AuthLayout } from '~/components/AuthLayout'
+import { Button } from '~/components/Button'
+import { m } from '~/paraglide/messages'
 
 export const Route = createFileRoute("/")({
   component: Home,
@@ -8,17 +9,14 @@ export const Route = createFileRoute("/")({
 
 function Home() {
   return (
-    <AuthLayout
-      title="Comutitres Copilot"
-      subtitle="Trouvez l'abonnement de transport qui vous correspond, simplement."
-    >
+    <AuthLayout title={m.home_title()} subtitle={m.home_subtitle()}>
       <div className="flex flex-col gap-3">
         <Link to="/register">
-          <Button type="button">Creer mon compte</Button>
+          <Button type="button">{m.auth_create_account()}</Button>
         </Link>
         <Link to="/login">
           <Button type="button" variant="ghost">
-            J'ai deja un compte
+            {m.home_have_account_cta()}
           </Button>
         </Link>
       </div>

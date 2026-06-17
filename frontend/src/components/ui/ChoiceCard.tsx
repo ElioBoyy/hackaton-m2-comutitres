@@ -42,16 +42,16 @@ export function ChoiceCard({
       type="button"
       onClick={onSelect}
       aria-pressed={selected}
-      className={`flex aspect-square w-full flex-col items-center justify-center gap-2 rounded-xl border-2 px-3 py-4 text-center transition-colors ${
+      className={`flex w-full flex-col items-center justify-center gap-1.5 rounded-xl border-2 px-3 py-4 text-center transition-colors ${
         selected
           ? 'border-primary bg-blue-pale'
           : 'border-gray-200 bg-white hover:border-primary-light'
       }`}
     >
-      {Icon ? <Icon className="h-7 w-7 text-primary" strokeWidth={1.75} /> : null}
-      <span className="font-sans font-semibold text-dark">{label}</span>
+      {Icon ? <Icon className="h-6 w-6 text-primary" strokeWidth={1.75} /> : null}
+      <span className="font-sans text-sm font-semibold text-dark">{label}</span>
       {description ? (
-        <span className="text-xs text-gray-700">{description}</span>
+        <span className="text-xs leading-tight text-gray-700">{description}</span>
       ) : null}
     </button>
   )
