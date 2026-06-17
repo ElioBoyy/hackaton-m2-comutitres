@@ -456,6 +456,7 @@ public class DataSeeder implements ApplicationRunner {
         d.setDateFinDroits(dateFin);
         d.setMontantTotal(montant);
         d.setPeriodicitePaiement(periodicite);
+        d.setSituationCode("Etudiant");
         return d;
     }
 
