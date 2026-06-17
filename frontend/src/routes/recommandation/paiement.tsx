@@ -8,19 +8,22 @@ import { isAuthenticated } from '~/lib/auth'
 import { construirePayloadDossier, creerDossier } from '~/lib/dossier'
 import { piecesSontCompletes } from '~/domain/pieces'
 import { calculerRecommandation, selectionnerAbonnement } from '~/domain/recommendation'
+import { CarteBancaireSchema, MandatSepaSchema } from '~/lib/schemas'
 import { m } from '~/paraglide/messages'
 import { useAppDispatch, useAppSelector } from '~/store/hooks'
 import { abonnementSauvegarde, dossierBackendDefini, paiementValide } from '~/store/wizardSlice'
 
-// Erreur d'envoi du dossier : distingue le cas "pas connecte" (lien vers
-// /login) des autres erreurs (message brut de l'API ou reseau).
 type ErreurPaiement = { type: 'non-authentifie' } | { type: 'autre'; message: string }
+type MoyenPaiement = 'CB' | 'SEPA'
 
 export const Route = createFileRoute('/recommandation/paiement')({
   component: PaiementStep,
 })
 
-type MoyenPaiement = 'CB' | 'SEPA'
+function translateValidation(key: string): string {
+  const messages = m as unknown as Record<string, () => string>
+  return typeof messages[key] === 'function' ? messages[key]() : key
+}
 
 function PaiementStep() {
   const navigate = useNavigate()
@@ -34,7 +37,12 @@ function PaiementStep() {
     expiration: '',
     cvc: '',
   })
-  const carteBancaireComplete = Object.values(carteBancaire).every((champ) => champ.trim() !== '')
+  const [mandatSepa, setMandatSepa] = React.useState({
+    nom: '',
+    iban: '',
+    bic: '',
+  })
+  const [erreurs, setErreurs] = React.useState<Record<string, string>>({})
   const [envoiEnCours, setEnvoiEnCours] = React.useState(false)
   const [erreur, setErreur] = React.useState<ErreurPaiement | null>(null)
 
@@ -72,8 +80,27 @@ function PaiementStep() {
 
   const { abonnement } = selectionnerAbonnement(resultat, wizard.abonnementSelectionneId)
 
+  function validerFormulaire(): boolean {
+    if (!moyenPaiement) return false
+    const schema = moyenPaiement === 'CB' ? CarteBancaireSchema : MandatSepaSchema
+    const valeurs = moyenPaiement === 'CB' ? carteBancaire : mandatSepa
+    const result = schema.safeParse(valeurs)
+    if (!result.success) {
+      const map: Record<string, string> = {}
+      for (const issue of result.error.issues) {
+        const field = issue.path[0] as string
+        if (!map[field]) map[field] = translateValidation(issue.message)
+      }
+      setErreurs(map)
+      return false
+    }
+    setErreurs({})
+    return true
+  }
+
   async function confirmerPaiement() {
     if (!moyenPaiement) return
+    if (!validerFormulaire()) return
 
     if (!isAuthenticated()) {
       setErreur({ type: 'non-authentifie' })
@@ -83,9 +110,6 @@ function PaiementStep() {
     setErreur(null)
     setEnvoiEnCours(true)
     try {
-      // idDossierExistant (porte par construirePayloadDossier via
-      // wizard.idDossierBackend) complete un brouillon deja sauvegarde
-      // (resultat/recapitulatif) au lieu d'en creer un nouveau dossier.
       const reponse = await creerDossier(construirePayloadDossier(wizard, abonnement.id, moyenPaiement))
       dispatch(dossierBackendDefini(reponse.idDossier))
       dispatch(paiementValide())
@@ -97,11 +121,15 @@ function PaiementStep() {
       } else if (err instanceof ApiError) {
         setErreur({ type: 'autre', message: err.message })
       } else {
-        setErreur({ type: 'autre', message: 'Impossible de joindre le serveur. Réessayez.' })
+        setErreur({ type: 'autre', message: m.wizard_server_error() })
       }
     } finally {
       setEnvoiEnCours(false)
     }
+  }
+
+  function effacerErreur(field: string) {
+    if (erreurs[field]) setErreurs((e) => ({ ...e, [field]: '' }))
   }
 
   return (
@@ -116,22 +144,31 @@ function PaiementStep() {
           icon={CreditCard}
           label={m.wizard_paiement_cb()}
           selected={moyenPaiement === 'CB'}
-          onSelect={() => setMoyenPaiement('CB')}
+          onSelect={() => { setMoyenPaiement('CB'); setErreurs({}) }}
         />
         <ChoiceCard
           icon={Building2}
           label={m.wizard_paiement_sepa()}
           selected={moyenPaiement === 'SEPA'}
-          onSelect={() => setMoyenPaiement('SEPA')}
+          onSelect={() => { setMoyenPaiement('SEPA'); setErreurs({}) }}
         />
       </div>
 
       {moyenPaiement === 'CB' ? (
-        <FormulaireCarteBancaire valeurs={carteBancaire} onChange={setCarteBancaire} />
+        <FormulaireCarteBancaire
+          valeurs={carteBancaire}
+          erreurs={erreurs}
+          onChange={(vals) => setCarteBancaire(vals)}
+          onFieldChange={effacerErreur}
+        />
       ) : null}
       {moyenPaiement === 'SEPA' ? (
         <FormulaireMandatSepa
+          valeurs={mandatSepa}
+          erreurs={erreurs}
           consenti={mandatSepaConsenti}
+          onChange={(vals) => setMandatSepa(vals)}
+          onFieldChange={effacerErreur}
           onConsentementChange={setMandatSepaConsenti}
         />
       ) : null}
@@ -152,7 +189,7 @@ function PaiementStep() {
       ) : null}
 
       <div className="mt-2 flex items-center justify-between gap-3">
-        <Button variant="ghost" onClick={() => navigate({ to: '/recommandation/recapitulatif' })}>
+        <Button variant="ghost" onClick={() => navigate({ to: '/recommandation/recapitulatif' })} className="flex-1">
           {m.common_back()}
         </Button>
         <Button
@@ -160,7 +197,6 @@ function PaiementStep() {
           disabled={
             envoiEnCours ||
             !moyenPaiement ||
-            (moyenPaiement === 'CB' && !carteBancaireComplete) ||
             (moyenPaiement === 'SEPA' && !mandatSepaConsenti)
           }
           className="flex-1"
@@ -181,10 +217,14 @@ interface CarteBancaire {
 
 function FormulaireCarteBancaire({
   valeurs,
+  erreurs,
   onChange,
+  onFieldChange,
 }: {
   valeurs: CarteBancaire
+  erreurs: Record<string, string>
   onChange: (valeurs: CarteBancaire) => void
+  onFieldChange: (field: string) => void
 }) {
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-gray-200 p-4">
@@ -192,42 +232,57 @@ function FormulaireCarteBancaire({
         label={m.wizard_paiement_cb_holder()}
         placeholder="Jean Dupont"
         value={valeurs.nom}
-        onChange={(nom) => onChange({ ...valeurs, nom })}
+        erreur={erreurs.nom}
+        onChange={(nom) => { onChange({ ...valeurs, nom }); onFieldChange('nom') }}
       />
       <ChampTexte
         label={m.wizard_paiement_cb_number()}
         placeholder="4242 4242 4242 4242"
         value={valeurs.numero}
-        onChange={(numero) => onChange({ ...valeurs, numero })}
+        erreur={erreurs.numero}
+        onChange={(numero) => { onChange({ ...valeurs, numero }); onFieldChange('numero') }}
       />
       <div className="grid grid-cols-2 gap-3">
         <ChampTexte
           label={m.wizard_paiement_cb_expiry()}
           placeholder="MM/AA"
           value={valeurs.expiration}
-          onChange={(expiration) => onChange({ ...valeurs, expiration })}
+          erreur={erreurs.expiration}
+          onChange={(expiration) => { onChange({ ...valeurs, expiration }); onFieldChange('expiration') }}
         />
         <ChampTexte
           label={m.wizard_paiement_cb_cvc()}
           placeholder="123"
           value={valeurs.cvc}
-          onChange={(cvc) => onChange({ ...valeurs, cvc })}
+          erreur={erreurs.cvc}
+          onChange={(cvc) => { onChange({ ...valeurs, cvc }); onFieldChange('cvc') }}
         />
       </div>
     </div>
   )
 }
 
-// RUM (Reference Unique de Mandat) et ICS (Identifiant Createur SEPA) :
-// mentions obligatoires sur un mandat de prelevement SEPA, cf. reponse a
-// l'utilisateur. Mock pour cette iteration, generes/statiques.
 const ICS_CREANCIER = 'FR00ZZZ123456'
 
+interface MandatSepa {
+  nom: string
+  iban: string
+  bic: string
+}
+
 function FormulaireMandatSepa({
+  valeurs,
+  erreurs,
   consenti,
+  onChange,
+  onFieldChange,
   onConsentementChange,
 }: {
+  valeurs: MandatSepa
+  erreurs: Record<string, string>
   consenti: boolean
+  onChange: (valeurs: MandatSepa) => void
+  onFieldChange: (field: string) => void
   onConsentementChange: (consenti: boolean) => void
 }) {
   const rum = React.useId().replace(/:/g, '')
@@ -245,9 +300,27 @@ function FormulaireMandatSepa({
         </p>
       </div>
 
-      <ChampTexte label={m.wizard_paiement_sepa_holder()} placeholder="Jean Dupont" />
-      <ChampTexte label={m.wizard_paiement_sepa_iban()} placeholder="FR76 1234 5678 9012 3456 7890 123" />
-      <ChampTexte label={m.wizard_paiement_sepa_bic()} placeholder="BNPAFRPPXXX" />
+      <ChampTexte
+        label={m.wizard_paiement_sepa_holder()}
+        placeholder="Jean Dupont"
+        value={valeurs.nom}
+        erreur={erreurs.nom}
+        onChange={(nom) => { onChange({ ...valeurs, nom }); onFieldChange('nom') }}
+      />
+      <ChampTexte
+        label={m.wizard_paiement_sepa_iban()}
+        placeholder="FR76 1234 5678 9012 3456 7890 123"
+        value={valeurs.iban}
+        erreur={erreurs.iban}
+        onChange={(iban) => { onChange({ ...valeurs, iban }); onFieldChange('iban') }}
+      />
+      <ChampTexte
+        label={m.wizard_paiement_sepa_bic()}
+        placeholder="BNPAFRPPXXX"
+        value={valeurs.bic}
+        erreur={erreurs.bic}
+        onChange={(bic) => { onChange({ ...valeurs, bic }); onFieldChange('bic') }}
+      />
 
       <label className="flex items-start gap-3 rounded-lg border border-gray-200 p-3">
         <input
@@ -268,23 +341,28 @@ function ChampTexte({
   label,
   placeholder,
   value,
+  erreur,
   onChange,
 }: {
   label: string
   placeholder: string
   value?: string
+  erreur?: string
   onChange?: (value: string) => void
 }) {
   return (
-    <label className="flex flex-col gap-1 text-sm font-medium text-gray-700">
-      {label}
-      <input
-        type="text"
-        placeholder={placeholder}
-        value={value}
-        onChange={onChange ? (event) => onChange(event.target.value) : undefined}
-        className="rounded-lg border border-gray-300 bg-white px-3 py-2 font-sans text-dark"
-      />
-    </label>
+    <div className="flex flex-col gap-1">
+      <label className="flex flex-col gap-1 text-sm font-medium text-gray-700">
+        {label}
+        <input
+          type="text"
+          placeholder={placeholder}
+          value={value}
+          onChange={onChange ? (event) => onChange(event.target.value) : undefined}
+          className={`rounded-lg border bg-white px-3 py-2 font-sans text-dark ${erreur ? 'border-danger' : 'border-gray-300'}`}
+        />
+      </label>
+      {erreur && <p className="text-xs text-danger">{erreur}</p>}
+    </div>
   )
 }

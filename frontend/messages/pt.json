@@ -219,5 +219,11 @@
   "wizard_paiement_sepa_bic": "BIC",
   "wizard_paiement_sepa_rum": "Referência única do mandato (RUM)",
   "wizard_paiement_sepa_ics": "Identificador do credor SEPA (ICS)",
-  "wizard_paiement_sepa_consent": "Ao assinar este mandato, autorizo a Comutitres a enviar instruções ao meu banco para debitar a minha conta, e o meu banco a debitar a minha conta de acordo com as instruções da Comutitres. Tenho direito a reembolso pelo meu banco nas condições descritas no acordo que celebrei com ele."
+  "wizard_paiement_sepa_consent": "Ao assinar este mandato, autorizo a Comutitres a enviar instruções ao meu banco para debitar a minha conta, e o meu banco a debitar a minha conta de acordo com as instruções da Comutitres. Tenho direito a reembolso pelo meu banco nas condições descritas no acordo que celebrei com ele.",
+  "wizard_validation_required": "Este campo é obrigatório.",
+  "wizard_validation_card_number": "Número de cartão inválido (16 dígitos).",
+  "wizard_validation_expiry": "Formato inválido (MM/AA).",
+  "wizard_validation_cvc": "CVC inválido (3 ou 4 dígitos).",
+  "wizard_validation_iban": "IBAN inválido.",
+  "wizard_validation_bic": "BIC inválido (8 ou 11 caracteres)."
 }

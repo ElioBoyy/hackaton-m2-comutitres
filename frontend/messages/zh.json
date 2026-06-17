@@ -219,5 +219,11 @@
   "wizard_paiement_sepa_bic": "BIC",
   "wizard_paiement_sepa_rum": "授权唯一参考号 (RUM)",
   "wizard_paiement_sepa_ics": "SEPA债权人标识符 (ICS)",
-  "wizard_paiement_sepa_consent": "签署本授权书即表示我授权Comutitres向我的银行发出划款指令，并授权我的银行按照Comutitres的指令从我的账户扣款。我有权依据与银行签订的协议条款申请退款。"
+  "wizard_paiement_sepa_consent": "签署本授权书即表示我授权Comutitres向我的银行发出划款指令，并授权我的银行按照Comutitres的指令从我的账户扣款。我有权依据与银行签订的协议条款申请退款。",
+  "wizard_validation_required": "此字段为必填项。",
+  "wizard_validation_card_number": "卡号无效（需16位数字）。",
+  "wizard_validation_expiry": "格式无效（MM/YY）。",
+  "wizard_validation_cvc": "CVC无效（3或4位数字）。",
+  "wizard_validation_iban": "IBAN无效。",
+  "wizard_validation_bic": "BIC无效（8或11位字符）。"
 }

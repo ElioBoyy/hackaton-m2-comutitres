@@ -81,3 +81,35 @@ export function computeAge(isoDate: string): number | null {
   const age = ageFromIso(isoDate)
   return Number.isFinite(age) && age >= 0 ? age : null
 }
+
+export const InfosTiersSchema = z.object({
+  prenom: z.string().trim().min(1, { error: 'wizard_validation_required' }),
+  nom: z.string().trim().min(1, { error: 'wizard_validation_required' }),
+})
+
+export const CarteBancaireSchema = z.object({
+  nom: z.string().trim().min(1, { error: 'wizard_validation_required' }),
+  numero: z
+    .string()
+    .regex(/^\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}$/, { error: 'wizard_validation_card_number' }),
+  expiration: z
+    .string()
+    .regex(/^(0[1-9]|1[0-2])\/\d{2}$/, { error: 'wizard_validation_expiry' }),
+  cvc: z.string().regex(/^\d{3,4}$/, { error: 'wizard_validation_cvc' }),
+})
+
+export const MandatSepaSchema = z.object({
+  nom: z.string().trim().min(1, { error: 'wizard_validation_required' }),
+  iban: z
+    .string()
+    .toUpperCase()
+    .regex(/^[A-Z]{2}\d{2}[A-Z0-9]{1,30}$/, { error: 'wizard_validation_iban' }),
+  bic: z
+    .string()
+    .toUpperCase()
+    .regex(/^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$/, { error: 'wizard_validation_bic' }),
+})
+
+export type InfosTiersInput = z.infer<typeof InfosTiersSchema>
+export type CarteBancaireInput = z.infer<typeof CarteBancaireSchema>
+export type MandatSepaInput = z.infer<typeof MandatSepaSchema>

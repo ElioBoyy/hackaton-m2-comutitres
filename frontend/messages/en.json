@@ -219,5 +219,11 @@
   "wizard_paiement_sepa_bic": "BIC",
   "wizard_paiement_sepa_rum": "Unique mandate reference (UMR)",
   "wizard_paiement_sepa_ics": "SEPA creditor identifier (ICS)",
-  "wizard_paiement_sepa_consent": "By signing this mandate, I authorise Comutitres to send instructions to my bank to debit my account, and my bank to debit my account in accordance with Comutitres' instructions. I am entitled to a refund from my bank under the conditions described in the agreement I have with it."
+  "wizard_paiement_sepa_consent": "By signing this mandate, I authorise Comutitres to send instructions to my bank to debit my account, and my bank to debit my account in accordance with Comutitres' instructions. I am entitled to a refund from my bank under the conditions described in the agreement I have with it.",
+  "wizard_validation_required": "This field is required.",
+  "wizard_validation_card_number": "Invalid card number (16 digits).",
+  "wizard_validation_expiry": "Invalid format (MM/YY).",
+  "wizard_validation_cvc": "Invalid CVC (3 or 4 digits).",
+  "wizard_validation_iban": "Invalid IBAN.",
+  "wizard_validation_bic": "Invalid BIC (8 or 11 characters)."
 }
