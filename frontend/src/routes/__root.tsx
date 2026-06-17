@@ -23,17 +23,7 @@ export const Route = createRootRoute({
     links: [{ rel: 'stylesheet', href: appCss }],
   }),
   component: RootComponent,
-  notFoundComponent: NotFound,
 })
-
-function NotFound() {
-  return (
-    <main className="mx-auto flex max-w-md flex-col gap-4 py-12 text-center">
-      <h1 className="font-heading text-2xl font-bold text-dark">Page introuvable</h1>
-      <p className="text-gray-700">Cette page n'existe pas.</p>
-    </main>
-  )
-}
 
 function RootComponent() {
   return (
