@@ -1,52 +1,39 @@
 package fr.jegeremacartenavigo.infrastructure.adapter.in.web.dossier;
 
 import fr.jegeremacartenavigo.application.cqrs.CommandBus;
+import fr.jegeremacartenavigo.application.cqrs.QueryBus;
 import fr.jegeremacartenavigo.application.dossier.CreerDossierCommand;
+import fr.jegeremacartenavigo.application.dossier.DossierDetailResponse;
+import fr.jegeremacartenavigo.application.dossier.DossierListResponse;
 import fr.jegeremacartenavigo.application.dossier.DossierResponse;
+import fr.jegeremacartenavigo.application.dossier.GetDossierDetailQuery;
+import fr.jegeremacartenavigo.application.dossier.GetDossiersQuery;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-/**
- * Point d'entree du RecommendationWizard front (cf. CONTEXT.md) : l'ecran
- * Paiement appelle {@code POST /dossiers} pour persister d'un coup le
- * dossier, ses pieces et son paiement (mock).
-=======
-import fr.jegeremacartenavigo.application.cqrs.QueryBus;
-import fr.jegeremacartenavigo.application.dossier.DossierDetailResponse;
-import fr.jegeremacartenavigo.application.dossier.DossierListResponse;
-import fr.jegeremacartenavigo.application.dossier.GetDossierDetailQuery;
-import fr.jegeremacartenavigo.application.dossier.GetDossiersQuery;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Routes backoffice : liste des dossiers en attente de verification et detail
- * d'un dossier. Reservees aux agents (cf. SecurityConfig : /dossiers/** exige
- * l'authority ROLE_AGENT).
+ * /dossiers : lecture (backoffice, ROLE_AGENT) et creation (utilisateur connecte,
+ * depuis le RecommendationWizard front).
  */
 @RestController
 @RequestMapping("/dossiers")
 public class DossierController {
 
-  private final QueryBus queryBus;
+    private final QueryBus queryBus;
     private final CommandBus commandBus;
-  
-//   TODO: Duplicata. Voir pour en garder qu'un seul ?
-  public DossierController(CommandBus commandBus) {
-        this.commandBus = commandBus;
-    }
 
-    public DossierController(QueryBus queryBus) {
+    public DossierController(QueryBus queryBus, CommandBus commandBus) {
         this.queryBus = queryBus;
+        this.commandBus = commandBus;
     }
 
     @GetMapping
@@ -60,11 +47,11 @@ public class DossierController {
     @GetMapping("/{id}")
     public DossierDetailResponse detail(@PathVariable Integer id) {
         return queryBus.ask(new GetDossierDetailQuery(id));
-      
-      
-      @PostMapping
+    }
+
+    @PostMapping
     public ResponseEntity<DossierResponse> creer(@AuthenticationPrincipal Jwt jwt,
-                                                   @RequestBody CreerDossierRequest body) {
+                                                 @RequestBody CreerDossierRequest body) {
         CreerDossierCommand command = new CreerDossierCommand(
                 Integer.valueOf(jwt.getSubject()),
                 body.idDossierExistant(),

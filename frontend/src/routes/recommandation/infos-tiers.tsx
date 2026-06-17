@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { Button } from '~/components/ui/Button'
+import { Button } from '~/components/Button'
 import { useAppDispatch, useAppSelector } from '~/store/hooks'
 import { infosTiersDefinies } from '~/store/wizardSlice'
 
@@ -15,7 +15,7 @@ function InfosTiersStep() {
   const complet = Boolean(infosTiers.prenom && infosTiers.nom)
 
   return (
-    <main className="mx-auto flex max-w-md flex-col gap-6 py-8">
+    <main className="mx-auto flex max-w-2xl flex-col gap-6 py-8">
       <h1 className="font-heading text-2xl font-bold tracking-tight text-dark">
         Pour qui faites-vous cette demande ?
       </h1>
@@ -48,7 +48,7 @@ function InfosTiersStep() {
       </label>
 
       <div className="mt-4 flex items-center justify-between gap-3">
-        <Button variant="secondary" onClick={() => navigate({ to: '/recommandation/detail' })}>
+        <Button variant="ghost" onClick={() => navigate({ to: '/recommandation/detail' })}>
           Retour
         </Button>
         <Button

@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { PiggyBank } from 'lucide-react'
 import * as React from 'react'
-import { Button } from '~/components/ui/Button'
+import { Button } from '~/components/Button'
 import { ScoreBadge } from '~/components/ui/ScoreBadge'
 import { ApiError } from '~/lib/api'
 import { isAuthenticated } from '~/lib/auth'
@@ -36,7 +36,7 @@ function ResultatStep() {
 
   if (!resultat) {
     return (
-      <main className="mx-auto flex max-w-md flex-col gap-4 py-12 text-center">
+      <main className="mx-auto flex max-w-2xl flex-col gap-4 py-12 text-center">
         <p className="text-gray-700">
           Merci de répondre au questionnaire avant de consulter votre résultat.
         </p>
@@ -87,7 +87,7 @@ function ResultatStep() {
   }
 
   return (
-    <main className="mx-auto flex max-w-md flex-col gap-6 py-8">
+    <main className="mx-auto flex max-w-2xl flex-col gap-6 py-8">
       <h1 className="font-heading text-2xl font-bold tracking-tight text-dark">Résultat principal</h1>
 
       <div className="ticket-card">
@@ -187,7 +187,7 @@ function ResultatStep() {
         <Button onClick={() => navigate({ to: '/recommandation/detail' })}>
           Souscrire à cet abonnement
         </Button>
-        <Button variant="secondary" onClick={sauvegarderEtQuitter} disabled={envoiEnCours}>
+        <Button variant="ghost" onClick={sauvegarderEtQuitter} disabled={envoiEnCours}>
           {envoiEnCours ? 'Enregistrement...' : 'Sauvegarder et quitter'}
         </Button>
       </div>

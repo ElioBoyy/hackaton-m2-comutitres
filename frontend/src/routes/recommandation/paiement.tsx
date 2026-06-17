@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { Building2, CreditCard } from 'lucide-react'
 import * as React from 'react'
-import { Button } from '~/components/ui/Button'
+import { Button } from '~/components/Button'
 import { ChoiceCard } from '~/components/ui/ChoiceCard'
 import { ApiError } from '~/lib/api'
 import { isAuthenticated } from '~/lib/auth'
@@ -48,7 +48,7 @@ function PaiementStep() {
 
   if (!resultat) {
     return (
-      <main className="mx-auto flex max-w-md flex-col gap-4 py-12 text-center">
+      <main className="mx-auto flex max-w-2xl flex-col gap-4 py-12 text-center">
         <Button onClick={() => navigate({ to: '/recommandation/pour-qui' })}>
           Reprendre le questionnaire
         </Button>
@@ -58,7 +58,7 @@ function PaiementStep() {
 
   if (!piecesSontCompletes(wizard)) {
     return (
-      <main className="mx-auto flex max-w-md flex-col gap-4 py-12 text-center">
+      <main className="mx-auto flex max-w-2xl flex-col gap-4 py-12 text-center">
         <p className="text-gray-700">
           Il manque des pièces obligatoires à votre dossier. Complétez-le
           avant de procéder au paiement.
@@ -105,7 +105,7 @@ function PaiementStep() {
   }
 
   return (
-    <main className="mx-auto flex max-w-md flex-col gap-6 py-8">
+    <main className="mx-auto flex max-w-2xl flex-col gap-6 py-8">
       <h1 className="font-heading text-2xl font-bold tracking-tight text-dark">Paiement</h1>
       <p className="text-gray-700">
         {abonnement.nom} — {abonnement.prixAnnuelEuros.toFixed(2)} € / an
@@ -152,7 +152,7 @@ function PaiementStep() {
       ) : null}
 
       <div className="mt-2 flex items-center justify-between gap-3">
-        <Button variant="secondary" onClick={() => navigate({ to: '/recommandation/recapitulatif' })}>
+        <Button variant="ghost" onClick={() => navigate({ to: '/recommandation/recapitulatif' })}>
           Retour
         </Button>
         <Button

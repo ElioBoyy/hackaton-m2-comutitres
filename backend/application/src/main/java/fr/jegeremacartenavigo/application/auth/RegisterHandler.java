@@ -2,6 +2,7 @@ package fr.jegeremacartenavigo.application.auth;
 
 import fr.jegeremacartenavigo.application.cqrs.CommandHandler;
 import fr.jegeremacartenavigo.domain.auth.exception.EmailDejaUtiliseException;
+import fr.jegeremacartenavigo.domain.auth.model.AdresseDomicile;
 import fr.jegeremacartenavigo.domain.auth.model.StatutCompte;
 import fr.jegeremacartenavigo.domain.auth.model.UtilisateurAuth;
 import fr.jegeremacartenavigo.domain.auth.port.PasswordHasher;
@@ -28,6 +29,13 @@ public class RegisterHandler implements CommandHandler<RegisterCommand, TokenRes
         if (repository.existsByEmail(email)) {
             throw new EmailDejaUtiliseException();
         }
+        AdresseDomicile adresse = new AdresseDomicile(
+                command.numeroEtVoie().trim(),
+                command.codePostal().trim(),
+                command.ville().trim(),
+                command.departementCode().trim(),
+                command.departementLibelle().trim()
+        );
         UtilisateurAuth nouveau = new UtilisateurAuth(
                 null,
                 email,
@@ -35,6 +43,7 @@ public class RegisterHandler implements CommandHandler<RegisterCommand, TokenRes
                 command.nom(),
                 command.prenom(),
                 command.dateNaissance(),
+                adresse,
                 StatutCompte.actif
         );
         UtilisateurAuth persiste = repository.save(nouveau);

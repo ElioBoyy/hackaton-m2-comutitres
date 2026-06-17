@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
+import { LanguageSwitcher } from './LanguageSwitcher'
 
 interface AuthLayoutProps {
   title: string
@@ -10,7 +11,10 @@ interface AuthLayoutProps {
 
 export function AuthLayout({ title, subtitle, children, footer }: AuthLayoutProps) {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-10">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-10 relative">
+      <div className="absolute top-4 right-4">
+        <LanguageSwitcher />
+      </div>
       <Link to="/" aria-label="Comutitres - accueil" className="mb-6 inline-block">
         <img src="/logo.svg" alt="Comutitres" className="h-10 w-auto" />
       </Link>

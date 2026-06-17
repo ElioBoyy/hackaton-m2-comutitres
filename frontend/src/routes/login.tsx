@@ -2,10 +2,12 @@ import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import { ApiError } from '~/lib/api'
 import { login } from '~/lib/auth'
-import { parseViolations, validateEmail, validatePassword } from '~/lib/validation'
+import { parseViolations } from '~/lib/validation'
+import { LoginSchema } from '~/lib/schemas'
 import { AuthLayout } from '~/components/AuthLayout'
 import { Field } from '~/components/Field'
 import { Button } from '~/components/Button'
+import { m } from '~/paraglide/messages'
 
 export const Route = createFileRoute('/login')({
   component: LoginPage,
@@ -22,15 +24,13 @@ function LoginPage() {
   const [pending, setPending] = useState(false)
 
   function validateField(key: FieldKey, value: string): string | undefined {
-    if (key === 'email') return validateEmail(value)
-    if (key === 'password') return validatePassword(value)
+    const result = LoginSchema.shape[key].safeParse(value)
+    return result.success ? undefined : result.error.issues[0]?.message
   }
 
   function update(key: FieldKey, value: string) {
     setForm((f) => ({ ...f, [key]: value }))
-    if (fieldErrors[key]) {
-      setFieldErrors((e) => ({ ...e, [key]: undefined }))
-    }
+    if (fieldErrors[key]) setFieldErrors((e) => ({ ...e, [key]: undefined }))
     if (formError) setFormError(null)
   }
 
@@ -41,13 +41,16 @@ function LoginPage() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
     setFormError(null)
-    const errors: Partial<Record<FieldKey, string>> = {}
-    for (const k of FIELDS) {
-      const err = validateField(k, form[k])
-      if (err) errors[k] = err
+    const result = LoginSchema.safeParse(form)
+    if (!result.success) {
+      const errs: Partial<Record<FieldKey, string>> = {}
+      for (const issue of result.error.issues) {
+        const k = issue.path[0] as FieldKey
+        if (!errs[k]) errs[k] = issue.message
+      }
+      setFieldErrors(errs)
+      return
     }
-    setFieldErrors(errors)
-    if (Object.values(errors).some(Boolean)) return
 
     setPending(true)
     try {
@@ -56,19 +59,19 @@ function LoginPage() {
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 401) {
-          setFormError('Email ou mot de passe invalide.')
+          setFormError(m.auth_invalid_credentials())
         } else if (err.status === 400) {
           const body = err.body as { violations?: string[] } | undefined
           const { fields, unmatched } = parseViolations(body?.violations, FIELDS)
           setFieldErrors((prev) => ({ ...prev, ...fields }))
           if (!Object.keys(fields).length) {
-            setFormError(unmatched.join(' • ') || 'Requete invalide.')
+            setFormError(unmatched.join(' • ') || m.auth_bad_request())
           }
         } else {
           setFormError(err.message)
         }
       } else {
-        setFormError('Impossible de joindre le serveur. Reessayez.')
+        setFormError(m.auth_server_unreachable())
       }
     } finally {
       setPending(false)
@@ -77,22 +80,23 @@ function LoginPage() {
 
   return (
     <AuthLayout
-      title="Bon retour"
-      subtitle="Connectez-vous pour retrouver votre profil mobilite."
+      title={m.login_title()}
+      subtitle={m.login_subtitle()}
       footer={
         <span>
-          Pas encore de compte ?{' '}
+          {m.login_no_account_yet()}{' '}
           <Link to="/register" className="text-primary font-medium hover:underline">
-            Creer un compte
+            {m.login_create_account_link()}
           </Link>
         </span>
       }
     >
       <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
         <Field
-          label="Email"
+          label={m.register_fields_email()}
           type="email"
           autoComplete="email"
+          placeholder={m.register_fields_email_placeholder()}
           required
           value={form.email}
           onChange={(e) => update('email', e.target.value)}
@@ -100,9 +104,10 @@ function LoginPage() {
           error={fieldErrors.email}
         />
         <Field
-          label="Mot de passe"
+          label={m.register_fields_password()}
           type="password"
           autoComplete="current-password"
+          placeholder={m.register_fields_password_placeholder()}
           required
           value={form.password}
           onChange={(e) => update('password', e.target.value)}
@@ -118,7 +123,7 @@ function LoginPage() {
           </div>
         )}
         <Button type="submit" disabled={pending} className="mt-2">
-          {pending ? 'Connexion...' : 'Se connecter'}
+          {pending ? m.login_signing_in() : m.auth_sign_in()}
         </Button>
       </form>
     </AuthLayout>

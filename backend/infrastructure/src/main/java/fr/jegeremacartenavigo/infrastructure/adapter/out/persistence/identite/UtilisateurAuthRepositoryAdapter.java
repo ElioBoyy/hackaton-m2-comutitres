@@ -1,11 +1,15 @@
 package fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.identite;
 
 import fr.jegeremacartenavigo.domain.auth.exception.EmailDejaUtiliseException;
+import fr.jegeremacartenavigo.domain.auth.model.AdresseDomicile;
 import fr.jegeremacartenavigo.domain.auth.model.StatutCompte;
 import fr.jegeremacartenavigo.domain.auth.model.UtilisateurAuth;
 import fr.jegeremacartenavigo.domain.auth.port.UtilisateurAuthRepository;
+import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.referentiel.Departement;
+import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.referentiel.DepartementJpaRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -19,9 +23,15 @@ import java.util.Optional;
 public class UtilisateurAuthRepositoryAdapter implements UtilisateurAuthRepository {
 
     private final UtilisateurJpaRepository jpa;
+    private final AdresseJpaRepository adresseJpa;
+    private final DepartementJpaRepository departementJpa;
 
-    public UtilisateurAuthRepositoryAdapter(UtilisateurJpaRepository jpa) {
+    public UtilisateurAuthRepositoryAdapter(UtilisateurJpaRepository jpa,
+                                            AdresseJpaRepository adresseJpa,
+                                            DepartementJpaRepository departementJpa) {
         this.jpa = jpa;
+        this.adresseJpa = adresseJpa;
+        this.departementJpa = departementJpa;
     }
 
     @Override
@@ -40,6 +50,7 @@ public class UtilisateurAuthRepositoryAdapter implements UtilisateurAuthReposito
     }
 
     @Override
+    @Transactional
     public UtilisateurAuth save(UtilisateurAuth domaine) {
         Utilisateur entite = new Utilisateur();
         entite.setEmail(domaine.email());
@@ -50,13 +61,36 @@ public class UtilisateurAuthRepositoryAdapter implements UtilisateurAuthReposito
         entite.setDateCreationCompte(LocalDateTime.now());
         entite.setStatutCompte(Utilisateur.StatutCompte.valueOf(domaine.statut().name()));
         try {
-            return toDomain(jpa.save(entite));
+            Utilisateur saved = jpa.save(entite);
+            AdresseDomicile adr = domaine.adresseDomicile();
+            if (adr != null) {
+                Departement departement = ensureDepartement(adr.departementCode(), adr.departementLibelle());
+                Adresse adresse = new Adresse();
+                adresse.setUtilisateur(saved);
+                adresse.setTypeAdresse(Adresse.TypeAdresse.domicile);
+                adresse.setNumeroEtVoie(adr.numeroEtVoie());
+                adresse.setCodePostal(adr.codePostal());
+                adresse.setVille(adr.ville());
+                adresse.setDepartement(departement);
+                adresse.setPrincipale(true);
+                adresseJpa.save(adresse);
+            }
+            return toDomain(saved);
         } catch (DataIntegrityViolationException e) {
             // existsByEmail() ne verifie que la table utilisateur ; cette collision
             // cross-table (email deja pris par un agent) est detectee par le
             // trigger BDD (cf. migration V10) et remonte ici.
             throw new EmailDejaUtiliseException();
         }
+    }
+
+    private Departement ensureDepartement(String code, String libelle) {
+        return departementJpa.findById(code).orElseGet(() -> {
+            Departement d = new Departement();
+            d.setIdDepartement(code);
+            d.setLibelle(libelle);
+            return departementJpa.save(d);
+        });
     }
 
     private static UtilisateurAuth toDomain(Utilisateur e) {
@@ -67,6 +101,7 @@ public class UtilisateurAuthRepositoryAdapter implements UtilisateurAuthReposito
                 e.getNom(),
                 e.getPrenom(),
                 e.getDateNaissance(),
+                null,
                 StatutCompte.valueOf(e.getStatutCompte().name())
         );
     }
