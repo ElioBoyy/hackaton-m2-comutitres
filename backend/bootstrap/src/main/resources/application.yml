@@ -83,6 +83,7 @@ app:
 
 # --- RAG (consomme par RagProperties, prefixe rag.*) ---
 rag:
+  ingestion-au-demarrage: true
   # Source du corpus a ingerer. Par defaut le classpath (corpus embarque dans le
   # jar => ingestion reproductible en CI/prod). Surchargeable par un chemin
   # fichier, ex: file:../frontend/RAG_context/cartographie-navigo
