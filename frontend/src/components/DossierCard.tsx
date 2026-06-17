@@ -1,5 +1,5 @@
 import React from 'react'
-import { AlertTriangle, CalendarDays, Clock, Wallet, ArrowRight } from 'lucide-react'
+import { CalendarDays, Clock, Wallet, ArrowRight } from 'lucide-react'
 import { StatusBadge } from '~/components/backoffice/StatusBadge'
 import { m } from '~/paraglide/messages'
 import type { DossierDashboard, TransportMode, ZoneNavigo } from '~/lib/dashboard'
@@ -146,28 +146,22 @@ export function DossierCard({ dossier }: { dossier: DossierDashboard }) {
         className="flex items-center justify-between border-b border-blue-100 px-5 py-3"
         style={{ background: 'linear-gradient(to right, #f0f4ff, #eef2fb)' }}
       >
-        <div className="flex items-center gap-3">
-          <StatusBadge libelle={dossier.statut.libelle} categorie={dossier.statut.categorie as any} />
-          {dossier.piecesADeposer && (
-            <span aria-label={m.dashboard_missing_docs_aria()} className="flex items-center gap-1 text-xs font-medium text-warning">
-              <AlertTriangle size={13} aria-hidden />
-              <span className="hidden sm:inline">{m.dashboard_missing_docs()}</span>
-            </span>
-          )}
-        </div>
-        <span className="text-sm text-gray-500">
-          N° d'abonnement : <span className="font-mono font-semibold text-gray-700">{dossier.numeroDossier}</span>
+        <StatusBadge libelle={dossier.statut.libelle} categorie={dossier.statut.categorie as any} />
+        <span className="text-xs text-gray-500 sm:text-sm">
+          N°&nbsp;<span className="font-mono font-semibold text-gray-700">{dossier.numeroDossier}</span>
         </span>
       </div>
 
       {/* ── Body ── */}
-      <div className="flex flex-col gap-6 p-5 sm:flex-row">
-        <NavigoCardVisual libelle={dossier.typeAbonnementLibelle} />
+      <div className="flex flex-col gap-5 p-4 sm:flex-row sm:gap-6 sm:p-5">
+        <div className="hidden sm:block">
+          <NavigoCardVisual libelle={dossier.typeAbonnementLibelle} />
+        </div>
 
         {/* Middle */}
-        <div className="flex flex-1 flex-col gap-4">
+        <div className="flex flex-1 flex-col gap-3 sm:gap-4">
           <div>
-            <h3 className="font-heading text-xl font-bold text-gray-900">{dossier.typeAbonnementLibelle}</h3>
+            <h3 className="font-heading text-lg font-bold text-gray-900 sm:text-xl">{dossier.typeAbonnementLibelle}</h3>
             <p className="mt-1 text-sm text-gray-500">
               {m.dashboard_for_holder()}{' '}
               <span className="font-semibold text-gray-700">
@@ -219,7 +213,7 @@ export function DossierCard({ dossier }: { dossier: DossierDashboard }) {
         </div>
 
         {/* Right */}
-        <div className="flex shrink-0 flex-col gap-4 sm:w-56">
+        <div className="flex shrink-0 flex-col gap-3 sm:w-56 sm:gap-4">
           <div className="flex items-start gap-2.5">
             <CalendarDays size={16} className="mt-0.5 shrink-0 text-gray-400" aria-hidden />
             <div>
