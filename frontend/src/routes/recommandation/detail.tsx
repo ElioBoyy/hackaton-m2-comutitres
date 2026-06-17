@@ -3,6 +3,7 @@ import { Camera, GraduationCap, Receipt } from 'lucide-react'
 import * as React from 'react'
 import { Button } from '~/components/Button'
 import { calculerRecommandation, selectionnerAbonnement } from '~/domain/recommendation'
+import { m } from '~/paraglide/messages'
 import { useAppSelector } from '~/store/hooks'
 
 export const Route = createFileRoute('/recommandation/detail')({
@@ -26,7 +27,7 @@ function DetailStep() {
     return (
       <main className="mx-auto flex max-w-2xl flex-col gap-4 py-12 text-center">
         <Button onClick={() => navigate({ to: '/recommandation/pour-qui' })}>
-          Reprendre le questionnaire
+          {m.wizard_resume_questionnaire()}
         </Button>
       </main>
     )
@@ -36,7 +37,7 @@ function DetailStep() {
 
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-6 py-8">
-      <h1 className="font-heading text-2xl font-bold tracking-tight text-dark">Détail de votre recommandation</h1>
+      <h1 className="font-heading text-2xl font-bold tracking-tight text-dark">{m.wizard_detail_title()}</h1>
 
       <div className="ticket-card">
         <div className="ticket-card__band">
@@ -54,7 +55,7 @@ function DetailStep() {
           </p>
 
           <h3 className="mt-4 text-xs font-semibold tracking-widest text-gray-700 uppercase">
-            Inclus dans votre abonnement
+            {m.wizard_detail_included()}
           </h3>
           <ul className="mt-2 flex flex-col gap-1.5 text-sm text-dark">
             {abonnement.inclus.map((item) => (
@@ -68,22 +69,22 @@ function DetailStep() {
           </ul>
 
           <h3 className="mt-4 text-xs font-semibold tracking-widest text-gray-700 uppercase">
-            Documents nécessaires
+            {m.wizard_detail_documents()}
           </h3>
           <p className="mt-1 flex items-center gap-1.5 text-sm text-gray-700">
             <Camera className="h-4 w-4 shrink-0" strokeWidth={1.75} />
-            Photo d'identité
+            {m.wizard_detail_photo_id()}
           </p>
           {wizard.situation === 'ETUDIANT' ? (
             <p className="mt-1 flex items-center gap-1.5 text-sm text-gray-700">
               <GraduationCap className="h-4 w-4 shrink-0" strokeWidth={1.75} />
-              Certificat de scolarité (année en cours)
+              {m.wizard_detail_school_cert()}
             </p>
           ) : null}
           {wizard.situation === 'ETUDIANT' && wizard.boursier ? (
             <p className="mt-1 flex items-center gap-1.5 text-sm text-gray-700">
               <Receipt className="h-4 w-4 shrink-0" strokeWidth={1.75} />
-              Notification conditionnelle de bourse
+              {m.wizard_detail_scholarship_notif()}
             </p>
           ) : null}
         </div>
@@ -96,7 +97,7 @@ function DetailStep() {
           })
         }
       >
-        Continuer
+        {m.wizard_detail_continue()}
       </Button>
     </main>
   )

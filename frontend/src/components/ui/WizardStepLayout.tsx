@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { ProgressBar } from '~/components/ui/ProgressBar'
 import { Button } from '~/components/Button'
+import { m } from '~/paraglide/messages'
 
 interface WizardStepLayoutProps {
   etapeCourante: number
@@ -31,11 +32,11 @@ export function WizardStepLayout({
         {children}
       </div>
       <div className="mt-4 flex items-center justify-between gap-3 border-t-2 border-dashed border-gray-300 pt-6">
-        <Button variant="ghost" onClick={onRetour}>
-          Retour
+        <Button variant="ghost" onClick={onRetour} className="flex-1">
+          {m.common_back()}
         </Button>
         <Button onClick={onSuivant} disabled={suivantDesactive} className="flex-1">
-          Suivant
+          {m.common_next()}
         </Button>
       </div>
     </main>
