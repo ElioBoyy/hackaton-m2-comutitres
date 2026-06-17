@@ -1,0 +1,118 @@
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { useEffect, useState } from 'react'
+import { BackofficeLayout } from '~/components/backoffice/BackofficeLayout'
+import { ClientSearchBar } from '~/components/backoffice/ClientSearchBar'
+import { DossierStatusFilter } from '~/components/backoffice/DossierStatusFilter'
+import { DossierTable } from '~/components/backoffice/DossierTable'
+import { Pagination } from '~/components/backoffice/Pagination'
+import { WelcomeBanner } from '~/components/backoffice/WelcomeBanner'
+import { ApiError, getDossiers } from '~/lib/api'
+import { agentMe } from '~/lib/agentAuth'
+import { isAuthenticated, logout } from '~/lib/auth'
+import type { DossierResume, StatutCategorie } from '~/lib/types/dossier'
+
+const PAGE_SIZE = 10
+
+export const Route = createFileRoute('/backoffice/dashboard')({
+  component: BackofficeDashboard,
+})
+
+function BackofficeDashboard() {
+  const navigate = useNavigate()
+  const [agentName, setAgentName] = useState<string | null>(null)
+  const [statut, setStatut] = useState<StatutCategorie | 'tous'>('tous')
+  const [page, setPage] = useState(1)
+  const [dossiers, setDossiers] = useState<DossierResume[]>([])
+  const [total, setTotal] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  function handleUnauthorized() {
+    logout()
+    navigate({ to: '/backoffice/login' })
+  }
+
+  useEffect(() => {
+    if (!isAuthenticated()) {
+      navigate({ to: '/backoffice/login' })
+      return
+    }
+    agentMe()
+      .then((agent) => setAgentName(`${agent.prenom} ${agent.nom}`))
+      .catch((err) => {
+        if (err instanceof ApiError && (err.status === 401 || err.status === 404)) {
+          handleUnauthorized()
+        }
+      })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    if (!isAuthenticated()) return
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+
+    getDossiers({ statut: statut === 'tous' ? undefined : statut, page, pageSize: PAGE_SIZE })
+      .then((response) => {
+        if (cancelled) return
+        setDossiers(response.dossiers)
+        setTotal(response.total)
+      })
+      .catch((err) => {
+        if (cancelled) return
+        if (err instanceof ApiError && err.status === 401) {
+          handleUnauthorized()
+          return
+        }
+        if (err instanceof ApiError && err.status === 403) {
+          navigate({ to: '/not-found' })
+          return
+        }
+        setError('Impossible de charger les dossiers pour le moment.')
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statut, page])
+
+  if (!agentName) {
+    return null
+  }
+
+  return (
+    <BackofficeLayout agentName={agentName} onLogout={handleUnauthorized}>
+      <div className="mx-auto flex max-w-6xl flex-col gap-6">
+        <WelcomeBanner agentName={agentName} />
+
+        <ClientSearchBar />
+
+        <div className="rounded-2xl border border-gray-200 bg-white">
+          <div className="flex items-center justify-between gap-4 border-b border-gray-200 p-4">
+            <h2 className="font-heading text-sm font-semibold text-gray-900">
+              Dossiers en attente de verification
+            </h2>
+            <DossierStatusFilter
+              value={statut}
+              onChange={(value) => {
+                setStatut(value)
+                setPage(1)
+              }}
+            />
+          </div>
+
+          <DossierTable dossiers={dossiers} loading={loading} error={error} />
+
+          {!loading && !error && (
+            <Pagination page={page} pageSize={PAGE_SIZE} total={total} onPageChange={setPage} />
+          )}
+        </div>
+      </div>
+    </BackofficeLayout>
+  )
+}

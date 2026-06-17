@@ -1,8 +1,10 @@
 package fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.identite;
 
+import fr.jegeremacartenavigo.domain.auth.exception.EmailDejaUtiliseException;
 import fr.jegeremacartenavigo.domain.auth.model.StatutCompte;
 import fr.jegeremacartenavigo.domain.auth.model.UtilisateurAuth;
 import fr.jegeremacartenavigo.domain.auth.port.UtilisateurAuthRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -47,7 +49,14 @@ public class UtilisateurAuthRepositoryAdapter implements UtilisateurAuthReposito
         entite.setDateNaissance(domaine.dateNaissance());
         entite.setDateCreationCompte(LocalDateTime.now());
         entite.setStatutCompte(Utilisateur.StatutCompte.valueOf(domaine.statut().name()));
-        return toDomain(jpa.save(entite));
+        try {
+            return toDomain(jpa.save(entite));
+        } catch (DataIntegrityViolationException e) {
+            // existsByEmail() ne verifie que la table utilisateur ; cette collision
+            // cross-table (email deja pris par un agent) est detectee par le
+            // trigger BDD (cf. migration V10) et remonte ici.
+            throw new EmailDejaUtiliseException();
+        }
     }
 
     private static UtilisateurAuth toDomain(Utilisateur e) {

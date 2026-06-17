@@ -43,13 +43,16 @@ public class SecurityConfig {
                 .cors(withDefaults())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST, "/auth/register", "/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/auth/register", "/auth/login")
+                        .permitAll()
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                         // Chat RAG (bloquant + streaming + escalade) : ouvert a tous
                         // (widget public, sans compte). L'admin RAG (ingestion) reste authentifie.
                         .requestMatchers("/api/chat/**").permitAll()
+                        .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
+                        .requestMatchers("/dossiers/**", "/auth/agent/me").hasAuthority("ROLE_AGENT")
                         .anyRequest().authenticated())
-                .oauth2ResourceServer(o -> o.jwt(withDefaults()))
+                .oauth2ResourceServer(o -> o.jwt(jwt -> jwt.jwtAuthenticationConverter(new JwtRoleConverter())))
                 .build();
     }
 
