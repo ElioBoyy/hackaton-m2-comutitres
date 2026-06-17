@@ -5,8 +5,8 @@ import { ClientSearchBar } from '~/components/backoffice/ClientSearchBar'
 import { DossierStatusFilter } from '~/components/backoffice/DossierStatusFilter'
 import { DossierTable } from '~/components/backoffice/DossierTable'
 import { Pagination } from '~/components/backoffice/Pagination'
-import { WelcomeBanner } from '~/components/backoffice/WelcomeBanner'
-import { ApiError, getDossiers } from '~/lib/api'
+import { ApiError, getDossierCounts, getDossiers } from '~/lib/api'
+import type { DossierCounts } from '~/lib/api'
 import { agentMe } from '~/lib/agentAuth'
 import { isAuthenticated, logout } from '~/lib/auth'
 import type { DossierResume, StatutCategorie } from '~/lib/types/dossier'
@@ -20,7 +20,8 @@ export const Route = createFileRoute('/backoffice/dashboard')({
 function BackofficeDashboard() {
   const navigate = useNavigate()
   const [agentName, setAgentName] = useState<string | null>(null)
-  const [statut, setStatut] = useState<StatutCategorie | 'tous'>('tous')
+  const [statut, setStatut] = useState<StatutCategorie | 'tous'>('en_cours')
+  const [counts, setCounts] = useState<DossierCounts | null>(null)
   const [page, setPage] = useState(1)
   const [dossiers, setDossiers] = useState<DossierResume[]>([])
   const [total, setTotal] = useState(0)
@@ -44,6 +45,9 @@ function BackofficeDashboard() {
           handleUnauthorized()
         }
       })
+    getDossierCounts()
+      .then(setCounts)
+      .catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -87,9 +91,7 @@ function BackofficeDashboard() {
 
   return (
     <BackofficeLayout agentName={agentName} onLogout={handleUnauthorized}>
-      <div className="mx-auto flex max-w-6xl flex-col gap-6">
-        <WelcomeBanner agentName={agentName} />
-
+      <div className="flex flex-col gap-6">
         <ClientSearchBar />
 
         <div className="rounded-2xl border border-gray-200 bg-white">
@@ -99,6 +101,7 @@ function BackofficeDashboard() {
             </h2>
             <DossierStatusFilter
               value={statut}
+              counts={counts}
               onChange={(value) => {
                 setStatut(value)
                 setPage(1)

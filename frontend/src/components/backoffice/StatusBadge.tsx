@@ -1,10 +1,10 @@
 import type { StatutCategorie } from '~/lib/types/dossier'
 
 const STYLES_PAR_CATEGORIE: Record<StatutCategorie, string> = {
-  en_cours: 'bg-warning-light/30 text-warning',
-  abouti: 'bg-success-light/30 text-success',
-  rejete: 'bg-danger-light/30 text-danger',
-  clos: 'bg-gray-200 text-gray-700',
+  en_cours: 'bg-warning-light/30 text-warning border border-warning',
+  abouti: 'bg-success-light/30 text-success border border-success',
+  rejete: 'bg-danger-light/30 text-danger border border-danger',
+  clos: 'bg-gray-200 text-gray-700 border border-gray-700',
 }
 
 export function StatusBadge({

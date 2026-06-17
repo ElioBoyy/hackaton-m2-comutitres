@@ -123,13 +123,11 @@ public class DataSeeder implements ApplicationRunner {
         Agent gestionnaire = seedAgents(roles);
         Map<String, Utilisateur> utilisateurs = seedUtilisateursEtAdresses(departements);
         Utilisateur etudiante = utilisateurs.get("etudiante");
-        Utilisateur parent = utilisateurs.get("parent");
-        Utilisateur enfant = utilisateurs.get("enfant");
+        Utilisateur retraite = utilisateurs.get("retraite");
+        Utilisateur alternante = utilisateurs.get("alternante");
 
-        Dossier dossierActif = seedDossierDemo(etudiante, typesAbonnement, statuts, gestionnaire);
-        seedDossierResilieDemo(etudiante, typesAbonnement, statuts);
-        seedDossierPiecesManquantesDemo(parent, enfant, typesAbonnement, statuts);
-        seedDossierBrouillonDemo(parent, typesAbonnement, statuts);
+        Dossier dossierActif = seedDossiersDemo(
+                List.of(etudiante, retraite, alternante), typesAbonnement, statuts, gestionnaire);
         seedNotificationsDemo(etudiante, dossierActif);
 
         log.info("Seed termine.");
@@ -223,18 +221,14 @@ public class DataSeeder implements ApplicationRunner {
     private Map<String, StatutDossier> seedStatutsDossier() {
         List<StatutDossier> statuts = List.of(
                 statutDossier("BROUILLON", "Brouillon", 1, StatutDossier.Categorie.en_cours),
-                statutDossier("SOUMIS", "Soumis", 2, StatutDossier.Categorie.en_cours),
-                statutDossier("PIECES_MANQUANTES", "Pieces manquantes", 3, StatutDossier.Categorie.en_cours),
-                statutDossier("EN_VERIFICATION", "En verification", 4, StatutDossier.Categorie.en_cours),
-                statutDossier("PIECES_VALIDEES", "Pieces validees", 5, StatutDossier.Categorie.en_cours),
-                statutDossier("EN_ATTENTE_PAIEMENT", "En attente de paiement", 6, StatutDossier.Categorie.en_cours),
-                statutDossier("VALIDE", "Valide", 7, StatutDossier.Categorie.abouti),
-                statutDossier("ACTIF", "Actif", 8, StatutDossier.Categorie.abouti),
-                statutDossier("REJETE", "Rejete", 9, StatutDossier.Categorie.rejete),
-                statutDossier("SUSPENDU", "Suspendu", 10, StatutDossier.Categorie.en_cours),
-                statutDossier("RESILIATION_EN_COURS", "Resiliation en cours", 11, StatutDossier.Categorie.en_cours),
-                statutDossier("RESILIE", "Resilie", 12, StatutDossier.Categorie.clos),
-                statutDossier("EXPIRE", "Expire", 13, StatutDossier.Categorie.clos)
+                statutDossier("EN_VERIFICATION", "En cours de verification", 2, StatutDossier.Categorie.en_cours),
+                statutDossier("INCOMPLET", "Incomplet", 3, StatutDossier.Categorie.en_cours),
+                statutDossier("EN_ATTENTE_PAIEMENT", "En attente de paiement", 4, StatutDossier.Categorie.en_cours),
+                statutDossier("VALIDE", "Valide", 5, StatutDossier.Categorie.abouti),
+                statutDossier("ACTIF", "Actif", 6, StatutDossier.Categorie.abouti),
+                statutDossier("REJETE", "Rejete", 7, StatutDossier.Categorie.rejete),
+                statutDossier("RESILIE", "Resilie", 8, StatutDossier.Categorie.clos),
+                statutDossier("EXPIRE", "Expire", 9, StatutDossier.Categorie.clos)
         );
         statutDossierRepository.saveAll(statuts);
         return statuts.stream().collect(java.util.stream.Collectors.toMap(StatutDossier::getCode, s -> s));
@@ -347,12 +341,18 @@ public class DataSeeder implements ApplicationRunner {
                 "karim.haddad@example.com", "0605060708");
         Utilisateur enfant = utilisateur("Haddad", "Noah", LocalDate.of(2012, 1, 15),
                 "noah.haddad@example.com", "0605060709");
-        utilisateurRepository.saveAll(List.of(etudiante, parent, enfant));
+        Utilisateur retraite = utilisateur("Bernard", "Jacques", LocalDate.of(1958, 3, 7),
+                "jacques.bernard@example.com", "0609080706");
+        Utilisateur alternante = utilisateur("Nguyen", "Sophie", LocalDate.of(2001, 11, 20),
+                "sophie.nguyen@example.com", "0612131415");
+        utilisateurRepository.saveAll(List.of(etudiante, parent, enfant, retraite, alternante));
 
         adresseRepository.saveAll(List.of(
                 adresse(etudiante, departements.get("75"), "12 rue de Rivoli", "75004", "Paris"),
                 adresse(parent, departements.get("92"), "5 avenue du General Leclerc", "92100", "Boulogne-Billancourt"),
-                adresse(enfant, departements.get("92"), "5 avenue du General Leclerc", "92100", "Boulogne-Billancourt")
+                adresse(enfant, departements.get("92"), "5 avenue du General Leclerc", "92100", "Boulogne-Billancourt"),
+                adresse(retraite, departements.get("94"), "3 impasse des Lilas", "94200", "Ivry-sur-Seine"),
+                adresse(alternante, departements.get("93"), "18 avenue de la Republique", "93100", "Montreuil")
         ));
 
         RelationUtilisateur relation = new RelationUtilisateur();
@@ -363,7 +363,8 @@ public class DataSeeder implements ApplicationRunner {
         relation.setStatut(RelationUtilisateur.Statut.actif);
         relationUtilisateurRepository.save(relation);
 
-        return Map.of("etudiante", etudiante, "parent", parent, "enfant", enfant);
+        return Map.of("etudiante", etudiante, "parent", parent, "enfant", enfant,
+                "retraite", retraite, "alternante", alternante);
     }
 
     private Utilisateur utilisateur(String nom, String prenom, LocalDate dateNaissance, String email, String telephone) {
@@ -392,81 +393,71 @@ public class DataSeeder implements ApplicationRunner {
         return a;
     }
 
-    private Dossier seedDossierDemo(Utilisateur porteur, Map<String, TypeAbonnement> types,
+    private Dossier seedDossiersDemo(List<Utilisateur> clients, Map<String, TypeAbonnement> types,
                                      Map<String, StatutDossier> statuts, Agent agentReferent) {
-        Dossier dossier = new Dossier();
-        dossier.setUtilisateurPorteur(porteur);
-        dossier.setUtilisateurPayeur(porteur);
-        dossier.setTypeAbonnement(types.get("IMAGINE_R_ETUDIANT"));
-        dossier.setStatutActuel(statuts.get("ACTIF"));
-        dossier.setAgentReferent(agentReferent);
-        dossier.setCanalCreation(Dossier.CanalCreation.en_ligne);
-        dossier.setDateCreation(LocalDateTime.now().minusMonths(2));
-        dossier.setDateDebutDroits(LocalDate.now().minusMonths(2));
-        dossier.setDateFinDroits(LocalDate.now().plusMonths(10));
-        dossier.setMontantTotal(new BigDecimal("394.00"));
-        dossier.setPeriodicitePaiement(Dossier.PeriodicitePaiement.annuel);
-        return dossierRepository.save(dossier);
+        Utilisateur lea = clients.get(0);
+        Utilisateur jacques = clients.get(1);
+        Utilisateur sophie = clients.get(2);
+
+        List<Dossier> dossiers = List.of(
+                dossier(lea, types.get("IMAGINE_R_ETUDIANT"), statuts.get("BROUILLON"), null,
+                        Dossier.CanalCreation.en_ligne, LocalDateTime.now().minusDays(1),
+                        null, null, BigDecimal.ZERO, Dossier.PeriodicitePaiement.annuel),
+
+                dossier(lea, types.get("NAVIGO_ANNUEL"), statuts.get("EN_VERIFICATION"), agentReferent,
+                        Dossier.CanalCreation.en_ligne, LocalDateTime.now().minusDays(10),
+                        null, null, new BigDecimal("860.00"), Dossier.PeriodicitePaiement.annuel),
+
+                dossier(lea, types.get("IMAGINE_R_APPRENTI"), statuts.get("INCOMPLET"), agentReferent,
+                        Dossier.CanalCreation.en_ligne, LocalDateTime.now().minusDays(20),
+                        null, null, new BigDecimal("394.00"), Dossier.PeriodicitePaiement.annuel),
+
+                dossier(jacques, types.get("AMETHYSTE"), statuts.get("EN_ATTENTE_PAIEMENT"), agentReferent,
+                        Dossier.CanalCreation.agence, LocalDateTime.now().minusDays(15),
+                        null, null, BigDecimal.ZERO, Dossier.PeriodicitePaiement.annuel),
+
+                dossier(jacques, types.get("NAVIGO_MENSUEL"), statuts.get("VALIDE"), agentReferent,
+                        Dossier.CanalCreation.en_ligne, LocalDateTime.now().minusDays(30),
+                        LocalDate.now(), LocalDate.now().plusMonths(1), new BigDecimal("86.40"), Dossier.PeriodicitePaiement.mensuel),
+
+                dossier(jacques, types.get("IMAGINE_R_ETUDIANT"), statuts.get("ACTIF"), agentReferent,
+                        Dossier.CanalCreation.en_ligne, LocalDateTime.now().minusMonths(2),
+                        LocalDate.now().minusMonths(2), LocalDate.now().plusMonths(10), new BigDecimal("394.00"), Dossier.PeriodicitePaiement.annuel),
+
+                dossier(sophie, types.get("NAVIGO_ANNUEL"), statuts.get("REJETE"), agentReferent,
+                        Dossier.CanalCreation.en_ligne, LocalDateTime.now().minusDays(25),
+                        null, null, new BigDecimal("860.00"), Dossier.PeriodicitePaiement.annuel),
+
+                dossier(sophie, types.get("IMAGINE_R_APPRENTI"), statuts.get("RESILIE"), agentReferent,
+                        Dossier.CanalCreation.en_ligne, LocalDateTime.now().minusMonths(14),
+                        LocalDate.now().minusMonths(14), LocalDate.now().minusMonths(2), new BigDecimal("394.00"), Dossier.PeriodicitePaiement.annuel),
+
+                dossier(sophie, types.get("NAVIGO_MENSUEL"), statuts.get("EXPIRE"), agentReferent,
+                        Dossier.CanalCreation.en_ligne, LocalDateTime.now().minusMonths(3),
+                        LocalDate.now().minusMonths(3), LocalDate.now().minusDays(5), new BigDecimal("86.40"), Dossier.PeriodicitePaiement.mensuel)
+        );
+        dossierRepository.saveAll(dossiers);
+        return dossiers.get(0);
     }
 
-    /**
-     * Ancien dossier resilie de Lea : verifie que le filtre par defaut
-     * (caseFilter=ACTIVE) l'exclut, et qu'il ne ressort qu'avec caseFilter=ALL.
-     */
-    private void seedDossierResilieDemo(Utilisateur porteur, Map<String, TypeAbonnement> types,
-                                         Map<String, StatutDossier> statuts) {
-        Dossier dossier = new Dossier();
-        dossier.setUtilisateurPorteur(porteur);
-        dossier.setUtilisateurPayeur(porteur);
-        dossier.setTypeAbonnement(types.get("IMAGINE_R_SCOLAIRE"));
-        dossier.setStatutActuel(statuts.get("RESILIE"));
-        dossier.setCanalCreation(Dossier.CanalCreation.agence);
-        dossier.setDateCreation(LocalDateTime.now().minusYears(1));
-        dossier.setDateDebutDroits(LocalDate.now().minusYears(1));
-        dossier.setDateFinDroits(LocalDate.now().minusMonths(2));
-        dossier.setMontantTotal(new BigDecimal("358.00"));
-        dossier.setPeriodicitePaiement(Dossier.PeriodicitePaiement.annuel);
-        dossierRepository.save(dossier);
-    }
-
-    /**
-     * Dossier de Noah (porteur) paye par Karim (payeur) : verifie le role
-     * PAYEUR + l'identite de l'autre partie (le porteur), et le flag
-     * piecesADeposer (statut PIECES_MANQUANTES).
-     */
-    private void seedDossierPiecesManquantesDemo(Utilisateur payeur, Utilisateur porteur,
-                                                  Map<String, TypeAbonnement> types,
-                                                  Map<String, StatutDossier> statuts) {
-        Dossier dossier = new Dossier();
-        dossier.setUtilisateurPorteur(porteur);
-        dossier.setUtilisateurPayeur(payeur);
-        dossier.setTypeAbonnement(types.get("TRANSPORT_SCOLAIRE"));
-        dossier.setStatutActuel(statuts.get("PIECES_MANQUANTES"));
-        dossier.setCanalCreation(Dossier.CanalCreation.en_ligne);
-        dossier.setDateCreation(LocalDateTime.now().minusDays(5));
-        dossier.setMontantTotal(BigDecimal.ZERO);
-        dossier.setPeriodicitePaiement(Dossier.PeriodicitePaiement.annuel);
-        dossierRepository.save(dossier);
-    }
-
-    /**
-     * Brouillon de Karim (porteur+payeur) : demande pas encore terminee cote
-     * client, jamais envoyee pour validation a comutitres. Categorie en_cours
-     * -> doit apparaitre dans le filtre par defaut (ACTIVE), sans declencher
-     * le flag piecesADeposer (reserve a PIECES_MANQUANTES, cf. NAV-013).
-     */
-    private void seedDossierBrouillonDemo(Utilisateur porteurEtPayeur, Map<String, TypeAbonnement> types,
-                                           Map<String, StatutDossier> statuts) {
-        Dossier dossier = new Dossier();
-        dossier.setUtilisateurPorteur(porteurEtPayeur);
-        dossier.setUtilisateurPayeur(porteurEtPayeur);
-        dossier.setTypeAbonnement(types.get("NAVIGO_MENSUEL"));
-        dossier.setStatutActuel(statuts.get("BROUILLON"));
-        dossier.setCanalCreation(Dossier.CanalCreation.en_ligne);
-        dossier.setDateCreation(LocalDateTime.now().minusHours(2));
-        dossier.setMontantTotal(BigDecimal.ZERO);
-        dossier.setPeriodicitePaiement(Dossier.PeriodicitePaiement.mensuel);
-        dossierRepository.save(dossier);
+    private Dossier dossier(Utilisateur porteur, TypeAbonnement type, StatutDossier statut,
+                             Agent agent, Dossier.CanalCreation canal, LocalDateTime dateCreation,
+                             LocalDate dateDebut, LocalDate dateFin, BigDecimal montant,
+                             Dossier.PeriodicitePaiement periodicite) {
+        Dossier d = new Dossier();
+        d.setUtilisateurPorteur(porteur);
+        d.setUtilisateurPayeur(porteur);
+        d.setTypeAbonnement(type);
+        d.setStatutActuel(statut);
+        d.setAgentReferent(agent);
+        d.setCanalCreation(canal);
+        d.setDateCreation(dateCreation);
+        d.setDateDebutDroits(dateDebut);
+        d.setDateFinDroits(dateFin);
+        d.setMontantTotal(montant);
+        d.setPeriodicitePaiement(periodicite);
+        d.setSituationCode("Etudiant");
+        return d;
     }
 
     /**

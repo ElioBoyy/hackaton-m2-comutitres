@@ -6,8 +6,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-
 import java.util.List;
+
 
 public interface DossierJpaRepository extends JpaRepository<Dossier, Integer> {
 
@@ -32,4 +32,7 @@ public interface DossierJpaRepository extends JpaRepository<Dossier, Integer> {
             order by d.dateCreation desc
             """)
     List<Dossier> findAllPourUtilisateur(@Param("idUtilisateur") Integer idUtilisateur);
+
+    @Query("SELECT d.statutActuel.categorie, COUNT(d) FROM Dossier d GROUP BY d.statutActuel.categorie")
+    List<Object[]> countGroupByCategorie();
 }

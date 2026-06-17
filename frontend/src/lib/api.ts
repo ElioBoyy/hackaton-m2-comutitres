@@ -185,6 +185,18 @@ export function getDossiers(params: GetDossiersParams = {}): Promise<DossierList
   return apiFetch(`/dossiers${qs ? `?${qs}` : ''}`)
 }
 
+export interface DossierCounts {
+  tous: number
+  enCours: number
+  abouti: number
+  rejete: number
+  clos: number
+}
+
+export function getDossierCounts(): Promise<DossierCounts> {
+  return apiFetch('/dossiers/counts')
+}
+
 /**
  * Recherche libre d'un dossier/client pour qu'un agent agisse a sa place.
  */
