@@ -59,8 +59,9 @@ management:
 app:
   cors:
     allowed-origins:
-      - http://localhost:3000 # TanStack Start (dev)
-      - http://localhost:5173 # Vite (port par defaut, au cas ou)
+      - http://localhost:3000
+      - http://localhost:4173
+      - http://localhost:5173
     allowed-methods:
       - GET
       - POST
@@ -83,6 +84,7 @@ app:
 
 # --- RAG (consomme par RagProperties, prefixe rag.*) ---
 rag:
+  ingestion-au-demarrage: true
   # Source du corpus a ingerer. Par defaut le classpath (corpus embarque dans le
   # jar => ingestion reproductible en CI/prod). Surchargeable par un chemin
   # fichier, ex: file:../frontend/RAG_context/cartographie-navigo
