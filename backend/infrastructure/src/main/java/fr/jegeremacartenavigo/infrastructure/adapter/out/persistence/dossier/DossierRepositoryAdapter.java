@@ -1,4 +1,5 @@
 package fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.dossier;
+
 import fr.jegeremacartenavigo.domain.auth.exception.UtilisateurIntrouvableException;
 import fr.jegeremacartenavigo.domain.dossier.exception.DossierDejaFinaliseException;
 import fr.jegeremacartenavigo.domain.dossier.exception.DossierIntrouvableException;
@@ -38,124 +39,9 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-/**
- * Adapter JPA implementant le port domaine {@link DossierRepository}. Cree
- * ou complete (si {@code idDossierExistant} est fourni - evite les
- * doublons) en une seule transaction le {@code Dossier}, ses
- * {@code PieceJustificative} et, si un moyen de paiement est fourni, son
- * {@code Paiement} (mock, toujours immediatement "valide" - cf. CONTEXT.md /
- * decision sur les donnees de paiement sensibles : aucun IBAN ni numero de
- * carte n'est jamais recu ni stocke ici). Sans moyen de paiement (bouton
- * "Sauvegarder et quitter"), le dossier est cree/maintenu en brouillon,
- * statut {@code EN_ATTENTE_PAIEMENT}, sans Paiement.
- *
- * <p>{@code utilisateurPorteur} et {@code utilisateurPayeur} sont toujours
- * l'utilisateur connecte, meme pour une {@code DemandePour.TIERS} (cf.
- * decision DemandePour : le tiers n'est qu'un nom en texte libre).
- *
- * <p>Mapping entre les entites JPA (Dossier, PieceJustificative...) et les
- * records domaine (DossierResume, DossierDetail).
- */
 @Component
 public class DossierRepositoryAdapter implements DossierRepository {
-    private final DossierJpaRepository dossierJpa;
-    private final PieceJustificativeJpaRepository pieceJpa;
 
-    public DossierRepositoryAdapter(DossierJpaRepository dossierJpa,
-                                     PieceJustificativeJpaRepository pieceJpa) {
-        this.dossierJpa = dossierJpa;
-        this.pieceJpa = pieceJpa;
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public PageResult<DossierResume> findPage(String categorieStatut, int page, int pageSize) {
-        PageRequest pageRequest = PageRequest.of(page - 1, pageSize, Sort.by("dateCreation").descending());
-
-        Page<Dossier> resultat = categorieStatut == null
-                ? dossierJpa.findAll(pageRequest)
-                : dossierJpa.findByStatutActuel_Categorie(
-                        StatutDossier.Categorie.valueOf(categorieStatut), pageRequest);
-
-        List<Integer> idsDossier = resultat.getContent().stream().map(Dossier::getIdDossier).toList();
-        Map<Integer, Long> nbPiecesEnAttenteParDossier = idsDossier.isEmpty()
-                ? Map.of()
-                : pieceJpa.countByStatutGroupByDossier(PieceJustificative.StatutValidation.en_attente, idsDossier)
-                    .stream()
-                    .collect(Collectors.toMap(
-                            PieceJustificativeJpaRepository.NbPiecesEnAttenteParDossier::getIdDossier,
-                            PieceJustificativeJpaRepository.NbPiecesEnAttenteParDossier::getTotal));
-
-        List<DossierResume> dossiers = resultat.getContent().stream()
-                .map(d -> toResume(d, nbPiecesEnAttenteParDossier.getOrDefault(d.getIdDossier(), 0L)))
-                .toList();
-
-        return new PageResult<>(dossiers, page, pageSize, resultat.getTotalElements());
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Optional<DossierDetail> findDetailById(Integer id) {
-        return dossierJpa.findById(id).map(this::toDetail);
-    }
-
-    private static DossierResume toResume(Dossier d, long nbPiecesEnAttente) {
-        return new DossierResume(
-                d.getIdDossier(),
-                nomComplet(d.getUtilisateurPorteur()),
-                d.getTypeAbonnement().getCode(),
-                d.getTypeAbonnement().getLibelle(),
-                d.getStatutActuel().getCode(),
-                d.getStatutActuel().getLibelle(),
-                d.getStatutActuel().getCategorie().name(),
-                nbPiecesEnAttente,
-                d.getDateCreation()
-        );
-    }
-
-    private DossierDetail toDetail(Dossier d) {
-        List<PieceJustificativeResume> pieces = pieceJpa
-                .findByDossier_IdDossierOrderByDateDepotDesc(d.getIdDossier())
-                .stream()
-                .map(DossierRepositoryAdapter::toPieceResume)
-                .toList();
-
-        return new DossierDetail(
-                d.getIdDossier(),
-                toPersonne(d.getUtilisateurPorteur()),
-                toPersonne(d.getUtilisateurPayeur()),
-                d.getTypeAbonnement().getCode(),
-                d.getTypeAbonnement().getLibelle(),
-                d.getStatutActuel().getCode(),
-                d.getStatutActuel().getLibelle(),
-                d.getStatutActuel().getCategorie().name(),
-                d.getDateCreation(),
-                d.getDateDebutDroits(),
-                d.getDateFinDroits(),
-                d.getMontantTotal(),
-                pieces
-        );
-    }
-
-    private static PieceJustificativeResume toPieceResume(PieceJustificative p) {
-        return new PieceJustificativeResume(
-                p.getIdPiece(),
-                p.getTypePiece().getLibelle(),
-                p.getStatutValidation().name(),
-                p.getDateDepot(),
-                p.getMotifRejet()
-        );
-    }
-
-    private static Personne toPersonne(Utilisateur u) {
-        return new Personne(u.getIdUtilisateur(), u.getNom(), u.getPrenom(), u.getEmail());
-    }
-
-    private static String nomComplet(Utilisateur u) {
-        return u.getPrenom() + " " + u.getNom();
-      
-      
-      
     private static final String STATUT_ACTIF = "ACTIF";
     private static final String STATUT_BROUILLON = "EN_ATTENTE_PAIEMENT";
     private static final String CODE_PIECE_IDENTITE = "PIECE_IDENTITE";
@@ -186,6 +72,38 @@ public class DossierRepositoryAdapter implements DossierRepository {
         this.typePieceJpaRepository = typePieceJpaRepository;
         this.pieceJustificativeJpaRepository = pieceJustificativeJpaRepository;
         this.paiementJpaRepository = paiementJpaRepository;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<DossierResume> findPage(String categorieStatut, int page, int pageSize) {
+        PageRequest pageRequest = PageRequest.of(page - 1, pageSize, Sort.by("dateCreation").descending());
+
+        Page<Dossier> resultat = categorieStatut == null
+                ? dossierJpaRepository.findAll(pageRequest)
+                : dossierJpaRepository.findByStatutActuel_Categorie(
+                        StatutDossier.Categorie.valueOf(categorieStatut), pageRequest);
+
+        List<Integer> idsDossier = resultat.getContent().stream().map(Dossier::getIdDossier).toList();
+        Map<Integer, Long> nbPiecesEnAttenteParDossier = idsDossier.isEmpty()
+                ? Map.of()
+                : pieceJustificativeJpaRepository.countByStatutGroupByDossier(PieceJustificative.StatutValidation.en_attente, idsDossier)
+                    .stream()
+                    .collect(Collectors.toMap(
+                            PieceJustificativeJpaRepository.NbPiecesEnAttenteParDossier::getIdDossier,
+                            PieceJustificativeJpaRepository.NbPiecesEnAttenteParDossier::getTotal));
+
+        List<DossierResume> dossiers = resultat.getContent().stream()
+                .map(d -> toResume(d, nbPiecesEnAttenteParDossier.getOrDefault(d.getIdDossier(), 0L)))
+                .toList();
+
+        return new PageResult<>(dossiers, page, pageSize, resultat.getTotalElements());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<DossierDetail> findDetailById(Integer id) {
+        return dossierJpaRepository.findById(id).map(this::toDetail);
     }
 
     @Override
@@ -226,19 +144,14 @@ public class DossierRepositoryAdapter implements DossierRepository {
         );
     }
 
-    // idDossierExistant present : on complete un brouillon deja sauvegarde
-    // (evite les doublons quand l'usager revient payer plus tard). Sinon,
-    // nouveau Dossier vierge.
     private Dossier resoudreDossier(NouveauDossier nouveauDossier, Utilisateur connecte) {
         if (nouveauDossier.idDossierExistant() == null) {
             return new Dossier();
         }
         Dossier existant = dossierJpaRepository.findById(nouveauDossier.idDossierExistant())
-                .orElseThrow(DossierIntrouvableException::new);
+                .orElseThrow(() -> new DossierIntrouvableException(nouveauDossier.idDossierExistant()));
         if (!existant.getUtilisateurPorteur().getIdUtilisateur().equals(connecte.getIdUtilisateur())) {
-            // Meme erreur que "introuvable" : ne pas reveler l'existence du
-            // dossier d'un autre utilisateur.
-            throw new DossierIntrouvableException();
+            throw new DossierIntrouvableException(nouveauDossier.idDossierExistant());
         }
         if (!STATUT_BROUILLON.equals(existant.getStatutActuel().getCode())) {
             throw new DossierDejaFinaliseException();
@@ -279,8 +192,6 @@ public class DossierRepositoryAdapter implements DossierRepository {
         };
     }
 
-    // Remplace la piece existante du meme type sur ce dossier si on
-    // complete un brouillon (idDossierExistant), au lieu de la dupliquer.
     private void enregistrerOuRemplacerPiece(Dossier dossier, Utilisateur depositaire, String codeTypePiece, String cheminFichier) {
         if (cheminFichier == null || cheminFichier.isBlank()) {
             return;
@@ -317,6 +228,61 @@ public class DossierRepositoryAdapter implements DossierRepository {
         paiement.setReferenceTransaction("MOCK-" + UUID.randomUUID());
         paiement.setStatut(Paiement.Statut.valide);
         paiementJpaRepository.save(paiement);
-      
+    }
+
+    private static DossierResume toResume(Dossier d, long nbPiecesEnAttente) {
+        return new DossierResume(
+                d.getIdDossier(),
+                nomComplet(d.getUtilisateurPorteur()),
+                d.getTypeAbonnement().getCode(),
+                d.getTypeAbonnement().getLibelle(),
+                d.getStatutActuel().getCode(),
+                d.getStatutActuel().getLibelle(),
+                d.getStatutActuel().getCategorie().name(),
+                nbPiecesEnAttente,
+                d.getDateCreation()
+        );
+    }
+
+    private DossierDetail toDetail(Dossier d) {
+        List<PieceJustificativeResume> pieces = pieceJustificativeJpaRepository
+                .findByDossier_IdDossierOrderByDateDepotDesc(d.getIdDossier())
+                .stream()
+                .map(DossierRepositoryAdapter::toPieceResume)
+                .toList();
+
+        return new DossierDetail(
+                d.getIdDossier(),
+                toPersonne(d.getUtilisateurPorteur()),
+                toPersonne(d.getUtilisateurPayeur()),
+                d.getTypeAbonnement().getCode(),
+                d.getTypeAbonnement().getLibelle(),
+                d.getStatutActuel().getCode(),
+                d.getStatutActuel().getLibelle(),
+                d.getStatutActuel().getCategorie().name(),
+                d.getDateCreation(),
+                d.getDateDebutDroits(),
+                d.getDateFinDroits(),
+                d.getMontantTotal(),
+                pieces
+        );
+    }
+
+    private static PieceJustificativeResume toPieceResume(PieceJustificative p) {
+        return new PieceJustificativeResume(
+                p.getIdPiece(),
+                p.getTypePiece().getLibelle(),
+                p.getStatutValidation().name(),
+                p.getDateDepot(),
+                p.getMotifRejet()
+        );
+    }
+
+    private static Personne toPersonne(Utilisateur u) {
+        return new Personne(u.getIdUtilisateur(), u.getNom(), u.getPrenom(), u.getEmail());
+    }
+
+    private static String nomComplet(Utilisateur u) {
+        return u.getPrenom() + " " + u.getNom();
     }
 }

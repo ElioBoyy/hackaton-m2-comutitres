@@ -24,8 +24,10 @@ public class DossierHandlersConfig {
             DossierDashboardRepository dossierRepository,
             AlerteDashboardRepository alerteRepository) {
         return new ObtenirDashboardUtilisateurHandler(utilisateurRepository, dossierRepository, alerteRepository);
-  
-  CreerDossierHandler creerDossierHandler(DossierRepository repository) {
+    }
+
+    @Bean
+    CreerDossierHandler creerDossierHandler(DossierRepository repository) {
         return new CreerDossierHandler(repository);
     }
 }
