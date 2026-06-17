@@ -3,6 +3,8 @@ package fr.jegeremacartenavigo.domain.dossier.port;
 import fr.jegeremacartenavigo.domain.dossier.model.DossierDetail;
 import fr.jegeremacartenavigo.domain.dossier.model.DossierResume;
 import fr.jegeremacartenavigo.domain.dossier.model.PageResult;
+import fr.jegeremacartenavigo.domain.dossier.model.DossierCree;
+import fr.jegeremacartenavigo.domain.dossier.model.NouveauDossier;
 
 import java.util.Optional;
 
@@ -18,4 +20,5 @@ public interface DossierRepository {
     PageResult<DossierResume> findPage(String categorieStatut, int page, int pageSize);
 
     Optional<DossierDetail> findDetailById(Integer id);
+    DossierCree enregistrer(NouveauDossier nouveauDossier);
 }

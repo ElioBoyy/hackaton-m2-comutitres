@@ -1,5 +1,9 @@
 package fr.jegeremacartenavigo.infrastructure.config;
 
+
+import fr.jegeremacartenavigo.application.dossier.CreerDossierHandler;
+import fr.jegeremacartenavigo.domain.dossier.port.DossierRepository;
+  
 import fr.jegeremacartenavigo.application.dossier.ObtenirDashboardUtilisateurHandler;
 import fr.jegeremacartenavigo.domain.dossier.port.AlerteDashboardRepository;
 import fr.jegeremacartenavigo.domain.dossier.port.DossierDashboardRepository;
@@ -20,5 +24,8 @@ public class DossierHandlersConfig {
             DossierDashboardRepository dossierRepository,
             AlerteDashboardRepository alerteRepository) {
         return new ObtenirDashboardUtilisateurHandler(utilisateurRepository, dossierRepository, alerteRepository);
+  
+  CreerDossierHandler creerDossierHandler(DossierRepository repository) {
+        return new CreerDossierHandler(repository);
     }
 }

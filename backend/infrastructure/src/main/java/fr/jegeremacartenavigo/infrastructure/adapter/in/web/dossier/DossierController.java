@@ -1,5 +1,22 @@
 package fr.jegeremacartenavigo.infrastructure.adapter.in.web.dossier;
 
+import fr.jegeremacartenavigo.application.cqrs.CommandBus;
+import fr.jegeremacartenavigo.application.dossier.CreerDossierCommand;
+import fr.jegeremacartenavigo.application.dossier.DossierResponse;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+/**
+ * Point d'entree du RecommendationWizard front (cf. CONTEXT.md) : l'ecran
+ * Paiement appelle {@code POST /dossiers} pour persister d'un coup le
+ * dossier, ses pieces et son paiement (mock).
+=======
 import fr.jegeremacartenavigo.application.cqrs.QueryBus;
 import fr.jegeremacartenavigo.application.dossier.DossierDetailResponse;
 import fr.jegeremacartenavigo.application.dossier.DossierListResponse;
@@ -20,7 +37,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/dossiers")
 public class DossierController {
 
-    private final QueryBus queryBus;
+  private final QueryBus queryBus;
+    private final CommandBus commandBus;
+  
+//   TODO: Duplicata. Voir pour en garder qu'un seul ?
+  public DossierController(CommandBus commandBus) {
+        this.commandBus = commandBus;
+    }
 
     public DossierController(QueryBus queryBus) {
         this.queryBus = queryBus;
@@ -37,5 +60,26 @@ public class DossierController {
     @GetMapping("/{id}")
     public DossierDetailResponse detail(@PathVariable Integer id) {
         return queryBus.ask(new GetDossierDetailQuery(id));
+      
+      
+      @PostMapping
+    public ResponseEntity<DossierResponse> creer(@AuthenticationPrincipal Jwt jwt,
+                                                   @RequestBody CreerDossierRequest body) {
+        CreerDossierCommand command = new CreerDossierCommand(
+                Integer.valueOf(jwt.getSubject()),
+                body.idDossierExistant(),
+                body.pourQui(),
+                body.beneficiaireNomComplet(),
+                body.situation(),
+                body.situationPrecision(),
+                body.boursier(),
+                body.codeTypeAbonnement(),
+                body.cheminPieceIdentite(),
+                body.cheminCertificatScolarite(),
+                body.cheminNotificationBourse(),
+                body.modePaiement()
+        );
+        DossierResponse response = commandBus.send(command);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 }
