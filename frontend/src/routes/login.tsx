@@ -52,7 +52,7 @@ function LoginPage() {
     setPending(true)
     try {
       await login(form.email.trim(), form.password)
-      await navigate({ to: '/me' })
+      await navigate({ to: '/dashboard' })
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 401) {

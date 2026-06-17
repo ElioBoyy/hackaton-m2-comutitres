@@ -75,7 +75,7 @@ function RegisterPage() {
     setPending(true)
     try {
       await register({ ...form, email: form.email.trim() })
-      await navigate({ to: '/me' })
+      await navigate({ to: '/dashboard' })
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 409) {
