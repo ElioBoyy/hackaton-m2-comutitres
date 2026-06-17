@@ -83,8 +83,8 @@ public class DataSeeder implements ApplicationRunner {
             AdresseJpaRepository adresseRepository,
             RelationUtilisateurJpaRepository relationUtilisateurRepository,
             DossierJpaRepository dossierRepository,
-            PasswordEncoder passwordEncoder
-            NotificationJpaRepository notificationRepository,
+            PasswordEncoder passwordEncoder,
+            NotificationJpaRepository notificationRepository
     ) {
         this.departementRepository = departementRepository;
         this.situationRepository = situationRepository;
