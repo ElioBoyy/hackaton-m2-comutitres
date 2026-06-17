@@ -2,6 +2,15 @@ spring:
   application:
     name: jegeremacartenavigo-backend
 
+  # Charge backend/.env (format .properties : CLE=valeur) s'il existe. 'optional'
+  # => pas d'echec si absent (ex: en prod, les cles viennent de l'environnement).
+  # Deux emplacements car le CWD differe : '.env' quand on lance le jar depuis
+  # backend/, '../.env' quand mvn spring-boot:run tourne depuis backend/bootstrap/.
+  config:
+    import:
+      - optional:file:.env[.properties]
+      - optional:file:../.env[.properties]
+
   # --- Persistance : PostgreSQL ---
   # Ces valeurs servent quand vous pointez vers une base externe. En dev, le
   # support docker-compose ci-dessous demarre Postgres et surcharge la datasource.
@@ -71,6 +80,44 @@ app:
       secret: ${APP_SECURITY_JWT_SECRET:dev-secret-please-override-32-bytes-min-1234567890}
       issuer: jegeremacartenavigo
       expires-minutes: 1440
+
+# --- RAG (consomme par RagProperties, prefixe rag.*) ---
+rag:
+  # Source du corpus a ingerer. Par defaut le classpath (corpus embarque dans le
+  # jar => ingestion reproductible en CI/prod). Surchargeable par un chemin
+  # fichier, ex: file:../frontend/RAG_context/cartographie-navigo
+  corpus:
+    location: classpath:rag-corpus/
+  voyage:
+    api-key: ${VOYAGE_API_KEY:}
+    base-url: https://api.voyageai.com/v1
+    embedding-model: voyage-4
+    dimensions: 1024
+    # Taille d'un lot d'embeddings : tous les fragments du corpus sont vectorises
+    # en quelques appels (et non un appel par document). 128 reste large sous les
+    # limites Voyage (entrees/tokens par requete).
+    batch-size: 128
+  mistral:
+    api-key: ${MISTRAL_API_KEY:}
+    base-url: https://api.mistral.ai/v1
+    model: mistral-small-latest
+    temperature: 0.2
+    max-tokens: 1024
+  retrieval:
+    # Nombre de fragments candidats remontes par la recherche vectorielle.
+    top-k: 6
+    # Pipeline 1 (anti-hors-sujet) : si le MEILLEUR passage est sous ce seuil, la
+    # question est jugee hors perimetre Navigo -> refus "hors sujet".
+    seuil-hors-sujet: 0.35
+    # Pipeline 2 (anti-hallucination) : similarite minimale d'un passage pour etre
+    # juge assez fiable pour fonder une reponse.
+    seuil-similarite: 0.45
+    # Nombre minimal de fragments au-dessus du seuil pour repondre.
+    min-fragments-pertinents: 1
+  decoupe:
+    # Taille cible d'un fragment et chevauchement, en caracteres (approximation).
+    taille-cible: 1200
+    chevauchement: 200
 
 logging:
   level:

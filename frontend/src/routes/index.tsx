@@ -1,10 +1,10 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
-import { AuthLayout } from '~/components/AuthLayout'
-import { Button } from '~/components/Button'
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { AuthLayout } from "~/components/AuthLayout";
+import { Button } from "~/components/Button";
 
-export const Route = createFileRoute('/')({
+export const Route = createFileRoute("/")({
   component: Home,
-})
+});
 
 function Home() {
   return (
@@ -23,5 +23,5 @@ function Home() {
         </Link>
       </div>
     </AuthLayout>
-  )
+  );
 }

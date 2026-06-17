@@ -1,5 +1,6 @@
 package fr.jegeremacartenavigo.infrastructure.adapter.in.web;
 
+import fr.jegeremacartenavigo.domain.auth.exception.AgentIntrouvableException;
 import fr.jegeremacartenavigo.domain.auth.exception.CompteInactifException;
 import fr.jegeremacartenavigo.domain.auth.exception.EmailDejaUtiliseException;
 import fr.jegeremacartenavigo.domain.auth.exception.IdentifiantsInvalidesException;
@@ -49,7 +50,7 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
-    @ExceptionHandler(ReferentielIntrouvableException.class)
+  @ExceptionHandler(ReferentielIntrouvableException.class)
     public ProblemDetail handleReferentielIntrouvable(ReferentielIntrouvableException ex) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
         problem.setTitle("Ressource introuvable");
@@ -58,6 +59,13 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(DossierIntrouvableException.class)
     public ProblemDetail handleDossierIntrouvable(DossierIntrouvableException ex) {
+      ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+        problem.setTitle("Ressource introuvable");
+        return problem;
+    }
+
+  @ExceptionHandler(AgentIntrouvableException.class)
+    public ProblemDetail handleAgentIntrouvable(AgentIntrouvableException ex) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
         problem.setTitle("Ressource introuvable");
         return problem;
