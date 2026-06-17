@@ -37,7 +37,7 @@ function Contact() {
           </a>
 
           <p className="text-center text-xs text-gray-700">
-            Vous serez mis en relation avec notre assistant vocal Retell, qui répond
+            Vous serez mis en relation avec notre assistante IA Camille, qui répond
             à vos questions et vous oriente vers un conseiller si besoin.
           </p>
         </div>
