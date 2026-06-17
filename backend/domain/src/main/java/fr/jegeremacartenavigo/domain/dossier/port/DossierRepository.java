@@ -21,4 +21,7 @@ public interface DossierRepository {
 
     Optional<DossierDetail> findDetailById(Integer id);
     DossierCree enregistrer(NouveauDossier nouveauDossier);
+
+    /** Nombre de dossiers par categorie de statut. */
+    java.util.Map<String, Long> countByCategorie();
 }

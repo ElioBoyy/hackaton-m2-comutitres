@@ -3,9 +3,11 @@ package fr.jegeremacartenavigo.infrastructure.adapter.in.web.dossier;
 import fr.jegeremacartenavigo.application.cqrs.CommandBus;
 import fr.jegeremacartenavigo.application.cqrs.QueryBus;
 import fr.jegeremacartenavigo.application.dossier.CreerDossierCommand;
+import fr.jegeremacartenavigo.application.dossier.DossierCountsResponse;
 import fr.jegeremacartenavigo.application.dossier.DossierDetailResponse;
 import fr.jegeremacartenavigo.application.dossier.DossierListResponse;
 import fr.jegeremacartenavigo.application.dossier.DossierResponse;
+import fr.jegeremacartenavigo.application.dossier.GetDossierCountsQuery;
 import fr.jegeremacartenavigo.application.dossier.GetDossierDetailQuery;
 import fr.jegeremacartenavigo.application.dossier.GetDossiersQuery;
 import org.springframework.http.HttpStatus;
@@ -20,10 +22,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * /dossiers : lecture (backoffice, ROLE_AGENT) et creation (utilisateur connecte,
- * depuis le RecommendationWizard front).
- */
 @RestController
 @RequestMapping("/dossiers")
 public class DossierController {
@@ -42,6 +40,11 @@ public class DossierController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int pageSize) {
         return queryBus.ask(new GetDossiersQuery(statut, page, pageSize));
+    }
+
+    @GetMapping("/counts")
+    public DossierCountsResponse counts() {
+        return queryBus.ask(new GetDossierCountsQuery());
     }
 
     @GetMapping("/{id}")
