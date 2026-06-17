@@ -32,7 +32,7 @@ const AUTH_ITEMS: NavItem[] = [
   { labelKey: 'nav_my_subscriptions', icon: CalendarDays, to: '/dashboard' },
   { labelKey: 'nav_my_documents', icon: FileText },
   { labelKey: 'nav_my_info', icon: User },
-  { labelKey: 'nav_help_contacts', icon: HelpCircle },
+  { labelKey: 'nav_help_contacts', icon: HelpCircle, to: '/aide' },
   { labelKey: 'nav_settings', icon: Settings },
 ]
 
