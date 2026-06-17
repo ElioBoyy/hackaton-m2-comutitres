@@ -12,13 +12,14 @@ export const Route = createFileRoute('/recommandation/frequence')({
 function FrequenceStep() {
   const navigate = useNavigate()
   const dispatch = useAppDispatch()
+  const pourQui = useAppSelector((state) => state.wizard.pourQui)
   const frequenceDeplacement = useAppSelector((state) => state.wizard.frequenceDeplacement)
 
   return (
     <WizardStepLayout
       etapeCourante={3}
       totalEtapes={4}
-      titre="Comment vous déplacez-vous ?"
+      titre={pourQui === 'TIERS' ? "À quelle fréquence le bénéficiaire se déplace-t-il ?" : "À quelle fréquence vous déplacez-vous ?"}
       onRetour={() => navigate({ to: '/recommandation/situation' })}
       onSuivant={() => navigate({ to: '/recommandation/residence' })}
       suivantDesactive={!frequenceDeplacement}

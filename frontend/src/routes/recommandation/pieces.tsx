@@ -26,6 +26,7 @@ function PiecesStep() {
   const [enPreVerification, setEnPreVerification] = React.useState(false)
   const [preVerifie, setPreVerifie] = React.useState(false)
 
+  const pourQui = wizard.pourQui
   const justificatifRequis = wizard.situation === 'ETUDIANT'
   const bourseRequise = wizard.situation === 'ETUDIANT' && wizard.boursier
   const piecesCompletes = piecesSontCompletes(wizard)
@@ -55,7 +56,7 @@ function PiecesStep() {
       <main className="mx-auto flex max-w-md flex-col items-center gap-4 py-24 text-center">
         <Loader2 className="h-10 w-10 animate-spin text-primary" strokeWidth={1.75} />
         <p className="font-heading text-lg font-bold text-dark">
-          L'IA pré-vérifie vos pièces...
+          {pourQui === 'TIERS' ? "L'IA pré-vérifie les pièces du bénéficiaire..." : "L'IA pré-vérifie vos pièces..."}
         </p>
         <p className="text-sm text-gray-700">Cela ne prend que quelques secondes.</p>
       </main>
@@ -68,8 +69,9 @@ function PiecesStep() {
         <BadgeCheck className="h-10 w-10 text-success" strokeWidth={1.75} />
         <p className="font-heading text-lg font-bold text-dark">Pièces pré-vérifiées</p>
         <p className="text-sm text-gray-700">
-          L'IA a fait un premier contrôle de vos documents. La vérification
-          définitive reste à effectuer par nos équipes.
+          {pourQui === 'TIERS'
+            ? "L'IA a fait un premier contrôle des documents du bénéficiaire. La vérification définitive reste à effectuer par nos équipes."
+            : "L'IA a fait un premier contrôle de vos documents. La vérification définitive reste à effectuer par nos équipes."}
         </p>
         <Button onClick={() => navigate({ to: '/recommandation/recapitulatif' })}>
           Continuer
@@ -81,10 +83,12 @@ function PiecesStep() {
   return (
     <main className="mx-auto flex max-w-md flex-col gap-6 py-8">
       <h1 className="font-heading text-2xl font-bold tracking-tight text-dark">
-        Vos pièces justificatives
+        {pourQui === 'TIERS' ? "Pièces justificatives du bénéficiaire" : "Vos pièces justificatives"}
       </h1>
       <p className="text-gray-700">
-        Pour finaliser votre demande, déposez les documents suivants.
+        {pourQui === 'TIERS'
+          ? "Pour finaliser la demande, déposez les documents du bénéficiaire."
+          : "Pour finaliser votre demande, déposez les documents suivants."}
       </p>
 
       <ChampFichier

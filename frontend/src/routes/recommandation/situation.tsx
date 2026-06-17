@@ -12,6 +12,7 @@ export const Route = createFileRoute('/recommandation/situation')({
 function SituationStep() {
   const navigate = useNavigate()
   const dispatch = useAppDispatch()
+  const pourQui = useAppSelector((state) => state.wizard.pourQui)
   const situation = useAppSelector((state) => state.wizard.situation)
   const boursier = useAppSelector((state) => state.wizard.boursier)
 
@@ -19,7 +20,7 @@ function SituationStep() {
     <WizardStepLayout
       etapeCourante={2}
       totalEtapes={4}
-      titre="Quelle est votre situation actuelle ?"
+      titre={pourQui === 'TIERS' ? "Quelle est la situation actuelle du bénéficiaire ?" : "Quelle est votre situation actuelle ?"}
       onRetour={() => navigate({ to: '/recommandation/pour-qui' })}
       onSuivant={() => navigate({ to: '/recommandation/frequence' })}
       suivantDesactive={!situation}
@@ -38,7 +39,7 @@ function SituationStep() {
 
       {situation === 'ETUDIANT' ? (
         <label className="col-span-2 flex items-center justify-between gap-4 rounded-lg border border-gray-200 p-4">
-          <span className="font-sans text-base font-semibold text-dark">Êtes-vous boursier ?</span>
+          <span className="font-sans text-base font-semibold text-dark">{pourQui === 'TIERS' ? 'Le bénéficiaire est-il boursier ?' : 'Êtes-vous boursier ?'}</span>
           <input
             type="checkbox"
             className="h-6 w-6 accent-primary"

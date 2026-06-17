@@ -14,6 +14,7 @@ const AUTRES_REGIONS = REGIONS.filter((region) => region !== 'Île-de-France')
 function ResidenceStep() {
   const navigate = useNavigate()
   const dispatch = useAppDispatch()
+  const pourQui = useAppSelector((state) => state.wizard.pourQui)
   const residence = useAppSelector((state) => state.wizard.residence)
   const vitHorsIDF = !residence.resideEnIledeFrance
 
@@ -21,7 +22,7 @@ function ResidenceStep() {
     <WizardStepLayout
       etapeCourante={4}
       totalEtapes={4}
-      titre="Où habitez-vous ?"
+      titre={pourQui === 'TIERS' ? "Où habite le bénéficiaire ?" : "Où habitez-vous ?"}
       onRetour={() => navigate({ to: '/recommandation/frequence' })}
       onSuivant={() => navigate({ to: '/recommandation/resultat' })}
     >
@@ -51,7 +52,7 @@ function ResidenceStep() {
 
       <label className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 p-3">
         <span className="text-sm font-medium text-dark">
-          Je vis en dehors de l'Île-de-France
+          {pourQui === 'TIERS' ? "Il/elle vit en dehors de l'Île-de-France" : "Je vis en dehors de l'Île-de-France"}
         </span>
         <input
           type="checkbox"
@@ -72,8 +73,9 @@ function ResidenceStep() {
         <div className="flex items-start gap-2 rounded-lg bg-blue-pale p-3 text-sm text-dark">
           <Info className="h-5 w-5 shrink-0 text-primary" strokeWidth={1.75} />
           <span>
-            Bon à savoir : des solutions existent aussi si vous n'habitez pas en
-            Île-de-France.
+            {pourQui === 'TIERS'
+            ? "Bon à savoir : des solutions existent aussi si le bénéficiaire n'habite pas en Île-de-France."
+            : "Bon à savoir : des solutions existent aussi si vous n'habitez pas en Île-de-France."}
           </span>
         </div>
       ) : null}

@@ -95,7 +95,7 @@ public class DossierRepositoryAdapter implements DossierRepository {
                         "Statut de dossier introuvable : " + codeStatut));
 
         Dossier dossier = resoudreDossier(nouveauDossier, connecte);
-        appliquerChamps(dossier, nouveauDossier, connecte, typeAbonnement, statut);
+        appliquerChamps(dossier, nouveauDossier, connecte, typeAbonnement, statut, paiementFourni);
         dossierJpaRepository.save(dossier);
 
         enregistrerOuRemplacerPiece(dossier, connecte, CODE_PIECE_IDENTITE, nouveauDossier.cheminPieceIdentite());
@@ -136,7 +136,7 @@ public class DossierRepositoryAdapter implements DossierRepository {
     }
 
     private void appliquerChamps(Dossier dossier, NouveauDossier nouveauDossier, Utilisateur connecte,
-                                  TypeAbonnement typeAbonnement, StatutDossier statut) {
+                                  TypeAbonnement typeAbonnement, StatutDossier statut, boolean paiementFourni) {
         boolean nouveauDossierVierge = dossier.getIdDossier() == null;
         dossier.setUtilisateurPorteur(connecte);
         dossier.setUtilisateurPayeur(connecte);
@@ -146,6 +146,10 @@ public class DossierRepositoryAdapter implements DossierRepository {
             dossier.setCanalCreation(Dossier.CanalCreation.en_ligne);
             dossier.setDateCreation(LocalDateTime.now());
             dossier.setDateDebutDroits(LocalDate.now());
+        }
+        if (paiementFourni) {
+            LocalDate debutDroits = dossier.getDateDebutDroits() != null ? dossier.getDateDebutDroits() : LocalDate.now();
+            dossier.setDateFinDroits(debutDroits.plusYears(1));
         }
         dossier.setMontantTotal(typeAbonnement.getTarifPlein() != null ? typeAbonnement.getTarifPlein() : BigDecimal.ZERO);
         dossier.setPeriodicitePaiement(mapPeriodicite(typeAbonnement.getPeriodicite()));
