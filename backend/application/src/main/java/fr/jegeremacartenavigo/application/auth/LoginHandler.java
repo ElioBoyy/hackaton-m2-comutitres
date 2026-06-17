@@ -2,18 +2,24 @@ package fr.jegeremacartenavigo.application.auth;
 
 import fr.jegeremacartenavigo.application.cqrs.CommandHandler;
 import fr.jegeremacartenavigo.domain.auth.exception.IdentifiantsInvalidesException;
-import fr.jegeremacartenavigo.domain.auth.model.UtilisateurAuth;
+import fr.jegeremacartenavigo.domain.auth.model.CompteAuth;
+import fr.jegeremacartenavigo.domain.auth.port.CompteAuthRepository;
 import fr.jegeremacartenavigo.domain.auth.port.PasswordHasher;
 import fr.jegeremacartenavigo.domain.auth.port.TokenIssuer;
-import fr.jegeremacartenavigo.domain.auth.port.UtilisateurAuthRepository;
 
+/**
+ * Login generique : un compte client ou agent, identifie par email, est
+ * cherche via {@link CompteAuthRepository} (qui compose les repositories
+ * specifiques aux deux types de compte). Le type de compte trouve determine
+ * le claim {@code type} du jeton emis (cf. {@link TokenIssuer#issue(CompteAuth)}).
+ */
 public class LoginHandler implements CommandHandler<LoginCommand, TokenResponse> {
 
-    private final UtilisateurAuthRepository repository;
+    private final CompteAuthRepository repository;
     private final PasswordHasher passwordHasher;
     private final TokenIssuer tokenIssuer;
 
-    public LoginHandler(UtilisateurAuthRepository repository,
+    public LoginHandler(CompteAuthRepository repository,
                         PasswordHasher passwordHasher,
                         TokenIssuer tokenIssuer) {
         this.repository = repository;
@@ -24,17 +30,17 @@ public class LoginHandler implements CommandHandler<LoginCommand, TokenResponse>
     @Override
     public TokenResponse handle(LoginCommand command) {
         String email = command.email().trim().toLowerCase();
-        UtilisateurAuth utilisateur = repository.findByEmail(email)
+        CompteAuth compte = repository.findByEmail(email)
                 .orElseThrow(IdentifiantsInvalidesException::new);
-        if (!passwordHasher.matches(command.password(), utilisateur.motDePasseHash())) {
+        if (!passwordHasher.matches(command.password(), compte.motDePasseHash())) {
             throw new IdentifiantsInvalidesException();
         }
         // Anti-enumeration : compte inactif/suspendu renvoie la meme erreur generique
         // que mot de passe errone, pour ne pas laisser un attaquant en deduire
         // "ce mot de passe est bon, le compte est juste desactive".
-        if (!utilisateur.estActif()) {
+        if (!compte.estActif()) {
             throw new IdentifiantsInvalidesException();
         }
-        return TokenResponse.bearer(tokenIssuer.issue(utilisateur), tokenIssuer.ttlSeconds());
+        return TokenResponse.bearer(tokenIssuer.issue(compte), tokenIssuer.ttlSeconds());
     }
 }

@@ -82,6 +82,15 @@ export JAVA_HOME=/opt/homebrew/opt/openjdk/libexec/openjdk.jdk/Contents/Home
 - Idempotent : ne rejoue rien si la base contient déjà des départements (`DataSeeder`, profil `seed`).
 - Code : [`DataSeeder`](backend/bootstrap/src/main/java/fr/jegeremacartenavigo/bootstrap/seed/DataSeeder.java).
 
+**Comptes de démo (endpoint `POST /auth/login`) :**
+
+| Rôle | Email | Mot de passe | Accès |
+|---|---|---|---|
+| Agent | `claire.dupont@idfm.fr` | `AG-1001-demo` | backoffice (`/backoffice/dashboard`) |
+| Agent | `marc.lefevre@idfm.fr` | `AG-1002-demo` | backoffice (`/backoffice/dashboard`) |
+| Client | `lea.martin@example.com` | `client-demo` | espace client |
+| Client | `karim.haddad@example.com` | `client-demo` | espace client |
+
 ---
 
 ## 2) Frontend — `frontend`

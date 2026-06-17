@@ -47,4 +47,7 @@ public class Agent {
 
     @Column(name = "actif", nullable = false)
     private boolean actif = true;
+
+    @Column(name = "mot_de_passe_hash")
+    private String motDePasseHash;
 }
