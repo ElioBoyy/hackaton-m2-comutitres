@@ -46,6 +46,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/auth/register", "/auth/login")
                         .permitAll()
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                        // Chat RAG (bloquant + streaming + escalade) : ouvert a tous
+                        // (widget public, sans compte). L'admin RAG (ingestion) reste authentifie.
+                        .requestMatchers("/api/chat/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/dossiers/**", "/auth/agent/me").hasAuthority("ROLE_AGENT")
                         .anyRequest().authenticated())

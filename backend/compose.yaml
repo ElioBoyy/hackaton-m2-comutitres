@@ -1,6 +1,8 @@
 services:
   postgres:
-    image: postgres:17
+    # Image pgvector (Postgres 17 + extension vector), requise pour le RAG.
+    # Compatible avec un volume cree par postgres:17 (meme version majeure 17).
+    image: pgvector/pgvector:pg17
     environment:
       POSTGRES_DB: jegeremacartenavigo
       POSTGRES_USER: jgmcn
