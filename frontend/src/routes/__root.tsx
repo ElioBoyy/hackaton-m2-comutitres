@@ -8,6 +8,7 @@ import {
   createRootRoute,
 } from '@tanstack/react-router'
 import appCss from '~/styles/app.css?url'
+import { StoreProvider } from '~/store/StoreProvider'
 import { ChatWidget } from '~/components/ChatWidget'
 import { NotFoundPage } from '~/routes/not-found'
 
@@ -27,7 +28,9 @@ export const Route = createRootRoute({
 function RootComponent() {
   return (
     <RootDocument>
-      <Outlet />
+      <StoreProvider>
+        <Outlet />
+      </StoreProvider>
     </RootDocument>
   )
 }

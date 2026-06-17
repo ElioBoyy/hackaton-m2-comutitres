@@ -21,4 +21,12 @@ public class DossierHandlersConfig {
     GetDossierDetailHandler getDossierDetailHandler(DossierRepository repository) {
         return new GetDossierDetailHandler(repository);
     }
+
+    @Bean
+    ObtenirDashboardUtilisateurHandler obtenirDashboardUtilisateurHandler(
+            UtilisateurIdentiteRepository utilisateurRepository,
+            DossierDashboardRepository dossierRepository,
+            AlerteDashboardRepository alerteRepository) {
+        return new ObtenirDashboardUtilisateurHandler(utilisateurRepository, dossierRepository, alerteRepository);
+    }
 }

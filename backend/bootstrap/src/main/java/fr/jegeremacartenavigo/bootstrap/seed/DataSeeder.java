@@ -10,6 +10,8 @@ import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.identite.Re
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.identite.RelationUtilisateurJpaRepository;
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.identite.Utilisateur;
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.identite.UtilisateurJpaRepository;
+import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.notification.Notification;
+import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.notification.NotificationJpaRepository;
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.referentiel.Departement;
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.referentiel.DepartementJpaRepository;
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.referentiel.RoleAgent;
@@ -65,6 +67,7 @@ public class DataSeeder implements ApplicationRunner {
     private final AdresseJpaRepository adresseRepository;
     private final RelationUtilisateurJpaRepository relationUtilisateurRepository;
     private final DossierJpaRepository dossierRepository;
+    private final NotificationJpaRepository notificationRepository;
     private final PasswordEncoder passwordEncoder;
 
     public DataSeeder(
@@ -80,7 +83,8 @@ public class DataSeeder implements ApplicationRunner {
             AdresseJpaRepository adresseRepository,
             RelationUtilisateurJpaRepository relationUtilisateurRepository,
             DossierJpaRepository dossierRepository,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            NotificationJpaRepository notificationRepository
     ) {
         this.departementRepository = departementRepository;
         this.situationRepository = situationRepository;
@@ -95,6 +99,7 @@ public class DataSeeder implements ApplicationRunner {
         this.relationUtilisateurRepository = relationUtilisateurRepository;
         this.dossierRepository = dossierRepository;
         this.passwordEncoder = passwordEncoder;
+        this.notificationRepository = notificationRepository;
     }
 
     @Override
@@ -116,8 +121,16 @@ public class DataSeeder implements ApplicationRunner {
         seedCategoriesSav();
 
         Agent gestionnaire = seedAgents(roles);
-        Utilisateur etudiante = seedUtilisateursEtAdresses(departements);
-        seedDossierDemo(etudiante, typesAbonnement, statuts, gestionnaire);
+        Map<String, Utilisateur> utilisateurs = seedUtilisateursEtAdresses(departements);
+        Utilisateur etudiante = utilisateurs.get("etudiante");
+        Utilisateur parent = utilisateurs.get("parent");
+        Utilisateur enfant = utilisateurs.get("enfant");
+
+        Dossier dossierActif = seedDossierDemo(etudiante, typesAbonnement, statuts, gestionnaire);
+        seedDossierResilieDemo(etudiante, typesAbonnement, statuts);
+        seedDossierPiecesManquantesDemo(parent, enfant, typesAbonnement, statuts);
+        seedDossierBrouillonDemo(parent, typesAbonnement, statuts);
+        seedNotificationsDemo(etudiante, dossierActif);
 
         log.info("Seed termine.");
     }
@@ -327,7 +340,7 @@ public class DataSeeder implements ApplicationRunner {
         return a;
     }
 
-    private Utilisateur seedUtilisateursEtAdresses(Map<String, Departement> departements) {
+    private Map<String, Utilisateur> seedUtilisateursEtAdresses(Map<String, Departement> departements) {
         Utilisateur etudiante = utilisateur("Martin", "Lea", LocalDate.of(2003, 4, 12),
                 "lea.martin@example.com", "0601020304");
         Utilisateur parent = utilisateur("Haddad", "Karim", LocalDate.of(1980, 9, 23),
@@ -350,7 +363,7 @@ public class DataSeeder implements ApplicationRunner {
         relation.setStatut(RelationUtilisateur.Statut.actif);
         relationUtilisateurRepository.save(relation);
 
-        return etudiante;
+        return Map.of("etudiante", etudiante, "parent", parent, "enfant", enfant);
     }
 
     private Utilisateur utilisateur(String nom, String prenom, LocalDate dateNaissance, String email, String telephone) {
@@ -379,8 +392,8 @@ public class DataSeeder implements ApplicationRunner {
         return a;
     }
 
-    private void seedDossierDemo(Utilisateur porteur, Map<String, TypeAbonnement> types,
-                                  Map<String, StatutDossier> statuts, Agent agentReferent) {
+    private Dossier seedDossierDemo(Utilisateur porteur, Map<String, TypeAbonnement> types,
+                                     Map<String, StatutDossier> statuts, Agent agentReferent) {
         Dossier dossier = new Dossier();
         dossier.setUtilisateurPorteur(porteur);
         dossier.setUtilisateurPayeur(porteur);
@@ -393,6 +406,112 @@ public class DataSeeder implements ApplicationRunner {
         dossier.setDateFinDroits(LocalDate.now().plusMonths(10));
         dossier.setMontantTotal(new BigDecimal("394.00"));
         dossier.setPeriodicitePaiement(Dossier.PeriodicitePaiement.annuel);
+        return dossierRepository.save(dossier);
+    }
+
+    /**
+     * Ancien dossier resilie de Lea : verifie que le filtre par defaut
+     * (caseFilter=ACTIVE) l'exclut, et qu'il ne ressort qu'avec caseFilter=ALL.
+     */
+    private void seedDossierResilieDemo(Utilisateur porteur, Map<String, TypeAbonnement> types,
+                                         Map<String, StatutDossier> statuts) {
+        Dossier dossier = new Dossier();
+        dossier.setUtilisateurPorteur(porteur);
+        dossier.setUtilisateurPayeur(porteur);
+        dossier.setTypeAbonnement(types.get("IMAGINE_R_SCOLAIRE"));
+        dossier.setStatutActuel(statuts.get("RESILIE"));
+        dossier.setCanalCreation(Dossier.CanalCreation.agence);
+        dossier.setDateCreation(LocalDateTime.now().minusYears(1));
+        dossier.setDateDebutDroits(LocalDate.now().minusYears(1));
+        dossier.setDateFinDroits(LocalDate.now().minusMonths(2));
+        dossier.setMontantTotal(new BigDecimal("358.00"));
+        dossier.setPeriodicitePaiement(Dossier.PeriodicitePaiement.annuel);
         dossierRepository.save(dossier);
+    }
+
+    /**
+     * Dossier de Noah (porteur) paye par Karim (payeur) : verifie le role
+     * PAYEUR + l'identite de l'autre partie (le porteur), et le flag
+     * piecesADeposer (statut PIECES_MANQUANTES).
+     */
+    private void seedDossierPiecesManquantesDemo(Utilisateur payeur, Utilisateur porteur,
+                                                  Map<String, TypeAbonnement> types,
+                                                  Map<String, StatutDossier> statuts) {
+        Dossier dossier = new Dossier();
+        dossier.setUtilisateurPorteur(porteur);
+        dossier.setUtilisateurPayeur(payeur);
+        dossier.setTypeAbonnement(types.get("TRANSPORT_SCOLAIRE"));
+        dossier.setStatutActuel(statuts.get("PIECES_MANQUANTES"));
+        dossier.setCanalCreation(Dossier.CanalCreation.en_ligne);
+        dossier.setDateCreation(LocalDateTime.now().minusDays(5));
+        dossier.setMontantTotal(BigDecimal.ZERO);
+        dossier.setPeriodicitePaiement(Dossier.PeriodicitePaiement.annuel);
+        dossierRepository.save(dossier);
+    }
+
+    /**
+     * Brouillon de Karim (porteur+payeur) : demande pas encore terminee cote
+     * client, jamais envoyee pour validation a comutitres. Categorie en_cours
+     * -> doit apparaitre dans le filtre par defaut (ACTIVE), sans declencher
+     * le flag piecesADeposer (reserve a PIECES_MANQUANTES, cf. NAV-013).
+     */
+    private void seedDossierBrouillonDemo(Utilisateur porteurEtPayeur, Map<String, TypeAbonnement> types,
+                                           Map<String, StatutDossier> statuts) {
+        Dossier dossier = new Dossier();
+        dossier.setUtilisateurPorteur(porteurEtPayeur);
+        dossier.setUtilisateurPayeur(porteurEtPayeur);
+        dossier.setTypeAbonnement(types.get("NAVIGO_MENSUEL"));
+        dossier.setStatutActuel(statuts.get("BROUILLON"));
+        dossier.setCanalCreation(Dossier.CanalCreation.en_ligne);
+        dossier.setDateCreation(LocalDateTime.now().minusHours(2));
+        dossier.setMontantTotal(BigDecimal.ZERO);
+        dossier.setPeriodicitePaiement(Dossier.PeriodicitePaiement.mensuel);
+        dossierRepository.save(dossier);
+    }
+
+    /**
+     * Alertes du bandeau dashboard pour Lea : 2 pertinentes et non lues (donc
+     * visibles), + 2 qui doivent etre filtrees (mauvais type, ou deja lue) -
+     * pour pouvoir verifier que le filtre du dashboard fonctionne vraiment.
+     */
+    private void seedNotificationsDemo(Utilisateur utilisateur, Dossier dossier) {
+        notificationRepository.saveAll(List.of(
+                notification(utilisateur, dossier, Notification.TypeNotification.nouvelle_reduction_disponible,
+                        "Nouvelle reduction disponible",
+                        "Vous etes peut-etre eligible a une remise tarifaire suite a un changement de situation.",
+                        Notification.StatutLecture.non_lu),
+                notification(utilisateur, dossier, Notification.TypeNotification.remboursement_disponible,
+                        "Remboursement disponible",
+                        "Un remboursement partiel est disponible sur votre dossier.",
+                        Notification.StatutLecture.non_lu),
+                notification(utilisateur, dossier, Notification.TypeNotification.nouvelle_reduction_disponible,
+                        "Reduction (deja vue)",
+                        "Alerte deja lue : ne doit pas apparaitre dans le bandeau.",
+                        Notification.StatutLecture.lu),
+                notification(utilisateur, dossier, Notification.TypeNotification.rappel_paiement,
+                        "Rappel de paiement",
+                        "Type hors perimetre du bandeau reduction/remboursement : ne doit pas apparaitre.",
+                        Notification.StatutLecture.non_lu)
+        ));
+    }
+
+    private Notification notification(Utilisateur utilisateur, Dossier dossier,
+                                        Notification.TypeNotification type, String titre, String contenu,
+                                        Notification.StatutLecture statutLecture) {
+        Notification n = new Notification();
+        n.setUtilisateur(utilisateur);
+        n.setDossier(dossier);
+        n.setTypeNotification(type);
+        n.setTitre(titre);
+        n.setContenu(contenu);
+        n.setCanal(Notification.Canal.in_app);
+        n.setDateCreation(LocalDateTime.now().minusDays(1));
+        n.setStatutEnvoi(Notification.StatutEnvoi.envoyee);
+        n.setDateEnvoi(LocalDateTime.now().minusDays(1));
+        n.setStatutLecture(statutLecture);
+        if (statutLecture == Notification.StatutLecture.lu) {
+            n.setDateLecture(LocalDateTime.now());
+        }
+        return n;
     }
 }

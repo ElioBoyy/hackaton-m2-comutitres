@@ -87,6 +87,22 @@ public class Dossier {
     @Column(name = "periodicite_paiement", length = 10, nullable = false)
     private PeriodicitePaiement periodicitePaiement;
 
+    // Colonnes ajoutees en V9 pour le RecommendationWizard front (cf.
+    // CONTEXT.md) : situation et beneficiaire en texte libre plutot que
+    // relies a `situation`/`utilisateur`, ces referentiels/relations n'etant
+    // fiables qu'en environnement seede.
+    @Column(name = "situation_code", length = 30, nullable = false)
+    private String situationCode;
+
+    @Column(name = "situation_precision", length = 200)
+    private String situationPrecision;
+
+    @Column(name = "boursier", nullable = false)
+    private boolean boursier = false;
+
+    @Column(name = "beneficiaire_nom_complet", length = 200)
+    private String beneficiaireNomComplet;
+
     public enum CanalCreation {
         en_ligne, agence, backoffice
     }

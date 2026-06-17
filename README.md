@@ -57,7 +57,7 @@ export JAVA_HOME=/opt/homebrew/opt/openjdk/libexec/openjdk.jdk/Contents/Home
 ```
 
 - API sur **http://localhost:8080**, santé : **http://localhost:8080/actuator/health**.
-- Doc API (Swagger UI) : **http://localhost:8080/swagger-ui.html** (JSON OpenAPI : `/v3/api-docs`).
+- Doc API (Swagger UI) : **http://localhost:8080/swagger-ui.html** (JSON OpenAPI : `/v3/api-docs`). Pour appeler une route protégée depuis Swagger : récupérer un token via `/auth/login`, puis bouton **Authorize** en haut de la page.
 - Au démarrage, Spring lance le conteneur `postgres:17` défini dans `compose.yaml` et câble la datasource. À l'arrêt, il l'arrête.
 
 > **Port PostgreSQL = 5434 (côté hôte)** : `5432` et `5433` sont déjà occupés sur ce poste par d'autres projets (`scruti-*`). Pour revenir au standard `5432`, éditez `compose.yaml` (`"5432:5432"`) **et** `spring.datasource.url` dans `application.yml`.
@@ -71,6 +71,10 @@ export JAVA_HOME=/opt/homebrew/opt/openjdk/libexec/openjdk.jdk/Contents/Home
 ```
 
 > Vérifié : build sans warning, et démarrage end-to-end (Postgres + JPA + Tomcat + CORS + middleware) confirmé.
+
+### Tester l'API (Postman)
+
+Collection : [`backend/postman/jegeremacartenavigo.postman_collection.json`](backend/postman/jegeremacartenavigo.postman_collection.json) — à importer dans Postman. Variables `baseUrl` (défaut `http://localhost:8080`) et `accessToken` (rempli automatiquement par les requêtes `Login`/`Register`).
 
 ### Données de seed (dev/démo)
 
