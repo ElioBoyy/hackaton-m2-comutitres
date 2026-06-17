@@ -1,4 +1,5 @@
 import { Bell, CreditCard, Tag } from 'lucide-react'
+import { m } from '~/paraglide/messages'
 import type { AlerteDashboard } from '~/lib/dashboard'
 
 function formatDate(iso: string): string {
@@ -15,7 +16,7 @@ export function AlerteCard({ alerte }: { alerte: AlerteDashboard }) {
   return (
     <article
       className="flex gap-3 rounded-2xl border border-warning/30 bg-warning/10 px-4 py-3"
-      aria-label={`Alerte : ${alerte.titre}`}
+      aria-label={`${m.dashboard_notifications()} : ${alerte.titre}`}
     >
       <div className="mt-0.5 shrink-0 text-warning">
         <IconAlerte type={alerte.type} />

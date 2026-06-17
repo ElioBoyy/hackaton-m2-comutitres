@@ -36,6 +36,7 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+    ignore-migration-patterns: "*:missing"
 
   # --- Docker Compose (dev) ---
   # Au demarrage, Spring Boot lance compose.yaml (situe a la racine backend) et

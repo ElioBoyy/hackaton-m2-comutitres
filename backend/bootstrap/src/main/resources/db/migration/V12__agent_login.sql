@@ -2,4 +2,4 @@
 -- (jusqu'ici Agent etait une table purement referentielle, sans login).
 
 ALTER TABLE agent
-    ADD COLUMN mot_de_passe_hash VARCHAR(255);
+    ADD COLUMN IF NOT EXISTS mot_de_passe_hash VARCHAR(255);
