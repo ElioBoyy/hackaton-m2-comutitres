@@ -1,6 +1,6 @@
 package fr.jegeremacartenavigo.infrastructure.adapter.out.security;
 
-import fr.jegeremacartenavigo.domain.auth.model.AgentAuth;
+import fr.jegeremacartenavigo.domain.auth.model.CompteAuth;
 import fr.jegeremacartenavigo.domain.auth.model.UtilisateurAuth;
 import fr.jegeremacartenavigo.domain.auth.port.TokenIssuer;
 import fr.jegeremacartenavigo.infrastructure.config.security.JwtProperties;
@@ -36,8 +36,8 @@ public class JwtTokenIssuerAdapter implements TokenIssuer {
     }
 
     @Override
-    public String issue(AgentAuth agent) {
-        return issue(agent.id(), agent.email(), "agent");
+    public String issue(CompteAuth compte) {
+        return issue(compte.id(), compte.email(), compte.role().name().toLowerCase());
     }
 
     private String issue(Integer id, String email, String type) {

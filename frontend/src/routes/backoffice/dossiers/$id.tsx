@@ -2,7 +2,8 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { BackofficeLayout } from '~/components/backoffice/BackofficeLayout'
 import { ApiError } from '~/lib/api'
-import { agentMe, isAuthenticated, logout } from '~/lib/agentAuth'
+import { agentMe } from '~/lib/agentAuth'
+import { isAuthenticated, logout } from '~/lib/auth'
 
 export const Route = createFileRoute('/backoffice/dossiers/$id')({
   component: DossierDetail,
@@ -28,6 +29,10 @@ function DossierDetail() {
       .catch((err) => {
         if (err instanceof ApiError && (err.status === 401 || err.status === 404)) {
           handleUnauthorized()
+          return
+        }
+        if (err instanceof ApiError && err.status === 403) {
+          navigate({ to: '/not-found' })
         }
       })
     // eslint-disable-next-line react-hooks/exhaustive-deps

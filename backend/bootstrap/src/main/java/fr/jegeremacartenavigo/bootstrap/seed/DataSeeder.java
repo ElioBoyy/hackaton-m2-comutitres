@@ -360,14 +360,13 @@ public class DataSeeder implements ApplicationRunner {
         u.setDateNaissance(dateNaissance);
         u.setEmail(email);
         u.setTelephone(telephone);
-        u.setMotDePasseHash("{noop}seed-password");
+        u.setMotDePasseHash(passwordEncoder.encode("client-demo"));
         u.setDateCreationCompte(LocalDateTime.now());
         u.setStatutCompte(Utilisateur.StatutCompte.actif);
         return u;
     }
 
-    private Adresse adresse(Utilisateur utilisateur, Departement departement, String numeroEtVoie,
-                             String codePostal, String ville) {
+    private Adresse adresse(Utilisateur utilisateur, Departement departement, String numeroEtVoie, String codePostal, String ville) {
         Adresse a = new Adresse();
         a.setUtilisateur(utilisateur);
         a.setTypeAdresse(Adresse.TypeAdresse.domicile);

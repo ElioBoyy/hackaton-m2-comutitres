@@ -8,8 +8,10 @@ import {
   createRootRoute,
 } from '@tanstack/react-router'
 import appCss from '~/styles/app.css?url'
+import { NotFoundPage } from '~/routes/not-found'
 
 export const Route = createRootRoute({
+  notFoundComponent: NotFoundPage,
   head: () => ({
     meta: [
       { charSet: 'utf-8' },

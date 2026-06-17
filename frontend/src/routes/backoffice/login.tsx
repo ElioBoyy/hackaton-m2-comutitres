@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { ApiError } from '~/lib/api'
-import { agentLogin } from '~/lib/agentAuth'
+import { login } from '~/lib/auth'
 import { parseViolations, validateEmail, validatePassword } from '~/lib/validation'
 import { AuthLayout } from '~/components/AuthLayout'
 import { Field } from '~/components/Field'
@@ -51,7 +51,7 @@ function BackofficeLoginPage() {
 
     setPending(true)
     try {
-      await agentLogin(form.email.trim(), form.password)
+      await login(form.email.trim(), form.password)
       await navigate({ to: '/backoffice/dashboard' })
     } catch (err) {
       if (err instanceof ApiError) {

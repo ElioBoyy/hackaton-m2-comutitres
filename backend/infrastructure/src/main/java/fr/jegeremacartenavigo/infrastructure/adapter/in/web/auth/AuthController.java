@@ -1,6 +1,5 @@
 package fr.jegeremacartenavigo.infrastructure.adapter.in.web.auth;
 
-import fr.jegeremacartenavigo.application.auth.AgentLoginCommand;
 import fr.jegeremacartenavigo.application.auth.LoginCommand;
 import fr.jegeremacartenavigo.application.auth.RegisterCommand;
 import fr.jegeremacartenavigo.application.auth.TokenResponse;
@@ -48,11 +47,6 @@ public class AuthController {
 
     @PostMapping("/login")
     public TokenResponse login(@RequestBody @Valid LoginCommand command) {
-        return commandBus.send(command);
-    }
-
-    @PostMapping("/agent/login")
-    public TokenResponse agentLogin(@RequestBody @Valid AgentLoginCommand command) {
         return commandBus.send(command);
     }
 

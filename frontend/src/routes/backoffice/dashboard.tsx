@@ -7,7 +7,8 @@ import { DossierTable } from '~/components/backoffice/DossierTable'
 import { Pagination } from '~/components/backoffice/Pagination'
 import { WelcomeBanner } from '~/components/backoffice/WelcomeBanner'
 import { ApiError, getDossiers } from '~/lib/api'
-import { agentMe, isAuthenticated, logout } from '~/lib/agentAuth'
+import { agentMe } from '~/lib/agentAuth'
+import { isAuthenticated, logout } from '~/lib/auth'
 import type { DossierResume, StatutCategorie } from '~/lib/types/dossier'
 
 const PAGE_SIZE = 10
@@ -62,6 +63,10 @@ function BackofficeDashboard() {
         if (cancelled) return
         if (err instanceof ApiError && err.status === 401) {
           handleUnauthorized()
+          return
+        }
+        if (err instanceof ApiError && err.status === 403) {
+          navigate({ to: '/not-found' })
           return
         }
         setError('Impossible de charger les dossiers pour le moment.')

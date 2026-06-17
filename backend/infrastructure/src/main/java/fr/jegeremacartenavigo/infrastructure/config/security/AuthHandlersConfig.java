@@ -1,9 +1,8 @@
 package fr.jegeremacartenavigo.infrastructure.config.security;
 
-import fr.jegeremacartenavigo.application.auth.AgentLoginHandler;
 import fr.jegeremacartenavigo.application.auth.LoginHandler;
 import fr.jegeremacartenavigo.application.auth.RegisterHandler;
-import fr.jegeremacartenavigo.domain.auth.port.AgentAuthRepository;
+import fr.jegeremacartenavigo.domain.auth.port.CompteAuthRepository;
 import fr.jegeremacartenavigo.domain.auth.port.PasswordHasher;
 import fr.jegeremacartenavigo.domain.auth.port.TokenIssuer;
 import fr.jegeremacartenavigo.domain.auth.port.UtilisateurAuthRepository;
@@ -25,16 +24,9 @@ public class AuthHandlersConfig {
     }
 
     @Bean
-    LoginHandler loginHandler(UtilisateurAuthRepository repository,
+    LoginHandler loginHandler(CompteAuthRepository repository,
                               PasswordHasher passwordHasher,
                               TokenIssuer tokenIssuer) {
         return new LoginHandler(repository, passwordHasher, tokenIssuer);
-    }
-
-    @Bean
-    AgentLoginHandler agentLoginHandler(AgentAuthRepository repository,
-                                         PasswordHasher passwordHasher,
-                                         TokenIssuer tokenIssuer) {
-        return new AgentLoginHandler(repository, passwordHasher, tokenIssuer);
     }
 }
