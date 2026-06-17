@@ -363,7 +363,8 @@ public class DataSeeder implements ApplicationRunner {
         relation.setStatut(RelationUtilisateur.Statut.actif);
         relationUtilisateurRepository.save(relation);
 
-        return Map.of("etudiante", etudiante, "parent", parent, "enfant", enfant);
+        return Map.of("etudiante", etudiante, "parent", parent, "enfant", enfant,
+                "retraite", retraite, "alternante", alternante);
     }
 
     private Utilisateur utilisateur(String nom, String prenom, LocalDate dateNaissance, String email, String telephone) {

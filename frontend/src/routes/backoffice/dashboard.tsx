@@ -91,7 +91,7 @@ function BackofficeDashboard() {
 
   return (
     <BackofficeLayout agentName={agentName} onLogout={handleUnauthorized}>
-      <div className="mx-auto flex max-w-6xl flex-col gap-6">
+      <div className="flex flex-col gap-6">
         <ClientSearchBar />
 
         <div className="rounded-2xl border border-gray-200 bg-white">
