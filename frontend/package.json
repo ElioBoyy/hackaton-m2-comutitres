@@ -13,8 +13,10 @@
     "@fontsource/ibm-plex-mono": "^5.2.7",
     "@fontsource/inter": "^5.2.8",
     "@fontsource/outfit": "^5.2.8",
+    "@inlang/paraglide-js": "^2.19.0",
     "@reduxjs/toolkit": "^2.12.0",
     "@tailwindcss/vite": "^4.3.1",
+    "@tanstack/react-form": "^1.33.0",
     "@tanstack/react-router": "^1.170.15",
     "@tanstack/react-router-devtools": "^1.167.0",
     "@tanstack/react-start": "^1.168.25",
@@ -22,7 +24,8 @@
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-redux": "^9.3.0",
-    "tailwindcss": "^4.3.1"
+    "tailwindcss": "^4.3.1",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^22.5.4",

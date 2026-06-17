@@ -11,7 +11,7 @@ export function Button({
   ...rest
 }: ButtonProps) {
   const base =
-    'w-full rounded-xl px-4 py-3 font-semibold text-base transition outline-none cursor-pointer focus:ring-2 focus:ring-primary/30 disabled:opacity-50 disabled:cursor-not-allowed'
+    'w-full rounded-xl px-4 py-3 font-semibold text-base transition outline-none cursor-pointer focus:ring-2 focus:ring-primary/30 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]'
   const variantClass =
     variant === 'primary'
       ? 'bg-focus text-white hover:bg-focus/90 active:bg-focus/95'
