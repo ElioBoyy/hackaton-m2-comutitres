@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { TicketCheck } from 'lucide-react'
-import { Button } from '~/components/ui/Button'
+import { Button } from '~/components/Button'
 
 export const Route = createFileRoute('/recommandation/')({
   component: RecommandationIntro,
@@ -10,7 +10,7 @@ function RecommandationIntro() {
   const navigate = useNavigate()
 
   return (
-    <main className="mx-auto flex max-w-md flex-col gap-6 py-12 text-center">
+    <main className="mx-auto flex max-w-2xl flex-col gap-6 py-12 text-center">
       <div className="flex flex-col items-center gap-3">
         <div className="flex h-14 w-14 items-center justify-center border-2 border-dark bg-white">
           <TicketCheck className="h-7 w-7 text-primary" strokeWidth={1.75} />

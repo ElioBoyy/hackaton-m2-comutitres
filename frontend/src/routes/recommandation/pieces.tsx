@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { BadgeCheck, GraduationCap, IdCard, Loader2, Receipt, Sparkles } from 'lucide-react'
 import * as React from 'react'
-import { Button } from '~/components/ui/Button'
+import { Button } from '~/components/Button'
 import { piecesSontCompletes } from '~/domain/pieces'
 import { useAppDispatch, useAppSelector } from '~/store/hooks'
 import {
@@ -53,7 +53,7 @@ function PiecesStep() {
 
   if (enPreVerification) {
     return (
-      <main className="mx-auto flex max-w-md flex-col items-center gap-4 py-24 text-center">
+      <main className="mx-auto flex max-w-2xl flex-col items-center gap-4 py-24 text-center">
         <Loader2 className="h-10 w-10 animate-spin text-primary" strokeWidth={1.75} />
         <p className="font-heading text-lg font-bold text-dark">
           {pourQui === 'TIERS' ? "L'IA pré-vérifie les pièces du bénéficiaire..." : "L'IA pré-vérifie vos pièces..."}
@@ -65,7 +65,7 @@ function PiecesStep() {
 
   if (preVerifie) {
     return (
-      <main className="mx-auto flex max-w-md flex-col items-center gap-4 py-24 text-center">
+      <main className="mx-auto flex max-w-2xl flex-col items-center gap-4 py-24 text-center">
         <BadgeCheck className="h-10 w-10 text-success" strokeWidth={1.75} />
         <p className="font-heading text-lg font-bold text-dark">Pièces pré-vérifiées</p>
         <p className="text-sm text-gray-700">
@@ -81,7 +81,7 @@ function PiecesStep() {
   }
 
   return (
-    <main className="mx-auto flex max-w-md flex-col gap-6 py-8">
+    <main className="mx-auto flex max-w-2xl flex-col gap-6 py-8">
       <h1 className="font-heading text-2xl font-bold tracking-tight text-dark">
         {pourQui === 'TIERS' ? "Pièces justificatives du bénéficiaire" : "Vos pièces justificatives"}
       </h1>
@@ -123,7 +123,7 @@ function PiecesStep() {
             Pré-vérifier avec l'IA
           </span>
         </Button>
-        <Button variant="secondary" onClick={continuerSansPreVerification}>
+        <Button variant="ghost" onClick={continuerSansPreVerification}>
           Continuer sans pré-vérification
         </Button>
         {!piecesCompletes ? (
