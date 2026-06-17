@@ -7,6 +7,7 @@ import { DashboardLayout } from '~/components/DashboardLayout'
 import { AlerteCard } from '~/components/AlerteCard'
 import { DossierCard } from '~/components/DossierCard'
 import { FiltreToggle } from '~/components/FiltreToggle'
+import { m } from '~/paraglide/messages'
 
 export const Route = createFileRoute('/dashboard')({
   component: DashboardPage,
@@ -37,8 +38,8 @@ function DashboardPage() {
         }
         setError(
           err instanceof ApiError
-            ? 'Impossible de charger le tableau de bord. Reessayez plus tard.'
-            : 'Impossible de joindre le serveur.',
+            ? m.dashboard_error_load()
+            : m.auth_server_unreachable(),
         )
       })
       .finally(() => { if (!cancelled) setLoading(false) })
@@ -52,7 +53,7 @@ function DashboardPage() {
           <div className="h-2 overflow-hidden rounded-full bg-gray-200">
             <div className="h-full w-1/2 animate-pulse bg-primary" />
           </div>
-          <p className="mt-3 text-center text-sm text-gray-700">Chargement de votre tableau de bord…</p>
+          <p className="mt-3 text-center text-sm text-gray-700">{m.dashboard_loading()}</p>
         </div>
       </div>
     )
@@ -72,24 +73,15 @@ function DashboardPage() {
   const userName = `${prenom} ${nom}`
 
   return (
-    <DashboardLayout userName={userName} alertes={data.alertes}>
-      <div className="mx-auto flex max-w-2xl flex-col gap-6">
+    <DashboardLayout title={m.dashboard_title()} userName={userName} alertes={data.alertes}>
+      <div className="mx-auto flex max-w-4xl flex-col gap-6">
 
-        {/* Bandeau de bienvenue */}
-        <div className="rounded-2xl bg-primary px-6 py-5 text-white">
-          <h1 className="font-heading text-xl font-semibold">Bonjour {prenom}</h1>
-          <p className="mt-1 text-sm text-blue-soft">
-            Retrouvez ici vos abonnements et notifications.
-          </p>
-        </div>
-
-        {/* Alertes */}
         {data.alertes.length > 0 && (
           <section aria-labelledby="alertes-titre">
             <h2 id="alertes-titre" className="mb-3 font-heading text-sm font-semibold text-gray-900">
-              Notifications
+              {m.dashboard_notifications()}
             </h2>
-            <div className="flex flex-col gap-3" role="list" aria-label="Liste des alertes">
+            <div className="flex flex-col gap-3" role="list" aria-label={m.dashboard_notifications()}>
               {data.alertes.map((a) => (
                 <div key={a.idNotification} role="listitem">
                   <AlerteCard alerte={a} />
@@ -99,33 +91,30 @@ function DashboardPage() {
           </section>
         )}
 
-        {/* Dossiers */}
         <section aria-labelledby="dossiers-titre">
           <div className="rounded-2xl border border-gray-200 bg-white">
             <div className="flex items-center justify-between gap-4 border-b border-gray-200 p-4">
               <h2 id="dossiers-titre" className="font-heading text-sm font-semibold text-gray-900">
-                Mes dossiers
+                {m.dashboard_title()}
               </h2>
               <FiltreToggle value={filtre} onChange={setFiltre} />
             </div>
 
             {loading ? (
-              <p className="px-4 py-6 text-sm text-gray-700">Chargement des dossiers...</p>
-            ) : error ? (
-              <p className="px-4 py-6 text-sm text-danger">{error}</p>
+              <p className="px-4 py-6 text-sm text-gray-700">{m.dashboard_loading_subscriptions()}</p>
             ) : data.dossiers.length === 0 ? (
               <p className="px-4 py-6 text-sm text-gray-700">
-                {filtre === 'ACTIVE' ? 'Aucun dossier actif.' : 'Aucun dossier.'}
+                {filtre === 'ACTIVE' ? m.dashboard_no_active() : m.dashboard_no_subscription()}
               </p>
             ) : (
-              <table className="w-full text-left" aria-label="Liste des dossiers">
+              <table className="w-full text-left" aria-label={m.dashboard_title()}>
                 <thead>
                   <tr className="border-b border-gray-200">
-                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-700">Abonnement</th>
-                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-700">Statut</th>
-                    <th className="hidden px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-700 sm:table-cell">Droits</th>
-                    <th className="hidden px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-700 sm:table-cell">Montant</th>
-                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-700">Pieces</th>
+                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-700">{m.dashboard_col_subscription()}</th>
+                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-700">{m.dashboard_col_status()}</th>
+                    <th className="hidden px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-700 sm:table-cell">{m.dashboard_col_rights()}</th>
+                    <th className="hidden px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-700 sm:table-cell">{m.dashboard_col_amount()}</th>
+                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-700">{m.dashboard_col_documents()}</th>
                     <th className="px-4 py-3" />
                   </tr>
                 </thead>
@@ -138,7 +127,6 @@ function DashboardPage() {
             )}
           </div>
         </section>
-
       </div>
     </DashboardLayout>
   )
