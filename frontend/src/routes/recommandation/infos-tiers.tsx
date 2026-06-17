@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Button } from '~/components/Button'
+import { m } from '~/paraglide/messages'
 import { useAppDispatch, useAppSelector } from '~/store/hooks'
 import { infosTiersDefinies } from '~/store/wizardSlice'
 
@@ -17,14 +18,14 @@ function InfosTiersStep() {
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-6 py-8">
       <h1 className="font-heading text-2xl font-bold tracking-tight text-dark">
-        Pour qui faites-vous cette demande ?
+        {m.wizard_infos_tiers_title()}
       </h1>
       <p className="text-gray-700">
-        Indiquez les informations du bénéficiaire de l'abonnement.
+        {m.wizard_infos_tiers_subtitle()}
       </p>
 
       <label className="flex flex-col gap-1 text-sm font-medium text-gray-700">
-        Prénom
+        {m.wizard_infos_tiers_prenom()}
         <input
           type="text"
           className="rounded-lg border border-gray-300 bg-white px-3 py-2 font-sans text-dark"
@@ -36,7 +37,7 @@ function InfosTiersStep() {
       </label>
 
       <label className="flex flex-col gap-1 text-sm font-medium text-gray-700">
-        Nom
+        {m.wizard_infos_tiers_nom()}
         <input
           type="text"
           className="rounded-lg border border-gray-300 bg-white px-3 py-2 font-sans text-dark"
@@ -49,14 +50,14 @@ function InfosTiersStep() {
 
       <div className="mt-4 flex items-center justify-between gap-3">
         <Button variant="ghost" onClick={() => navigate({ to: '/recommandation/detail' })}>
-          Retour
+          {m.common_back()}
         </Button>
         <Button
           onClick={() => navigate({ to: '/recommandation/pieces' })}
           disabled={!complet}
           className="flex-1"
         >
-          Suivant
+          {m.common_next()}
         </Button>
       </div>
     </main>

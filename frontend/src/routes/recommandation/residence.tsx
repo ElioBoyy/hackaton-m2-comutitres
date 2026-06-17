@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Info, MapPin } from 'lucide-react'
 import { WizardStepLayout } from '~/components/ui/WizardStepLayout'
 import { REGIONS, type Region } from '~/domain/residence'
+import { m } from '~/paraglide/messages'
 import { useAppDispatch, useAppSelector } from '~/store/hooks'
 import { residenceDefinie } from '~/store/wizardSlice'
 
@@ -22,12 +23,12 @@ function ResidenceStep() {
     <WizardStepLayout
       etapeCourante={4}
       totalEtapes={4}
-      titre={pourQui === 'TIERS' ? "Où habite le bénéficiaire ?" : "Où habitez-vous ?"}
+      titre={pourQui === 'TIERS' ? m.wizard_residence_title_other() : m.wizard_residence_title_self()}
       onRetour={() => navigate({ to: '/recommandation/frequence' })}
       onSuivant={() => navigate({ to: '/recommandation/resultat' })}
     >
       <div className="flex flex-col gap-1">
-        <span className="text-sm font-medium text-gray-700">Région</span>
+        <span className="text-sm font-medium text-gray-700">{m.wizard_residence_region()}</span>
         {vitHorsIDF ? (
           <select
             className="rounded-lg border border-gray-300 bg-white px-3 py-2 font-sans text-dark"
@@ -52,7 +53,7 @@ function ResidenceStep() {
 
       <label className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 p-3">
         <span className="text-sm font-medium text-dark">
-          {pourQui === 'TIERS' ? "Il/elle vit en dehors de l'Île-de-France" : "Je vis en dehors de l'Île-de-France"}
+          {pourQui === 'TIERS' ? m.wizard_residence_outside_idf_other() : m.wizard_residence_outside_idf_self()}
         </span>
         <input
           type="checkbox"
@@ -73,9 +74,7 @@ function ResidenceStep() {
         <div className="flex items-start gap-2 rounded-lg bg-blue-pale p-3 text-sm text-dark">
           <Info className="h-5 w-5 shrink-0 text-primary" strokeWidth={1.75} />
           <span>
-            {pourQui === 'TIERS'
-            ? "Bon à savoir : des solutions existent aussi si le bénéficiaire n'habite pas en Île-de-France."
-            : "Bon à savoir : des solutions existent aussi si vous n'habitez pas en Île-de-France."}
+            {pourQui === 'TIERS' ? m.wizard_residence_outside_idf_info_other() : m.wizard_residence_outside_idf_info_self()}
           </span>
         </div>
       ) : null}

@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { TicketCheck } from 'lucide-react'
 import { Button } from '~/components/Button'
+import { m } from '~/paraglide/messages'
 
 export const Route = createFileRoute('/recommandation/')({
   component: RecommandationIntro,
@@ -19,15 +20,14 @@ function RecommandationIntro() {
           [ Comutitres Copilot ]
         </span>
         <h1 className="font-heading text-3xl font-bold tracking-tight text-dark">
-          L'abonnement qui vous correspond, simplement.
+          {m.wizard_intro_title()}
         </h1>
         <p className="text-gray-700">
-          Un assistant intelligent et inclusif qui vous guide à chaque étape pour
-          trouver le meilleur abonnement adapté à votre situation et votre vie.
+          {m.wizard_intro_description()}
         </p>
       </div>
       <Button onClick={() => navigate({ to: '/recommandation/pour-qui' })}>
-        Commencer
+        {m.wizard_intro_cta()}
       </Button>
     </main>
   )
