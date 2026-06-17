@@ -171,6 +171,10 @@ export function ChatWidget() {
 function Bulle({ message, enCours }: { message: Message; enCours: boolean }) {
   const estUtilisateur = message.role === 'utilisateur'
   const enAttente = !estUtilisateur && enCours && message.texte === ''
+  // Sources affichees = uniquement les citations avec une URL officielle, dedupliquees.
+  const sources = Array.from(
+    new Map((message.citations ?? []).filter((c) => c.url).map((c) => [c.url, c])).values(),
+  )
 
   return (
     <div className={`flex ${estUtilisateur ? 'justify-end' : 'justify-start'}`}>
@@ -188,7 +192,7 @@ function Bulle({ message, enCours }: { message: Message; enCours: boolean }) {
             <span className="chat-typing-dot" />
           </span>
         ) : (
-          message.texte
+          <TexteRiche texte={message.texte} />
         )}
 
         {message.escalade && (
@@ -198,34 +202,50 @@ function Bulle({ message, enCours }: { message: Message; enCours: boolean }) {
           </div>
         )}
 
-        {message.citations && message.citations.length > 0 && (
-          <div className="mt-2 border-t border-gray-200 pt-1.5 text-xs text-gray-700">
-            <span className="font-medium">Sources&nbsp;:</span>
-            <ol className="mt-0.5 list-decimal pl-4">
-              {message.citations.map((c) => {
-                const libelle = c.titre ?? c.cheminSource
-                return (
-                  <li key={c.index}>
-                    {c.url ? (
-                      <a
-                        href={c.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-primary underline underline-offset-2 hover:text-focus"
-                      >
-                        {libelle}
-                      </a>
-                    ) : (
-                      libelle
-                    )}
-                  </li>
-                )
-              })}
-            </ol>
+        {sources.length > 0 && (
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-gray-200 pt-1.5 text-xs">
+            <span className="font-medium text-gray-700">Sources&nbsp;:</span>
+            {sources.map((c, i) => (
+              <a
+                key={c.url}
+                href={c.url ?? undefined}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-0.5 text-primary underline underline-offset-2 hover:text-focus"
+              >
+                En savoir plus{sources.length > 1 ? ` (${i + 1})` : ''}
+                <span aria-hidden="true">↗</span>
+              </a>
+            ))}
           </div>
         )}
       </div>
     </div>
+  )
+}
+
+/**
+ * Rendu minimal du markdown renvoye par le modele : **gras** -> <strong>, les
+ * retours a la ligne etant deja geres par `whitespace-pre-wrap`. Les `**` non
+ * appairies sont simplement retires.
+ */
+function TexteRiche({ texte }: { texte: string }) {
+  // Retire les renvois de citation du modele ([1], [4][6], [1, 3]...) : ils ne
+  // servaient qu'a extraire les sources cote backend, on affiche des liens a la place.
+  const nettoye = texte
+    .replace(/\s?\[\s*\d+(?:\s*[,;]\s*\d+)*\s*\]/g, '')
+    .replace(/[ \t]+([.,;:!?])/g, '$1')
+  const segments = nettoye.split('**')
+  return (
+    <>
+      {segments.map((seg, i) =>
+        i % 2 === 1 ? (
+          <strong key={i}>{seg}</strong>
+        ) : (
+          <React.Fragment key={i}>{seg}</React.Fragment>
+        ),
+      )}
+    </>
   )
 }
 
