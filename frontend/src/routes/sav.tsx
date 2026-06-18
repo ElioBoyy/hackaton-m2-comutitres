@@ -662,14 +662,17 @@ function SavPage() {
       <div className="mx-auto flex max-w-4xl flex-col gap-6">
 
         {/* Bandeau numéro de téléphone */}
-        <div className="flex flex-col gap-3 rounded-2xl border border-primary/20 bg-blue-pale p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div
+          id="contact"
+          className="flex scroll-mt-20 flex-col gap-3 rounded-2xl border border-primary/20 bg-blue-pale p-5 sm:flex-row sm:items-center sm:justify-between"
+        >
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary">
               <Phone size={18} className="text-white" aria-hidden="true" />
             </div>
             <div>
               <p className="font-heading text-sm font-semibold text-dark">Service client Navigo</p>
-              <p className="text-xs text-gray-700">Lun–ven 7h–20h · Sam 9h–17h · Appel non surtaxé</p>
+              <p className="text-xs text-gray-700">24h/24 · 7j/7 · Appel non surtaxé</p>
             </div>
           </div>
           <a

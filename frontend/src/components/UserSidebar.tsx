@@ -4,6 +4,7 @@ import {
   FileText,
   HelpCircle,
   Home,
+  MapPin,
   MessageCircle,
   Search,
   Settings,
@@ -24,6 +25,7 @@ interface NavItem {
 const PUBLIC_ITEMS: NavItem[] = [
   { labelKey: 'nav_home', icon: Home, to: '/' },
   { labelKey: 'nav_diagnostic', icon: ScanSearch, to: '/recommandation' },
+  { labelKey: 'nav_points_de_vente', icon: MapPin, to: '/points-de-vente' },
   { labelKey: 'nav_help_contacts', icon: HelpCircle, to: '/aide' },
 ]
 
@@ -33,7 +35,7 @@ const AUTH_ITEMS: NavItem[] = [
   { labelKey: 'nav_diagnostic', icon: ScanSearch, to: '/recommandation/pour-qui' },
   { labelKey: 'nav_my_subscriptions', icon: CalendarDays, to: '/dashboard' },
   { labelKey: 'nav_my_documents', icon: FileText, to: '/mes-documents' },
-  { labelKey: 'nav_my_info', icon: User },
+  { labelKey: 'nav_points_de_vente', icon: MapPin, to: '/points-de-vente' },
   { labelKey: 'nav_help_contacts', icon: HelpCircle, to: '/sav' },
   { labelKey: 'nav_settings', icon: Settings },
 ]
@@ -125,13 +127,14 @@ export function UserSidebar({ isOpen, onClose }: UserSidebarProps) {
               <p className="text-sm font-semibold text-primary">{m.help_title()}</p>
             </div>
             <p className="mb-3 text-xs text-gray-700">{m.help_subtitle()}</p>
-            <a
-              href="#contact"
+            <Link
+              to="/sav"
+              hash="contact"
               className="inline-flex items-center gap-1.5 text-sm font-medium text-primary transition hover:underline focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
               {m.help_contact_cta()}
               <span aria-hidden="true">→</span>
-            </a>
+            </Link>
           </div>
       </aside>
     </>
