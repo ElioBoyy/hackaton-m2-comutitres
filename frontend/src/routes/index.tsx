@@ -19,6 +19,12 @@ function Home() {
             {m.home_have_account_cta()}
           </Button>
         </Link>
+        <Link
+          to="/points-de-vente"
+          className="mt-1 text-center text-sm font-medium text-primary hover:underline"
+        >
+          Trouver un point de vente près de chez moi
+        </Link>
       </div>
     </AuthLayout>
   );
