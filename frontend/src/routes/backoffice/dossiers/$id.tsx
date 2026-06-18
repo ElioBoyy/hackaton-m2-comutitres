@@ -1,9 +1,9 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { Check, Eye, X } from 'lucide-react'
+import { Check, Eye, Plus, RefreshCw, Upload, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { BackofficeLayout } from '~/components/backoffice/BackofficeLayout'
 import { StatusBadge } from '~/components/backoffice/StatusBadge'
-import { ApiError, changerStatutDossier, getDossierDetail, getDossierHistorique, validerPiece } from '~/lib/api'
+import { activerDossier, ajouterPiece, ApiError, changerStatutDossier, getDossierDetail, getDossierHistorique, remplacerFichierPiece, validerPiece } from '~/lib/api'
 import { agentMe } from '~/lib/agentAuth'
 import { isAuthenticated, logout } from '~/lib/auth'
 import { recupererContenu } from '~/lib/fichier'
@@ -334,34 +334,294 @@ function ModalConfirmation({
  * que toutes les pieces ne sont pas validees ; la modale de confirmation qui
  * suit le clic explique l'effet, donc pas de tooltip ici (cf. discussion).
  */
+/**
+ * Modale d'activation d'un dossier VALIDE. L'agent choisit la date de debut
+ * des droits (defaut = aujourd'hui). La date de fin est calculee cote backend
+ * selon la periodicite du type d'abonnement et n'apparait que pour info.
+ */
+function ModalActiverAbonnement({
+  open,
+  dossier,
+  loading,
+  onClose,
+  onSubmit,
+}: {
+  open: boolean
+  dossier: DossierDetail | null
+  loading: boolean
+  onClose: () => void
+  onSubmit: (dateDebutDroits: string) => Promise<boolean>
+}) {
+  const aujourdHui = new Date().toISOString().slice(0, 10)
+  const [dateDebut, setDateDebut] = useState(aujourdHui)
+  const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (!open) {
+      setDateDebut(aujourdHui)
+      setSubmitting(false)
+    }
+    // aujourdHui change a chaque render mais on n'en a pas besoin comme dep -
+    // on veut juste reset a chaque ouverture/fermeture de la modale.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
+
+  if (!open || !dossier) return null
+
+  async function handleSubmit() {
+    if (!dateDebut) return
+    setSubmitting(true)
+    const ok = await onSubmit(dateDebut)
+    setSubmitting(false)
+    if (ok) onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+        <h2 className="mb-1 font-heading text-lg font-semibold text-gray-900">
+          Activer l'abonnement
+        </h2>
+        <p className="mb-5 text-sm text-gray-600">
+          Le dossier passera en statut <strong>Actif</strong>. La date de fin sera
+          calculée automatiquement selon la périodicité de l'abonnement
+          ({dossier.typeAbonnement.libelle}).
+        </p>
+
+        <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+          Date de début des droits
+        </label>
+        <input
+          type="date"
+          value={dateDebut}
+          onChange={(e) => setDateDebut(e.target.value)}
+          className="mb-5 w-full cursor-pointer rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+        />
+
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting || loading}
+            className="flex-1 cursor-pointer rounded-xl border border-gray-300 px-4 py-2 text-sm text-gray-600 transition hover:bg-gray-50 disabled:opacity-40"
+          >
+            Annuler
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleSubmit()}
+            disabled={!dateDebut || submitting || loading}
+            className="flex-1 cursor-pointer rounded-xl bg-green-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
+          >
+            {submitting ? 'Activation…' : 'Activer'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Boutons globaux du header. Le set change selon le statut du dossier :
+ *  - EN_VERIFICATION / INCOMPLET → "Rejeter le dossier"
+ *    (la validation se fait pièce par pièce ; le dossier auto-passe à VALIDE
+ *     quand toutes les pièces sont validées).
+ *  - VALIDE → "Activer l'abonnement" (ouvre la modale date).
+ *  - autres statuts → rien (lecture seule).
+ */
 function DecisionsDossierActions({
   dossier,
   loading,
-  onAction,
+  onRejeter,
+  onActiver,
 }: {
   dossier: DossierDetail
   loading: boolean
-  onAction: (codeStatut: 'VALIDE' | 'REJETE') => void
+  onRejeter: () => void
+  onActiver: () => void
 }) {
-  const validationBloquee = dossier.pieces.some((p) => p.statutValidation !== 'validee')
-  return (
-    <div className="flex gap-2">
+  const codeStatut = dossier.statut.code
+  if (codeStatut === 'VALIDE') {
+    return (
       <button
         type="button"
-        onClick={() => onAction('REJETE')}
+        onClick={onActiver}
+        disabled={loading}
+        className="cursor-pointer rounded-xl bg-green-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
+      >
+        Activer l'abonnement
+      </button>
+    )
+  }
+  if (codeStatut === 'EN_VERIFICATION' || codeStatut === 'INCOMPLET') {
+    return (
+      <button
+        type="button"
+        onClick={onRejeter}
         disabled={loading}
         className="cursor-pointer rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
       >
         Rejeter le dossier
       </button>
+    )
+  }
+  return null
+}
+
+/**
+ * Bouton "Remplacer" pour une pièce. Cache un input[type=file] et le declenche
+ * au clic sur le bouton visible. Au choix d'un fichier, appelle onUpload.
+ */
+function BoutonRemplacerPiece({
+  piece,
+  loading,
+  onUpload,
+}: {
+  piece: PieceJustificative
+  loading: boolean
+  onUpload: (file: File) => void
+}) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  return (
+    <>
+      <input
+        ref={inputRef}
+        type="file"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          if (file) onUpload(file)
+          if (inputRef.current) inputRef.current.value = '' // reset pour re-uploader le meme fichier
+        }}
+      />
       <button
         type="button"
-        onClick={() => onAction('VALIDE')}
-        disabled={loading || validationBloquee}
-        className="cursor-pointer rounded-xl bg-green-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
+        onClick={() => inputRef.current?.click()}
+        disabled={loading}
+        aria-label={`Remplacer ${piece.libelleTypePiece}`}
+        className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-xs text-gray-600 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
       >
-        Valider le dossier
+        <RefreshCw size={14} className={loading ? 'animate-spin' : ''} aria-hidden="true" />
+        {loading ? 'Envoi…' : 'Remplacer'}
       </button>
+    </>
+  )
+}
+
+/**
+ * Modale d'ajout d'une pièce sur un dossier. Le sélecteur de types est filtré
+ * aux types attendus pour le type d'abonnement du dossier (cf. piecesRequises),
+ * en excluant ceux deja deposes pour eviter le 409 cote backend.
+ */
+function ModalAjouterPiece({
+  open,
+  dossier,
+  loading,
+  onClose,
+  onSubmit,
+}: {
+  open: boolean
+  dossier: DossierDetail | null
+  loading: boolean
+  onClose: () => void
+  onSubmit: (codeTypePiece: string, file: File) => Promise<boolean>
+}) {
+  const [codeTypePiece, setCodeTypePiece] = useState('')
+  const [file, setFile] = useState<File | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (!open) {
+      setCodeTypePiece('')
+      setFile(null)
+      setSubmitting(false)
+    }
+  }, [open])
+
+  if (!open || !dossier) return null
+
+  // Types deposes : on mappe par libelle (le DTO PieceJustificative n'expose
+  // pas le code), donc on exclut les requises dont le libelle match une piece.
+  const libellesDeposes = new Set(dossier.pieces.map((p) => p.libelleTypePiece))
+  const optionsDisponibles = dossier.piecesRequises.filter(
+    (r) => !libellesDeposes.has(r.libelleTypePiece),
+  )
+
+  async function handleSubmit() {
+    if (!codeTypePiece || !file) return
+    setSubmitting(true)
+    const ok = await onSubmit(codeTypePiece, file)
+    setSubmitting(false)
+    if (ok) onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+        <h2 className="mb-1 font-heading text-lg font-semibold text-gray-900">Ajouter une pièce</h2>
+        <p className="mb-5 text-sm text-gray-500">
+          Sélectionnez le type de pièce attendu pour cet abonnement puis choisissez le fichier.
+        </p>
+
+        {optionsDisponibles.length === 0 ? (
+          <p className="mb-4 rounded-lg bg-yellow-50 p-3 text-sm text-yellow-800">
+            Toutes les pièces attendues pour cet abonnement sont déjà déposées.
+          </p>
+        ) : (
+          <>
+            <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-gray-500">
+              Type de pièce
+            </label>
+            <select
+              value={codeTypePiece}
+              onChange={(e) => setCodeTypePiece(e.target.value)}
+              className="mb-4 w-full cursor-pointer rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            >
+              <option value="">— Sélectionner —</option>
+              {optionsDisponibles.map((r) => (
+                <option key={r.codeTypePiece} value={r.codeTypePiece}>
+                  {r.libelleTypePiece}
+                  {r.obligatoire ? '' : ' (optionnel)'}
+                </option>
+              ))}
+            </select>
+
+            <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-gray-500">
+              Fichier
+            </label>
+            <label className="mb-5 flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed border-gray-300 p-3 transition hover:border-primary-light">
+              <Upload size={18} className="shrink-0 text-primary" aria-hidden="true" />
+              <span className="flex-1 truncate text-sm text-gray-700">
+                {file ? file.name : 'Choisir un fichier…'}
+              </span>
+              <input
+                type="file"
+                className="hidden"
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              />
+            </label>
+          </>
+        )}
+
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting || loading}
+            className="flex-1 cursor-pointer rounded-xl border border-gray-300 px-4 py-2 text-sm text-gray-600 transition hover:bg-gray-50 disabled:opacity-40"
+          >
+            Annuler
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleSubmit()}
+            disabled={!codeTypePiece || !file || submitting || loading}
+            className="flex-1 cursor-pointer rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-focus disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
+          >
+            {submitting ? 'Envoi…' : 'Ajouter la pièce'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -377,9 +637,15 @@ function DossierDetailPage() {
   const [loadingHistorique, setLoadingHistorique] = useState(true)
   const [pieceExamen, setPieceExamen] = useState<PieceJustificative | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
-  // Statut cible quand l'agent vient de cliquer "Valider/Rejeter le dossier" :
-  // ouvre la modale de confirmation. null = pas de demande en cours.
-  const [confirmStatut, setConfirmStatut] = useState<'VALIDE' | 'REJETE' | null>(null)
+  // Id de la piece en cours de remplacement (pour disabled + spinner sur ce
+  // seul bouton "Remplacer"). null = pas d'upload en cours.
+  const [remplacementPieceId, setRemplacementPieceId] = useState<number | null>(null)
+  // true = modale d'ajout de piece ouverte.
+  const [ajoutOuvert, setAjoutOuvert] = useState(false)
+  // true = modale "Confirmer le rejet" ouverte.
+  const [confirmRejet, setConfirmRejet] = useState(false)
+  // true = modale "Activer l'abonnement" ouverte (date picker).
+  const [activationOuverte, setActivationOuverte] = useState(false)
   // Compteur monotone pour invalider les setState issus de fetchs obsoletes.
   // Toute reponse arrivant avec un id != currentRef.current est ignoree.
   const requestIdRef = useRef(0)
@@ -427,13 +693,11 @@ function DossierDetailPage() {
           ? { ...prev, pieces: prev.pieces.map((p) => (p.id === updated.id ? updated : p)) }
           : prev,
       )
-      // Un rejet de piece peut auto-transitionner le dossier vers INCOMPLET
-      // cote backend : on rafraichit le detail pour reprendre le statut a jour.
-      if (!valider) {
-        getDossierDetail(id)
-          .then((detail) => { if (reqId === requestIdRef.current) setDossier(detail) })
-          .catch(() => {})
-      }
+      // Auto-transition cote backend possible : INCOMPLET (rejet) ou VALIDE (toutes
+      // pieces validees). On refetch systematiquement le detail pour synchroniser.
+      getDossierDetail(id)
+        .then((detail) => { if (reqId === requestIdRef.current) setDossier(detail) })
+        .catch(() => {})
       getDossierHistorique(id)
         .then((res) => { if (reqId === requestIdRef.current) setHistorique(res.historique) })
         .catch(() => {})
@@ -445,19 +709,12 @@ function DossierDetailPage() {
     }
   }
 
-  /** Ouvre la modale de confirmation. La requete HTTP n'est lancee qu'au confirm. */
-  function demanderChangementStatutDossier(codeStatut: 'VALIDE' | 'REJETE') {
+  async function confirmerRejet() {
     if (agentId === null) return
-    setConfirmStatut(codeStatut)
-  }
-
-  async function confirmerChangementStatutDossier() {
-    if (!confirmStatut || agentId === null) return
     const reqId = ++requestIdRef.current
-    const cible = confirmStatut
     setActionLoading(true)
     try {
-      const updated = await changerStatutDossier(id, cible)
+      const updated = await changerStatutDossier(id, 'REJETE')
       if (reqId !== requestIdRef.current) return
       setDossier(updated)
       getDossierHistorique(id)
@@ -466,8 +723,85 @@ function DossierDetailPage() {
     } finally {
       if (reqId === requestIdRef.current) {
         setActionLoading(false)
-        setConfirmStatut(null)
+        setConfirmRejet(false)
       }
+    }
+  }
+
+  async function confirmerActivation(dateDebutDroits: string): Promise<boolean> {
+    if (agentId === null) return false
+    const reqId = ++requestIdRef.current
+    setActionLoading(true)
+    try {
+      const updated = await activerDossier(id, dateDebutDroits)
+      if (reqId !== requestIdRef.current) return true
+      setDossier(updated)
+      getDossierHistorique(id)
+        .then((res) => { if (reqId === requestIdRef.current) setHistorique(res.historique) })
+        .catch(() => {})
+      return true
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        window.alert("Impossible d'activer ce dossier dans son statut actuel.")
+      } else {
+        window.alert("Échec de l'activation. Réessayez.")
+      }
+      return false
+    } finally {
+      if (reqId === requestIdRef.current) setActionLoading(false)
+    }
+  }
+
+  async function handleRemplacementFichier(piece: PieceJustificative, file: File) {
+    if (agentId === null) return
+    const reqId = ++requestIdRef.current
+    setRemplacementPieceId(piece.id)
+    try {
+      const updated = await remplacerFichierPiece(id, piece.id, file)
+      if (reqId !== requestIdRef.current) return
+      setDossier((prev) =>
+        prev
+          ? { ...prev, pieces: prev.pieces.map((p) => (p.id === updated.id ? updated : p)) }
+          : prev,
+      )
+      getDossierHistorique(id)
+        .then((res) => { if (reqId === requestIdRef.current) setHistorique(res.historique) })
+        .catch(() => {})
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        window.alert('Cette pièce ne peut pas être modifiée (dossier non instructible).')
+      } else {
+        window.alert("Échec de l'upload. Réessayez.")
+      }
+    } finally {
+      if (reqId === requestIdRef.current) setRemplacementPieceId(null)
+    }
+  }
+
+  async function handleAjouterPiece(codeTypePiece: string, file: File): Promise<boolean> {
+    if (agentId === null) return false
+    const reqId = ++requestIdRef.current
+    try {
+      const piece = await ajouterPiece(id, file, codeTypePiece)
+      if (reqId !== requestIdRef.current) return false
+      // Refetch full detail : ajout d'une piece peut faire varier piecesRequises
+      // restantes (et avoir cree un nouvel objet à afficher en haut de la liste).
+      getDossierDetail(id)
+        .then((detail) => { if (reqId === requestIdRef.current) setDossier(detail) })
+        .catch(() => {})
+      getDossierHistorique(id)
+        .then((res) => { if (reqId === requestIdRef.current) setHistorique(res.historique) })
+        .catch(() => {})
+      // Patch optimiste en attendant le refetch.
+      setDossier((prev) => prev ? { ...prev, pieces: [piece, ...prev.pieces] } : prev)
+      return true
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        window.alert('Une pièce de ce type existe déjà sur ce dossier — utilisez "Remplacer".')
+      } else {
+        window.alert("Échec de l'upload. Réessayez.")
+      }
+      return false
     }
   }
 
@@ -484,17 +818,31 @@ function DossierDetailPage() {
         />
       )}
 
-      <ModalConfirmation
-        open={confirmStatut !== null}
+      <ModalAjouterPiece
+        open={ajoutOuvert}
+        dossier={dossier}
         loading={actionLoading}
-        title={confirmStatut === 'VALIDE' ? 'Valider le dossier ?' : 'Rejeter le dossier ?'}
-        message={confirmStatut === 'VALIDE'
-          ? 'Le dossier passera en statut « Validé ».'
-          : 'Le dossier passera en statut « Rejeté ». Cette action est irréversible.'}
-        confirmLabel={confirmStatut === 'VALIDE' ? 'Confirmer la validation' : 'Confirmer le rejet'}
-        kind={confirmStatut === 'VALIDE' ? 'primary' : 'danger'}
-        onConfirm={() => void confirmerChangementStatutDossier()}
-        onCancel={() => setConfirmStatut(null)}
+        onClose={() => setAjoutOuvert(false)}
+        onSubmit={handleAjouterPiece}
+      />
+
+      <ModalConfirmation
+        open={confirmRejet}
+        loading={actionLoading}
+        title="Rejeter le dossier ?"
+        message="Le dossier passera en statut « Rejeté ». Cette action est irréversible."
+        confirmLabel="Confirmer le rejet"
+        kind="danger"
+        onConfirm={() => void confirmerRejet()}
+        onCancel={() => setConfirmRejet(false)}
+      />
+
+      <ModalActiverAbonnement
+        open={activationOuverte}
+        dossier={dossier}
+        loading={actionLoading}
+        onClose={() => setActivationOuverte(false)}
+        onSubmit={confirmerActivation}
       />
 
       <div className="mx-auto max-w-4xl space-y-6 pb-12">
@@ -515,18 +863,16 @@ function DossierDetailPage() {
             )}
           </div>
 
-          {/* Actions globales sur le dossier (haut a droite). Visibles tant que
-              le dossier est instructible (EN_VERIFICATION / INCOMPLET) et qu'il
-              y a au moins une piece. */}
-          {dossier
-            && (dossier.statut.code === 'EN_VERIFICATION' || dossier.statut.code === 'INCOMPLET')
-            && dossier.pieces.length > 0 && (
-              <DecisionsDossierActions
-                dossier={dossier}
-                loading={actionLoading}
-                onAction={demanderChangementStatutDossier}
-              />
-            )}
+          {/* Actions globales sur le dossier (haut a droite). Le composant
+              decide quel(s) bouton(s) afficher selon le statut. */}
+          {dossier && (
+            <DecisionsDossierActions
+              dossier={dossier}
+              loading={actionLoading}
+              onRejeter={() => setConfirmRejet(true)}
+              onActiver={() => setActivationOuverte(true)}
+            />
+          )}
         </div>
 
         {loadingDetail && (
@@ -604,9 +950,29 @@ function DossierDetailPage() {
 
             {/* Pièces justificatives */}
             <section className="rounded-2xl border border-gray-200 bg-white p-6">
-              <h2 className="mb-4 font-heading text-base font-semibold text-gray-800">
-                Pièces justificatives
-              </h2>
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h2 className="font-heading text-base font-semibold text-gray-800">
+                  Pièces justificatives
+                </h2>
+                {(dossier.statut.code === 'EN_VERIFICATION' || dossier.statut.code === 'INCOMPLET') && (() => {
+                  // Toutes les pieces attendues deja deposees -> rien a ajouter.
+                  const libellesDeposes = new Set(dossier.pieces.map((p) => p.libelleTypePiece))
+                  const toutesDeposees = dossier.piecesRequises.length > 0
+                    && dossier.piecesRequises.every((r) => libellesDeposes.has(r.libelleTypePiece))
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => setAjoutOuvert(true)}
+                      disabled={actionLoading || toutesDeposees}
+                      title={toutesDeposees ? 'Toutes les pièces attendues sont déjà déposées.' : undefined}
+                      className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <Plus size={14} aria-hidden="true" />
+                      Ajouter une pièce
+                    </button>
+                  )
+                })()}
+              </div>
               {dossier.pieces.length === 0 ? (
                 <p className="text-sm text-gray-400">Aucune pièce déposée.</p>
               ) : (
@@ -632,15 +998,24 @@ function DossierDetailPage() {
                           </p>
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setPieceExamen(piece)}
-                        aria-label={`Examiner ${piece.libelleTypePiece}`}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100"
-                      >
-                        <Eye size={14} aria-hidden="true" />
-                        Examiner
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {(dossier.statut.code === 'EN_VERIFICATION' || dossier.statut.code === 'INCOMPLET') && (
+                          <BoutonRemplacerPiece
+                            piece={piece}
+                            loading={remplacementPieceId === piece.id}
+                            onUpload={(file) => void handleRemplacementFichier(piece, file)}
+                          />
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setPieceExamen(piece)}
+                          aria-label={`Examiner ${piece.libelleTypePiece}`}
+                          className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100"
+                        >
+                          <Eye size={14} aria-hidden="true" />
+                          Examiner
+                        </button>
+                      </div>
                     </li>
                   ))}
                 </ul>

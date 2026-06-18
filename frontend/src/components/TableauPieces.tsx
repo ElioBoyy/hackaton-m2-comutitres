@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { BadgeCheck, ExternalLink, FileText, Loader2, XCircle } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { BadgeCheck, ExternalLink, FileText, Loader2, RefreshCw, ShieldCheck, XCircle } from 'lucide-react'
 import { recupererContenu } from '~/lib/fichier'
 import type { PieceJustificative } from '~/lib/dossier'
 
@@ -9,8 +9,56 @@ function formatDate(iso: string | null | undefined): string {
   return `${d}/${mo}/${y}`
 }
 
-export function TableauPieces({ pieces }: { pieces: PieceJustificative[] }) {
+/** Bouton "Remplacer" qui declenche un file picker invisible. */
+function ActionRemplacer({
+  piece,
+  loading,
+  onUpload,
+}: {
+  piece: PieceJustificative
+  loading: boolean
+  onUpload: (file: File) => void
+}) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  return (
+    <>
+      <input
+        ref={inputRef}
+        type="file"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0]
+          if (f) onUpload(f)
+          if (inputRef.current) inputRef.current.value = ''
+        }}
+      />
+      <button
+        type="button"
+        disabled={loading}
+        onClick={() => inputRef.current?.click()}
+        aria-label={`Remplacer ${piece.libelleTypePiece}`}
+        className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:border-primary hover:text-primary disabled:opacity-50"
+      >
+        <RefreshCw size={12} className={loading ? 'animate-spin' : ''} aria-hidden />
+        {loading ? 'Envoi…' : 'Remplacer'}
+      </button>
+    </>
+  )
+}
+
+export function TableauPieces({
+  pieces,
+  canEdit = false,
+  onRemplacer,
+}: {
+  pieces: PieceJustificative[]
+  /** Si true, affiche un bouton "Remplacer" sur les pièces non encore validées. */
+  canEdit?: boolean
+  /** Callback quand l'utilisateur a choisi un nouveau fichier pour cette pièce. */
+  onRemplacer?: (piece: PieceJustificative, file: File) => void
+}) {
   const [ouverturePiece, setOuverturePiece] = useState<number | null>(null)
+  const [remplacementId, setRemplacementId] = useState<number | null>(null)
 
   if (pieces.length === 0) {
     return <p className="text-sm text-gray-500">Aucune pièce déposée.</p>
@@ -58,7 +106,18 @@ export function TableauPieces({ pieces }: { pieces: PieceJustificative[] }) {
                     ? <XCircle size={15} className="shrink-0 text-danger" />
                     : <FileText size={15} className="shrink-0 text-gray-400" />}
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-dark">{p.libelleTypePiece}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate text-sm font-medium text-dark">{p.libelleTypePiece}</p>
+                      {p.modifieParAgent && (
+                        <span
+                          title="Cette pièce a été déposée ou modifiée par un agent."
+                          className="inline-flex items-center gap-1 rounded-full bg-blue-pale px-2 py-0.5 text-xs font-medium text-primary"
+                        >
+                          <ShieldCheck size={12} aria-hidden="true" />
+                          Modifiée par un agent
+                        </span>
+                      )}
+                    </div>
                     {p.motifRejet && (
                       <p className="mt-0.5 truncate text-xs text-danger">{p.motifRejet}</p>
                     )}
@@ -80,19 +139,33 @@ export function TableauPieces({ pieces }: { pieces: PieceJustificative[] }) {
                 </span>
               </td>
               <td className="px-4 py-3 text-right">
-                {p.cheminFichier && (
-                  <button
-                    type="button"
-                    disabled={ouverturePiece === p.id}
-                    onClick={() => void ouvrir(p)}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:border-primary hover:text-primary disabled:opacity-50"
-                  >
-                    {ouverturePiece === p.id
-                      ? <Loader2 size={12} className="animate-spin" aria-hidden />
-                      : <ExternalLink size={12} aria-hidden />}
-                    Ouvrir
-                  </button>
-                )}
+                <div className="inline-flex items-center gap-2">
+                  {canEdit && onRemplacer && p.cheminFichier && p.statutValidation !== 'validee' && (
+                    <ActionRemplacer
+                      piece={p}
+                      loading={remplacementId === p.id}
+                      onUpload={(file) => {
+                        setRemplacementId(p.id)
+                        onRemplacer(p, file)
+                        // L'etat est reinitialise quand la prop pieces change apres le refetch.
+                        setTimeout(() => setRemplacementId((prev) => (prev === p.id ? null : prev)), 4000)
+                      }}
+                    />
+                  )}
+                  {p.cheminFichier && (
+                    <button
+                      type="button"
+                      disabled={ouverturePiece === p.id}
+                      onClick={() => void ouvrir(p)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:border-primary hover:text-primary disabled:opacity-50"
+                    >
+                      {ouverturePiece === p.id
+                        ? <Loader2 size={12} className="animate-spin" aria-hidden />
+                        : <ExternalLink size={12} aria-hidden />}
+                      Ouvrir
+                    </button>
+                  )}
+                </div>
               </td>
             </tr>
           ))}

@@ -49,11 +49,14 @@ export interface PersonneDetail {
 
 export interface PieceJustificative {
   id: number
+  codeTypePiece: string
   libelleTypePiece: string
   statutValidation: 'en_attente' | 'valide' | 'rejete' | string
   dateDepot: string
   motifRejet: string | null
   cheminFichier: string | null
+  /** True si un agent a depose ou remplace ce fichier depuis le backoffice. */
+  modifieParAgent: boolean
 }
 
 export interface PieceRequise {

@@ -1,12 +1,10 @@
 import { Link } from "@tanstack/react-router";
 import {
   CalendarDays,
-  FileText,
   HelpCircle,
   Home,
   MapPin,
   Phone,
-  ScanSearch,
   X,
 } from "lucide-react";
 import { isAuthenticated } from "~/lib/auth";
@@ -21,20 +19,13 @@ interface NavItem {
 
 const PUBLIC_ITEMS: NavItem[] = [
   { labelKey: "nav_home", icon: Home, to: "/" },
-  { labelKey: "nav_diagnostic", icon: ScanSearch, to: "/recommandation" },
   { labelKey: "nav_points_de_vente", icon: MapPin, to: "/points-de-vente" },
   { labelKey: "nav_help_contacts", icon: HelpCircle, to: "/aide" },
 ];
 
 const AUTH_ITEMS: NavItem[] = [
   { labelKey: "nav_home", icon: Home, to: "/" },
-  {
-    labelKey: "nav_diagnostic",
-    icon: ScanSearch,
-    to: "/recommandation/pour-qui",
-  },
   { labelKey: "nav_my_subscriptions", icon: CalendarDays, to: "/dashboard" },
-  { labelKey: "nav_my_documents", icon: FileText, to: "/mes-documents" },
   { labelKey: "nav_points_de_vente", icon: MapPin, to: "/points-de-vente" },
   { labelKey: "nav_help_contacts", icon: HelpCircle, to: "/sav" },
 ];

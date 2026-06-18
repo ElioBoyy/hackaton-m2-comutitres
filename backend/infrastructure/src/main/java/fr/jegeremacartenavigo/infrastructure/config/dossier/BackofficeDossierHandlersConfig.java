@@ -1,6 +1,9 @@
 package fr.jegeremacartenavigo.infrastructure.config.dossier;
 
+import fr.jegeremacartenavigo.application.dossier.ActiverDossierHandler;
+import fr.jegeremacartenavigo.application.dossier.AjouterPieceHandler;
 import fr.jegeremacartenavigo.application.dossier.ChangerStatutDossierHandler;
+import fr.jegeremacartenavigo.application.dossier.RemplacerFichierPieceHandler;
 import fr.jegeremacartenavigo.application.dossier.GetDossierCountsHandler;
 import fr.jegeremacartenavigo.application.dossier.GetDossierDetailHandler;
 import fr.jegeremacartenavigo.application.dossier.GetDossierHistoriqueHandler;
@@ -65,5 +68,20 @@ public class BackofficeDossierHandlersConfig {
     @Bean
     ChangerStatutDossierHandler changerStatutDossierHandler(DossierRepository repository) {
         return new ChangerStatutDossierHandler(repository);
+    }
+
+    @Bean
+    AjouterPieceHandler ajouterPieceHandler(DossierRepository repository) {
+        return new AjouterPieceHandler(repository);
+    }
+
+    @Bean
+    RemplacerFichierPieceHandler remplacerFichierPieceHandler(DossierRepository repository) {
+        return new RemplacerFichierPieceHandler(repository);
+    }
+
+    @Bean
+    ActiverDossierHandler activerDossierHandler(DossierRepository repository) {
+        return new ActiverDossierHandler(repository);
     }
 }
