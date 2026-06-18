@@ -67,7 +67,7 @@ public class Dossier {
     @JoinColumn(name = "id_dossier_precedent")
     private Dossier dossierPrecedent;
 
-    @Column(name = "numero_dossier", length = 12, nullable = false, unique = true)
+    @Column(name = "numero_dossier", length = 20, unique = true)
     private String numeroDossier;
 
     @Enumerated(EnumType.STRING)

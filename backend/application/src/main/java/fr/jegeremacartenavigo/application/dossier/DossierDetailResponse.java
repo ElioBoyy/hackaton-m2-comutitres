@@ -10,6 +10,7 @@ import java.util.List;
 
 public record DossierDetailResponse(
         Integer idDossier,
+        String numeroDossier,
         PersonneResponse titulaire,
         PersonneResponse payeur,
         TypeAbonnementResponse typeAbonnement,
@@ -24,6 +25,7 @@ public record DossierDetailResponse(
     public static DossierDetailResponse from(DossierDetail d) {
         return new DossierDetailResponse(
                 d.id(),
+                d.numeroDossier(),
                 PersonneResponse.from(d.titulaire()),
                 PersonneResponse.from(d.payeur()),
                 new TypeAbonnementResponse(d.codeTypeAbonnement(), d.libelleTypeAbonnement()),

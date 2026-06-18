@@ -6,6 +6,7 @@ import fr.jegeremacartenavigo.domain.auth.exception.EmailDejaUtiliseException;
 import fr.jegeremacartenavigo.domain.auth.exception.IdentifiantsInvalidesException;
 import fr.jegeremacartenavigo.domain.auth.exception.UtilisateurIntrouvableException;
 import fr.jegeremacartenavigo.domain.dossier.exception.DossierIntrouvableException;
+import fr.jegeremacartenavigo.domain.dossier.exception.PieceIntrouvableException;
 import fr.jegeremacartenavigo.domain.dossier.exception.ReferentielIntrouvableException;
 import fr.jegeremacartenavigo.domain.exception.DomainException;
 import jakarta.validation.ConstraintViolation;
@@ -57,8 +58,8 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
-    @ExceptionHandler(DossierIntrouvableException.class)
-    public ProblemDetail handleDossierIntrouvable(DossierIntrouvableException ex) {
+    @ExceptionHandler({DossierIntrouvableException.class, PieceIntrouvableException.class})
+    public ProblemDetail handleDossierIntrouvable(DomainException ex) {
       ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
         problem.setTitle("Ressource introuvable");
         return problem;

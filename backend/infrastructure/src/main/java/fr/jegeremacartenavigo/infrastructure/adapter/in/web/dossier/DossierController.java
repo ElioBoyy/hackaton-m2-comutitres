@@ -9,12 +9,17 @@ import fr.jegeremacartenavigo.application.dossier.DossierListResponse;
 import fr.jegeremacartenavigo.application.dossier.DossierResponse;
 import fr.jegeremacartenavigo.application.dossier.GetDossierCountsQuery;
 import fr.jegeremacartenavigo.application.dossier.GetDossierDetailQuery;
+import fr.jegeremacartenavigo.application.dossier.GetDossierHistoriqueQuery;
 import fr.jegeremacartenavigo.application.dossier.GetDossiersQuery;
+import fr.jegeremacartenavigo.application.dossier.HistoriqueEntreeResponse;
+import fr.jegeremacartenavigo.application.dossier.PieceJustificativeResponse;
+import fr.jegeremacartenavigo.application.dossier.ValiderPieceCommand;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -71,5 +76,24 @@ public class DossierController {
         );
         DossierResponse response = commandBus.send(command);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping("/{id}/historique")
+    public HistoriqueEntreeResponse.ListResponse historique(@PathVariable Integer id) {
+        return queryBus.ask(new GetDossierHistoriqueQuery(id));
+    }
+
+    @PatchMapping("/{id}/pieces/{pieceId}")
+    public PieceJustificativeResponse validerPiece(
+            @PathVariable Integer id,
+            @PathVariable Integer pieceId,
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestBody ValiderPieceRequest body) {
+        return commandBus.send(new ValiderPieceCommand(
+                id, pieceId,
+                Integer.valueOf(jwt.getSubject()),
+                body.valider(),
+                body.motifRejet()
+        ));
     }
 }
