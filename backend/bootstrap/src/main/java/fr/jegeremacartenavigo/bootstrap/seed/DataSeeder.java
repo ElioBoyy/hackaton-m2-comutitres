@@ -184,28 +184,57 @@ public class DataSeeder implements ApplicationRunner {
 
     private Map<String, TypeAbonnement> seedTypesAbonnement() {
         List<TypeAbonnement> types = List.of(
+                // ── Navigo standard (tarifs 2026) ──────────────────────────────────
                 typeAbonnement("NAVIGO_ANNUEL", "Navigo Annuel", "Navigo standard",
-                        TypeAbonnement.Periodicite.annuelle, new BigDecimal("860.00")),
+                        TypeAbonnement.Periodicite.annuelle, new BigDecimal("998.80")),
                 typeAbonnement("NAVIGO_MENSUEL", "Navigo Mensuel", "Navigo standard",
-                        TypeAbonnement.Periodicite.mensuelle, new BigDecimal("86.40")),
+                        TypeAbonnement.Periodicite.mensuelle, new BigDecimal("90.80")),
                 typeAbonnement("NAVIGO_HEBDO", "Navigo Hebdomadaire", "Navigo standard",
-                        TypeAbonnement.Periodicite.hebdomadaire, new BigDecimal("22.80")),
+                        TypeAbonnement.Periodicite.hebdomadaire, new BigDecimal("32.40")),
                 typeAbonnement("NAVIGO_LIBERTE_PLUS", "Navigo Liberte+", "Navigo standard",
                         TypeAbonnement.Periodicite.sans_abonnement, null),
+                // Support physique rechargeable — pas un abonnement, frais de carte uniquement
                 typeAbonnement("NAVIGO_DECOUVERTE", "Navigo Decouverte", "Navigo standard",
-                        TypeAbonnement.Periodicite.sans_abonnement, null),
+                        TypeAbonnement.Periodicite.sans_abonnement, new BigDecimal("5.00")),
+
+                // ── Forfaits seniors ───────────────────────────────────────────────
+                // Navigo Senior : 50 % de reduction sur Navigo Annuel, reservé 62+ non-actif
+                typeAbonnement("NAVIGO_SENIOR", "Navigo Senior", "Forfait senior",
+                        TypeAbonnement.Periodicite.annuelle, new BigDecimal("544.80")),
+                // Amethyste : attribue et finance par le departement, tarif variable selon departement
+                typeAbonnement("AMETHYSTE", "Amethyste", "Forfait senior",
+                        TypeAbonnement.Periodicite.annuelle, null),
+
+                // ── Forfaits jeunes / scolaires ────────────────────────────────────
+                // Imagine R Junior : moins de 11 ans au 31/12
+                typeAbonnement("IMAGINE_R_JUNIOR", "Imagine R Junior", "Forfait scolaire-etudiant",
+                        TypeAbonnement.Periodicite.annuelle, new BigDecimal("24.40")),
+                // Imagine R Scolaire : moins de 16 ans au 1er sept ou apprenti moins de 26 ans
                 typeAbonnement("IMAGINE_R_SCOLAIRE", "Imagine R Scolaire", "Forfait scolaire-etudiant",
-                        TypeAbonnement.Periodicite.annuelle, new BigDecimal("358.00")),
+                        TypeAbonnement.Periodicite.annuelle, new BigDecimal("374.40")),
+                // Imagine R Etudiant : etudiant moins de 26 ans (hors apprentissage)
                 typeAbonnement("IMAGINE_R_ETUDIANT", "Imagine R Etudiant", "Forfait scolaire-etudiant",
-                        TypeAbonnement.Periodicite.annuelle, new BigDecimal("394.00")),
+                        TypeAbonnement.Periodicite.annuelle, new BigDecimal("374.40")),
+                // Imagine R Apprenti : apprenti moins de 26 ans (meme eligibilite que Scolaire)
                 typeAbonnement("IMAGINE_R_APPRENTI", "Imagine R Apprenti", "Forfait scolaire-etudiant",
-                        TypeAbonnement.Periodicite.annuelle, new BigDecimal("394.00")),
-                typeAbonnement("AMETHYSTE", "Amethyste", "Forfait social",
-                        TypeAbonnement.Periodicite.annuelle, null),
-                typeAbonnement("SOLIDARITE_TRANSPORT", "Solidarite Transport", "Tarification solidaire",
-                        TypeAbonnement.Periodicite.annuelle, null),
+                        TypeAbonnement.Periodicite.annuelle, new BigDecimal("374.40")),
+                // Transport Scolaire departemental : bus domicile-ecole, gratuit
                 typeAbonnement("TRANSPORT_SCOLAIRE", "Transport Scolaire departemental", "Forfait scolaire-etudiant",
-                        TypeAbonnement.Periodicite.annuelle, BigDecimal.ZERO)
+                        TypeAbonnement.Periodicite.annuelle, BigDecimal.ZERO),
+
+                // ── Tarification solidaire ─────────────────────────────────────────
+                // Solidarite Gratuite : RSA / ASS, voyage gratuit toutes zones
+                typeAbonnement("SOLIDARITE_GRATUITE", "Solidarite Gratuite", "Tarification solidaire",
+                        TypeAbonnement.Periodicite.mensuelle, BigDecimal.ZERO),
+                // Solidarite 75 % : CSS beneficiaires, 75 % de reduction
+                typeAbonnement("SOLIDARITE_75", "Navigo Solidarite 75%", "Tarification solidaire",
+                        TypeAbonnement.Periodicite.mensuelle, new BigDecimal("21.00")),
+                // Solidarite 50 % : AME beneficiaires, 50 % de reduction
+                typeAbonnement("SOLIDARITE_50", "Navigo Solidarite 50%", "Tarification solidaire",
+                        TypeAbonnement.Periodicite.mensuelle, new BigDecimal("42.05")),
+                // Ancienne entree conservee pour compatibilite avec les dossiers de demo existants
+                typeAbonnement("SOLIDARITE_TRANSPORT", "Solidarite Transport", "Tarification solidaire",
+                        TypeAbonnement.Periodicite.annuelle, null)
         );
         typeAbonnementRepository.saveAll(types);
         return types.stream().collect(java.util.stream.Collectors.toMap(TypeAbonnement::getCode, t -> t));

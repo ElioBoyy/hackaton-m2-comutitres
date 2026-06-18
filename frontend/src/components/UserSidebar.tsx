@@ -23,6 +23,8 @@ interface NavItem {
 
 const PUBLIC_ITEMS: NavItem[] = [
   { labelKey: 'nav_home', icon: Home, to: '/' },
+  { labelKey: 'nav_diagnostic', icon: ScanSearch, to: '/recommandation' },
+  { labelKey: 'nav_help_contacts', icon: HelpCircle, to: '/aide' },
 ]
 
 const AUTH_ITEMS: NavItem[] = [
@@ -117,8 +119,7 @@ export function UserSidebar({ isOpen, onClose }: UserSidebarProps) {
           </div>
         )}
 
-        {connected && (
-          <div className="mt-4 rounded-2xl bg-blue-pale p-4">
+        <div className="mt-4 rounded-2xl bg-blue-pale p-4">
             <div className="mb-1 flex items-center gap-2">
               <MessageCircle size={20} className="shrink-0 text-primary" aria-hidden="true" />
               <p className="text-sm font-semibold text-primary">{m.help_title()}</p>
@@ -132,7 +133,6 @@ export function UserSidebar({ isOpen, onClose }: UserSidebarProps) {
               <span aria-hidden="true">→</span>
             </a>
           </div>
-        )}
       </aside>
     </>
   )
