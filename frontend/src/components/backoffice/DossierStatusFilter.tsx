@@ -40,7 +40,7 @@ export function DossierStatusFilter({
       left: btnRect.left - containerRect.left,
       width: btnRect.width,
     })
-  }, [activeIndex])
+  }, [activeIndex, counts])
 
   return (
     <div ref={containerRef} className="relative flex gap-1 rounded-full bg-gray-200 p-1">

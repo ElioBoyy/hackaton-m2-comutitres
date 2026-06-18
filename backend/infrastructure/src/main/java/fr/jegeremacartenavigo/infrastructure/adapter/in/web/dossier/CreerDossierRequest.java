@@ -23,6 +23,7 @@ public record CreerDossierRequest(
         String cheminPieceIdentite,
         String cheminCertificatScolarite,
         String cheminNotificationBourse,
-        ModePaiementDossier modePaiement
+        ModePaiementDossier modePaiement,
+        Boolean enAttentePaiement
 ) {
 }
