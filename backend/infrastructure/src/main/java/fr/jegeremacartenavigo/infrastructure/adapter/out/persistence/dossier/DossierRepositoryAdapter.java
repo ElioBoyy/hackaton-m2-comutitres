@@ -413,8 +413,7 @@ public class DossierRepositoryAdapter implements DossierRepository {
                 p.getCheminFichier(),
                 p.getStatutValidation().name(),
                 p.getDateDepot(),
-                p.getMotifRejet(),
-                p.getCheminFichier()
+                p.getMotifRejet()
         );
     }
 

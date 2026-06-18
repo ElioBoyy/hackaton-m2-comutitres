@@ -13,7 +13,6 @@ public record PieceJustificativeResume(
         String cheminFichier,
         String statutValidation,
         LocalDateTime dateDepot,
-        String motifRejet,
-        String cheminFichier
+        String motifRejet
 ) {
 }
