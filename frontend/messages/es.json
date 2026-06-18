@@ -231,5 +231,20 @@
   "wizard_validation_expiry": "Formato inválido (MM/AA).",
   "wizard_validation_cvc": "CVC inválido (3 o 4 dígitos).",
   "wizard_validation_iban": "IBAN inválido.",
-  "wizard_validation_bic": "BIC inválido (8 o 11 caracteres)."
+  "wizard_validation_bic": "BIC inválido (8 o 11 caracteres).",
+  "documents_loading": "Cargando tus documentos…",
+  "documents_empty": "Aún no has subido ningún documento.",
+  "documents_open": "Abrir",
+  "documents_opening": "Abriendo…",
+  "documents_open_error": "No se pudo abrir este documento.",
+  "documents_load_error": "No se pudieron cargar tus documentos. Inténtalo más tarde.",
+  "documents_col_name": "Documento",
+  "documents_col_size": "Tamaño",
+  "documents_col_date": "Subido el",
+  "documents_open_aria": "Abrir el documento {name}",
+  "wizard_pieces_uploading": "Subiendo…",
+  "wizard_pieces_upload_error": "Falló el envío. Inténtalo de nuevo.",
+  "documents_label_piece_identite": "Documento de identidad",
+  "documents_label_certificat_scolarite": "Certificado de escolaridad",
+  "documents_label_notification_bourse": "Notificación de beca"
 }
