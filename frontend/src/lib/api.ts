@@ -242,6 +242,80 @@ export function changerStatutDossier(
   })
 }
 
+/**
+ * Active un dossier VALIDE : passe a ACTIF avec la date de debut choisie par
+ * l'agent. La date de fin est calculee cote backend selon la periodicite du
+ * type d'abonnement (annuel = +1 an, mensuel = +1 mois, etc.).
+ */
+export function activerDossier(
+  idDossier: number | string,
+  dateDebutDroits: string,
+): Promise<DossierDetail> {
+  return apiFetch(`/dossiers/${idDossier}/activer`, {
+    method: 'POST',
+    body: JSON.stringify({ dateDebutDroits }),
+  })
+}
+
+/**
+ * Ajoute une nouvelle piece sur un dossier. Endpoint unifie : le backend
+ * detecte le role (agent / client) et applique les regles ad hoc.
+ * Upload multipart. 409 si une piece du meme type existe deja.
+ */
+export async function ajouterPiece(
+  idDossier: number | string,
+  fichier: File,
+  codeTypePiece: string,
+): Promise<PieceJustificative> {
+  const token = getToken()
+  const formData = new FormData()
+  formData.append('file', fichier)
+  formData.append('codeTypePiece', codeTypePiece)
+  const response = await fetch(`${API_URL}/dossiers/${idDossier}/pieces/upload`, {
+    method: 'POST',
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      Accept: 'application/json',
+    },
+    body: formData,
+  })
+  if (!response.ok) {
+    let body: unknown
+    try { body = await response.json() } catch { body = undefined }
+    throw new ApiError(response.status, `${response.status} ${response.statusText}`, body)
+  }
+  return (await response.json()) as PieceJustificative
+}
+
+/**
+ * Remplace le fichier d'une piece existante. Endpoint unifie : le backend
+ * detecte le role (agent / client) via le JWT et applique les regles ad hoc
+ * (statut autorise, ownership pour un client, flag modifieParAgent).
+ */
+export async function remplacerFichierPiece(
+  idDossier: number | string,
+  idPiece: number,
+  fichier: File,
+): Promise<PieceJustificative> {
+  const token = getToken()
+  const formData = new FormData()
+  formData.append('file', fichier)
+  const response = await fetch(`${API_URL}/dossiers/${idDossier}/pieces/${idPiece}/fichier`, {
+    method: 'PUT',
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      Accept: 'application/json',
+    },
+    body: formData,
+  })
+  if (!response.ok) {
+    let body: unknown
+    try { body = await response.json() } catch { body = undefined }
+    throw new ApiError(response.status, `${response.status} ${response.statusText}`, body)
+  }
+  return (await response.json()) as PieceJustificative
+}
+
 export interface TypeAbonnement {
   code: string
   libelle: string

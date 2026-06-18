@@ -9,7 +9,7 @@ import {
   Sparkles,
   Wallet,
 } from 'lucide-react'
-import { ApiError } from '~/lib/api'
+import { ajouterPiece, ApiError, remplacerFichierPiece } from '~/lib/api'
 import { isAuthenticated, logout } from '~/lib/auth'
 import {
   fetchDossierDetail,
@@ -168,6 +168,130 @@ function DossierDetailSkeleton() {
 
 type IAEtat = 'idle' | 'loading' | 'done'
 
+/**
+ * Modale d'ajout d'une piece cote client. Liste les types disponibles a
+ * partir de {@code piecesRequises} (filtree des deja deposees). Si vide,
+ * propose les 3 types courants en fallback (PIECE_IDENTITE, etc.).
+ */
+function ModalAjouterPieceClient({
+  open,
+  data,
+  onClose,
+  onSubmit,
+}: {
+  open: boolean
+  data: DossierDetail | null
+  onClose: () => void
+  onSubmit: (codeTypePiece: string, file: File) => Promise<boolean>
+}) {
+  const [codeTypePiece, setCodeTypePiece] = useState('')
+  const [file, setFile] = useState<File | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (!open) {
+      setCodeTypePiece('')
+      setFile(null)
+      setSubmitting(false)
+    }
+  }, [open])
+
+  if (!open || !data) return null
+
+  // Types deja deposes (par code metier, robuste face aux accents/normalisations).
+  const codesDeposes = new Set(data.pieces.map((p) => p.codeTypePiece))
+  const requises = (data.piecesRequises ?? []).filter(
+    (r) => !codesDeposes.has(r.codeTypePiece),
+  )
+  // Fallback : si le referentiel piecesRequises est vide pour cet abonnement,
+  // on propose au moins les 3 types courants pour debloquer l'ajout - filtre
+  // egalement par code pour eviter le doublon.
+  const fallback = requises.length === 0 ? [
+    { codeTypePiece: 'PIECE_IDENTITE', libelleTypePiece: "Pièce d'identité", obligatoire: true },
+    { codeTypePiece: 'CERTIFICAT_SCOLARITE', libelleTypePiece: 'Certificat de scolarité', obligatoire: false },
+    { codeTypePiece: 'NOTIFICATION_BOURSE', libelleTypePiece: 'Notification de bourse', obligatoire: false },
+  ].filter((r) => !codesDeposes.has(r.codeTypePiece)) : []
+  const options = requises.length > 0 ? requises : fallback
+
+  async function handleSubmit() {
+    if (!codeTypePiece || !file) return
+    setSubmitting(true)
+    const ok = await onSubmit(codeTypePiece, file)
+    setSubmitting(false)
+    if (ok) onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+        <h2 className="mb-1 font-heading text-lg font-semibold text-dark">Ajouter une pièce</h2>
+        <p className="mb-5 text-sm text-gray-500">
+          Choisissez le type de pièce puis le fichier à téléverser.
+        </p>
+
+        {options.length === 0 ? (
+          <div className="mb-4 rounded-lg bg-blue-pale p-3 text-sm text-primary">
+            Tous les types de pièces possibles ont déjà été déposés.
+          </div>
+        ) : (
+          <>
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-400">
+              Type de pièce
+            </label>
+            <select
+              value={codeTypePiece}
+              onChange={(e) => setCodeTypePiece(e.target.value)}
+              className="mb-4 w-full cursor-pointer rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            >
+              <option value="">— Sélectionner —</option>
+              {options.map((r) => (
+                <option key={r.codeTypePiece} value={r.codeTypePiece}>
+                  {r.libelleTypePiece}
+                  {r.obligatoire ? '' : ' (optionnel)'}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
+
+        <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-400">
+          Fichier
+        </label>
+        <label className="mb-5 flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed border-gray-300 p-3 transition hover:border-primary">
+          <FileText size={18} className="shrink-0 text-primary" aria-hidden />
+          <span className="flex-1 truncate text-sm text-gray-700">
+            {file ? file.name : 'Choisir un fichier…'}
+          </span>
+          <input
+            type="file"
+            className="hidden"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          />
+        </label>
+
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            className="flex-1 cursor-pointer rounded-xl border border-gray-300 px-4 py-2 text-sm text-gray-600 transition hover:bg-gray-50 disabled:opacity-40"
+          >
+            Annuler
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleSubmit()}
+            disabled={!codeTypePiece || !file || submitting}
+            className="flex-1 cursor-pointer rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-focus disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
+          >
+            {submitting ? 'Envoi…' : 'Ajouter'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function DossierDetailPage() {
   const { id } = Route.useParams()
   const navigate = useNavigate()
@@ -185,6 +309,7 @@ function DossierDetailPage() {
   // Pièces localement uploadées : codeTypePiece → PieceUploaded
   const [piecesLocales, setPiecesLocales] = useState<PieceJustificative[]>([])
   const [uploadedByCode, setUploadedByCode] = useState<Record<string, PieceUploaded>>({})
+  const [ajoutOuvert, setAjoutOuvert] = useState(false)
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -228,6 +353,39 @@ function DossierDetailPage() {
     })
   }, [data])
 
+  async function handleAjouterPiece(codeTypePiece: string, file: File): Promise<boolean> {
+    try {
+      await ajouterPiece(idNum, file, codeTypePiece)
+      const fresh = await fetchDossierDetail(idNum)
+      setData(fresh)
+      setPiecesLocales([])
+      return true
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        window.alert('Une pièce de ce type existe déjà — utilisez « Remplacer ».')
+      } else {
+        window.alert("Échec de l'envoi. Réessayez.")
+      }
+      return false
+    }
+  }
+
+  async function handleRemplacerPiece(piece: PieceJustificative, file: File) {
+    try {
+      await remplacerFichierPiece(idNum, piece.id, file)
+      // Refetch pour reprendre la nouvelle dateDepot/statut/cheminFichier.
+      const fresh = await fetchDossierDetail(idNum)
+      setData(fresh)
+      setPiecesLocales([])
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        window.alert('Cette pièce ne peut pas être modifiée pour le moment.')
+      } else {
+        window.alert("Échec de l'envoi. Réessayez.")
+      }
+    }
+  }
+
   function onPieceSaved(codeType: string, libelle: string, uploaded: PieceUploaded) {
     setUploadedByCode((prev) => ({ ...prev, [codeType]: uploaded }))
     // Affichage immédiat pendant le rechargement depuis le serveur
@@ -235,11 +393,13 @@ function DossierDetailPage() {
       const filtered = prev.filter((p) => p.libelleTypePiece !== libelle)
       return [...filtered, {
         id: Date.now(),
+        codeTypePiece: codeType,
         libelleTypePiece: libelle,
         statutValidation: 'en_attente',
         dateDepot: new Date().toISOString(),
         motifRejet: null,
         cheminFichier: uploaded.cle,
+        modifieParAgent: false,
       }]
     })
     // Recharger depuis le serveur pour synchroniser data.pieces (persistance entre sessions)
@@ -324,6 +484,12 @@ function DossierDetailPage() {
 
   return (
     <DashboardLayout title="Mon abonnement" userName={userName} alertes={[]}>
+      <ModalAjouterPieceClient
+        open={ajoutOuvert}
+        data={data}
+        onClose={() => setAjoutOuvert(false)}
+        onSubmit={handleAjouterPiece}
+      />
       <div className="mx-auto max-w-2xl">
 
         {/* ── Retour ── */}
@@ -394,11 +560,37 @@ function DossierDetailPage() {
 
             {/* ── Pièces ── */}
             <section aria-label="Pièces justificatives">
-              <h2 className="mb-4 text-xs font-semibold uppercase tracking-widest text-gray-400">
-                Pièces justificatives
-              </h2>
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400">
+                  Pièces justificatives
+                </h2>
+                {canEdit && (() => {
+                  // Calcule s'il reste un type a proposer (meme logique que la
+                  // modale) pour griser le bouton si tout est deja depose.
+                  const codesDeposes = new Set(data.pieces.map((p) => p.codeTypePiece))
+                  const requises = (data.piecesRequises ?? []).filter((r) => !codesDeposes.has(r.codeTypePiece))
+                  const fallbackCodes = ['PIECE_IDENTITE', 'CERTIFICAT_SCOLARITE', 'NOTIFICATION_BOURSE']
+                  const fallbackDispo = requises.length === 0 && fallbackCodes.some((c) => !codesDeposes.has(c))
+                  const peutAjouter = requises.length > 0 || fallbackDispo
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => setAjoutOuvert(true)}
+                      disabled={!peutAjouter}
+                      title={peutAjouter ? undefined : 'Toutes les pièces possibles sont déjà déposées.'}
+                      className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-blue-pale hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white disabled:hover:border-gray-300 disabled:hover:text-gray-700"
+                    >
+                      + Ajouter une pièce
+                    </button>
+                  )
+                })()}
+              </div>
 
-              <TableauPieces pieces={toutesLesPieces()} />
+              <TableauPieces
+                pieces={toutesLesPieces()}
+                canEdit={canEdit}
+                onRemplacer={(piece, file) => void handleRemplacerPiece(piece, file)}
+              />
             </section>
 
             {/* ── Résiliation ── */}

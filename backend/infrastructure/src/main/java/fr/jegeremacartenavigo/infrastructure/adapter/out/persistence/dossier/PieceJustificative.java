@@ -64,6 +64,14 @@ public class PieceJustificative {
     @Column(name = "motif_rejet")
     private String motifRejet;
 
+    /**
+     * True quand un agent a ajoute ou remplace le fichier depuis le backoffice.
+     * Permet d'afficher cote client un marqueur "modifiee par un agent" sans
+     * divulguer l'identite de l'agent.
+     */
+    @Column(name = "modifie_par_agent", nullable = false)
+    private boolean modifieParAgent = false;
+
     public enum StatutValidation {
         en_attente, validee, rejetee
     }
