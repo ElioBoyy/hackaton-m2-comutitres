@@ -76,7 +76,7 @@ function BackofficeLoginPage() {
   }
 
   return (
-    <AuthLayout title="Backoffice" subtitle="Connexion agent.">
+    <AuthLayout title="Connexion agent">
       <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
         <Field
           label="Email"

@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { ClipboardCheck, History, LayoutDashboard, Search, Settings } from 'lucide-react'
+import { LayoutDashboard, Settings } from 'lucide-react'
 
 interface NavItem {
   label: string
@@ -9,9 +9,6 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', icon: LayoutDashboard, to: '/backoffice/dashboard' },
-  { label: 'Dossiers a verifier', icon: ClipboardCheck },
-  { label: 'Recherche client', icon: Search },
-  { label: 'Historique', icon: History },
   { label: 'Parametres', icon: Settings },
 ]
 
