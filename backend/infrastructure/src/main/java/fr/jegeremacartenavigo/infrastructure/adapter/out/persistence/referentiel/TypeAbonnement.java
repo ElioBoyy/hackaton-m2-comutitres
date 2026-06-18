@@ -11,6 +11,8 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 
@@ -47,6 +49,14 @@ public class TypeAbonnement {
 
     @Column(name = "actif", nullable = false)
     private boolean actif = true;
+
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "transports", columnDefinition = "TEXT[]", nullable = false)
+    private String[] transports = new String[0];
+
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "zones", columnDefinition = "TEXT[]", nullable = false)
+    private String[] zones = new String[0];
 
     public enum Periodicite {
         journaliere, hebdomadaire, mensuelle, annuelle, sans_abonnement

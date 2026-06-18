@@ -67,7 +67,7 @@ export function LanguageSwitcher() {
         <ul
           role="listbox"
           aria-label={m.language_switch_label()}
-          className="absolute right-0 top-full z-10 mt-1 min-w-[10rem] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg"
+          className="absolute bottom-full left-0 z-10 mb-1 min-w-[10rem] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg lg:bottom-auto lg:left-auto lg:right-0 lg:top-full lg:mb-0 lg:mt-1"
         >
           {locales.map((locale) => {
             const meta = LOCALE_META[locale]

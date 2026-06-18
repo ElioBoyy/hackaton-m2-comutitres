@@ -3,6 +3,7 @@ import { BadgeCheck, GraduationCap, IdCard, Loader2, Receipt, Sparkles } from 'l
 import * as React from 'react'
 import { Button } from '~/components/Button'
 import { piecesSontCompletes } from '~/domain/pieces'
+import { m } from '~/paraglide/messages'
 import { useAppDispatch, useAppSelector } from '~/store/hooks'
 import {
   justificatifEtudiantDepose,
@@ -56,9 +57,9 @@ function PiecesStep() {
       <main className="mx-auto flex max-w-2xl flex-col items-center gap-4 py-24 text-center">
         <Loader2 className="h-10 w-10 animate-spin text-primary" strokeWidth={1.75} />
         <p className="font-heading text-lg font-bold text-dark">
-          {pourQui === 'TIERS' ? "L'IA pré-vérifie les pièces du bénéficiaire..." : "L'IA pré-vérifie vos pièces..."}
+          {pourQui === 'TIERS' ? m.wizard_pieces_loading_other() : m.wizard_pieces_loading_self()}
         </p>
-        <p className="text-sm text-gray-700">Cela ne prend que quelques secondes.</p>
+        <p className="text-sm text-gray-700">{m.wizard_pieces_loading_subtitle()}</p>
       </main>
     )
   }
@@ -67,14 +68,12 @@ function PiecesStep() {
     return (
       <main className="mx-auto flex max-w-2xl flex-col items-center gap-4 py-24 text-center">
         <BadgeCheck className="h-10 w-10 text-success" strokeWidth={1.75} />
-        <p className="font-heading text-lg font-bold text-dark">Pièces pré-vérifiées</p>
+        <p className="font-heading text-lg font-bold text-dark">{m.wizard_pieces_verified_title()}</p>
         <p className="text-sm text-gray-700">
-          {pourQui === 'TIERS'
-            ? "L'IA a fait un premier contrôle des documents du bénéficiaire. La vérification définitive reste à effectuer par nos équipes."
-            : "L'IA a fait un premier contrôle de vos documents. La vérification définitive reste à effectuer par nos équipes."}
+          {pourQui === 'TIERS' ? m.wizard_pieces_verified_other() : m.wizard_pieces_verified_self()}
         </p>
         <Button onClick={() => navigate({ to: '/recommandation/recapitulatif' })}>
-          Continuer
+          {m.wizard_pieces_verified_continue()}
         </Button>
       </main>
     )
@@ -83,17 +82,15 @@ function PiecesStep() {
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-6 py-8">
       <h1 className="font-heading text-2xl font-bold tracking-tight text-dark">
-        {pourQui === 'TIERS' ? "Pièces justificatives du bénéficiaire" : "Vos pièces justificatives"}
+        {pourQui === 'TIERS' ? m.wizard_pieces_title_other() : m.wizard_pieces_title_self()}
       </h1>
       <p className="text-gray-700">
-        {pourQui === 'TIERS'
-          ? "Pour finaliser la demande, déposez les documents du bénéficiaire."
-          : "Pour finaliser votre demande, déposez les documents suivants."}
+        {pourQui === 'TIERS' ? m.wizard_pieces_subtitle_other() : m.wizard_pieces_subtitle_self()}
       </p>
 
       <ChampFichier
         icon={IdCard}
-        label="Pièce d'identité"
+        label={m.wizard_pieces_id_card()}
         nomFichier={wizard.pieceIdentiteNomFichier}
         onChange={(nom) => dispatch(pieceIdentiteDeposee(nom))}
       />
@@ -101,7 +98,7 @@ function PiecesStep() {
       {justificatifRequis ? (
         <ChampFichier
           icon={GraduationCap}
-          label="Certificat de scolarité (année en cours)"
+          label={m.wizard_pieces_school_cert()}
           nomFichier={wizard.justificatifEtudiantNomFichier}
           onChange={(nom) => dispatch(justificatifEtudiantDepose(nom))}
         />
@@ -110,7 +107,7 @@ function PiecesStep() {
       {bourseRequise ? (
         <ChampFichier
           icon={Receipt}
-          label="Notification conditionnelle de bourse"
+          label={m.wizard_pieces_scholarship_notif()}
           nomFichier={wizard.notificationBourseNomFichier}
           onChange={(nom) => dispatch(notificationBourseDeposee(nom))}
         />
@@ -120,16 +117,15 @@ function PiecesStep() {
         <Button onClick={preVerifierAvecIA} disabled={!auMoinsUnePieceDeposee}>
           <span className="flex items-center justify-center gap-2">
             <Sparkles className="h-4 w-4" strokeWidth={1.75} />
-            Pré-vérifier avec l'IA
+            {m.wizard_pieces_preverify()}
           </span>
         </Button>
         <Button variant="ghost" onClick={continuerSansPreVerification}>
-          Continuer sans pré-vérification
+          {m.wizard_pieces_continue_no_verify()}
         </Button>
         {!piecesCompletes ? (
           <p className="text-center text-xs text-gray-700">
-            Sans l'ensemble de ces pièces, votre dossier ne pourra pas être
-            validé. Vous pourrez les ajouter plus tard.
+            {m.wizard_pieces_incomplete()}
           </p>
         ) : null}
       </div>
@@ -158,7 +154,7 @@ function ChampFichier({
       <Icon className="h-6 w-6 shrink-0 text-primary" strokeWidth={1.75} />
       <div className="flex-1">
         <p className="font-semibold text-dark">{label}</p>
-        <p className="text-sm text-gray-700">{nomFichier ?? 'Aucun fichier sélectionné'}</p>
+        <p className="text-sm text-gray-700">{nomFichier ?? m.wizard_pieces_no_file()}</p>
       </div>
       <input
         id={inputId}

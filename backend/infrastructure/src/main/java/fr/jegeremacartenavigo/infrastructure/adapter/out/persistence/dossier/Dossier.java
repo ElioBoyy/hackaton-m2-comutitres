@@ -67,6 +67,9 @@ public class Dossier {
     @JoinColumn(name = "id_dossier_precedent")
     private Dossier dossierPrecedent;
 
+    @Column(name = "numero_dossier", length = 20, unique = true)
+    private String numeroDossier;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "canal_creation", length = 20, nullable = false)
     private CanalCreation canalCreation;
@@ -102,9 +105,6 @@ public class Dossier {
 
     @Column(name = "beneficiaire_nom_complet", length = 200)
     private String beneficiaireNomComplet;
-
-    @Column(name = "numero_dossier", length = 20, unique = true)
-    private String numeroDossier;
 
     public enum CanalCreation {
         en_ligne, agence, backoffice
