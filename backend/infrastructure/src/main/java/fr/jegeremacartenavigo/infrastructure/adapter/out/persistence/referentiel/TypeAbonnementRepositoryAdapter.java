@@ -24,6 +24,7 @@ public class TypeAbonnementRepositoryAdapter implements TypeAbonnementRepository
                         t.getCategorie(),
                         t.getPeriodicite().name(),
                         t.getTarifPlein(),
+                        t.getDescription(),
                         t.getTransports() != null ? Arrays.asList(t.getTransports()) : List.of(),
                         t.getZones() != null ? Arrays.asList(t.getZones()) : List.of()
                 ))

@@ -233,6 +233,7 @@ export interface TypeAbonnement {
   categorie: string | null
   periodicite: string
   tarifPlein: number | null
+  description: string | null
   transports: string[]
   zones: string[]
 }
