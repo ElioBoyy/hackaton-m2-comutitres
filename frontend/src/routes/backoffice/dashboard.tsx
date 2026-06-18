@@ -23,6 +23,8 @@ function BackofficeDashboard() {
   const [statut, setStatut] = useState<StatutCategorie | 'tous'>('en_cours')
   const [counts, setCounts] = useState<DossierCounts | null>(null)
   const [page, setPage] = useState(1)
+  const [nomClient, setNomClient] = useState('')
+  const [numeroDossier, setNumeroDossier] = useState('')
   const [dossiers, setDossiers] = useState<DossierResume[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -45,11 +47,19 @@ function BackofficeDashboard() {
           handleUnauthorized()
         }
       })
-    getDossierCounts()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    if (!isAuthenticated()) return
+    getDossierCounts({
+      nomClient: nomClient || undefined,
+      numeroDossier: numeroDossier || undefined,
+    })
       .then(setCounts)
       .catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [nomClient, numeroDossier])
 
   useEffect(() => {
     if (!isAuthenticated()) return
@@ -57,7 +67,13 @@ function BackofficeDashboard() {
     setLoading(true)
     setError(null)
 
-    getDossiers({ statut: statut === 'tous' ? undefined : statut, page, pageSize: PAGE_SIZE })
+    getDossiers({
+        statut: statut === 'tous' ? undefined : statut,
+        nomClient: nomClient || undefined,
+        numeroDossier: numeroDossier || undefined,
+        page,
+        pageSize: PAGE_SIZE,
+      })
       .then((response) => {
         if (cancelled) return
         setDossiers(response.dossiers)
@@ -83,7 +99,7 @@ function BackofficeDashboard() {
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statut, page])
+  }, [statut, page, nomClient, numeroDossier])
 
   if (!agentName) {
     return null
@@ -92,7 +108,10 @@ function BackofficeDashboard() {
   return (
     <BackofficeLayout agentName={agentName} onLogout={handleUnauthorized}>
       <div className="flex flex-col gap-6">
-        <ClientSearchBar />
+        <ClientSearchBar
+          onNomClientChange={(v) => { setNomClient(v); setPage(1) }}
+          onNumeroDossierChange={(v) => { setNumeroDossier(v); setPage(1) }}
+        />
 
         <div className="rounded-2xl border border-gray-200 bg-white">
           <div className="flex items-center justify-between gap-4 border-b border-gray-200 p-4">

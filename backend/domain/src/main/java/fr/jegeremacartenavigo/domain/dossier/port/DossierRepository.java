@@ -19,14 +19,16 @@ public interface DossierRepository {
 
     /**
      * @param categorieStatut filtre optionnel (en_cours/abouti/rejete/clos), {@code null} = pas de filtre
+     * @param nomClient       recherche insensible à la casse sur le nom complet du titulaire, {@code null} = pas de filtre
+     * @param numeroDossier   recherche insensible à la casse sur le numéro de dossier, {@code null} = pas de filtre ; ignoré si nomClient non null
      */
-    PageResult<DossierResume> findPage(String categorieStatut, int page, int pageSize);
+    PageResult<DossierResume> findPage(String categorieStatut, String nomClient, String numeroDossier, int page, int pageSize);
 
     Optional<DossierDetail> findDetailById(Integer id);
     DossierCree enregistrer(NouveauDossier nouveauDossier);
 
-    /** Nombre de dossiers par categorie de statut. */
-    java.util.Map<String, Long> countByCategorie();
+    /** Nombre de dossiers par categorie de statut, avec filtre optionnel de recherche. */
+    java.util.Map<String, Long> countByCategorie(String nomClient, String numeroDossier);
 
     List<HistoriqueEntree> findHistoriqueByDossierId(Integer idDossier);
 
