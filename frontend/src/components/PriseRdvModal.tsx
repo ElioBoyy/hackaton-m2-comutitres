@@ -242,9 +242,6 @@ function EtapeRdv({ point, onClose }: { point: PointDeVente; onClose: () => void
           <br />
           {point.name} — {adresseComplete(point)}
         </p>
-        <p className="mt-1 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning">
-          Confirmation de démonstration — aucun rendez-vous réel n’a été enregistré.
-        </p>
         <button
           type="button"
           onClick={onClose}
@@ -306,10 +303,6 @@ function EtapeRdv({ point, onClose }: { point: PointDeVente; onClose: () => void
           </button>
         ))}
       </div>
-
-      <p className="mt-4 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning">
-        Créneaux de démonstration — la réservation n’est pas connectée à un système réel.
-      </p>
 
       <button
         type="button"

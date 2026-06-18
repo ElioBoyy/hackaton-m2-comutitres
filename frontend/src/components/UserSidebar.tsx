@@ -6,8 +6,6 @@ import {
   Home,
   MapPin,
   Phone,
-  Search,
-  Settings,
   ScanSearch,
   X,
 } from "lucide-react";
@@ -18,7 +16,7 @@ import { m } from "~/paraglide/messages";
 interface NavItem {
   labelKey: keyof typeof m;
   icon: typeof Home;
-  to?: string;
+  to: string;
 }
 
 const PUBLIC_ITEMS: NavItem[] = [
@@ -30,7 +28,6 @@ const PUBLIC_ITEMS: NavItem[] = [
 
 const AUTH_ITEMS: NavItem[] = [
   { labelKey: "nav_home", icon: Home, to: "/" },
-  { labelKey: "nav_search_subscription", icon: Search },
   {
     labelKey: "nav_diagnostic",
     icon: ScanSearch,
@@ -40,7 +37,6 @@ const AUTH_ITEMS: NavItem[] = [
   { labelKey: "nav_my_documents", icon: FileText, to: "/mes-documents" },
   { labelKey: "nav_points_de_vente", icon: MapPin, to: "/points-de-vente" },
   { labelKey: "nav_help_contacts", icon: HelpCircle, to: "/sav" },
-  { labelKey: "nav_settings", icon: Settings },
 ];
 
 interface UserSidebarProps {
@@ -92,33 +88,18 @@ export function UserSidebar({ isOpen, onClose }: UserSidebarProps) {
         >
           {items.map(({ labelKey, icon: Icon, to }) => {
             const label = (m[labelKey] as () => string)();
-            const content = (
-              <span className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-blue-pale">
-                <Icon size={18} aria-hidden="true" />
-                {label}
-              </span>
-            );
-            if (to) {
-              return (
-                <Link
-                  key={labelKey}
-                  to={to as any}
-                  aria-label={label}
-                  className="[&.active>span]:bg-focus [&.active>span]:text-white [&.active>span]:font-semibold"
-                >
-                  {content}
-                </Link>
-              );
-            }
             return (
-              <span
+              <Link
                 key={labelKey}
-                className="cursor-default opacity-50"
-                aria-disabled="true"
-                title={m.nav_coming_soon()}
+                to={to as any}
+                aria-label={label}
+                className="[&.active>span]:bg-focus [&.active>span]:text-white [&.active>span]:font-semibold"
               >
-                {content}
-              </span>
+                <span className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-blue-pale">
+                  <Icon size={18} aria-hidden="true" />
+                  {label}
+                </span>
+              </Link>
             );
           })}
         </nav>
