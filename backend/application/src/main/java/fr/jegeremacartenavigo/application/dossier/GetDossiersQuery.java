@@ -5,6 +5,8 @@ import jakarta.validation.constraints.Min;
 
 public record GetDossiersQuery(
         String statut,
+        String nomClient,
+        String numeroDossier,
         @Min(1) int page,
         @Min(1) int pageSize
 ) implements Query<DossierListResponse> {

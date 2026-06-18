@@ -42,14 +42,18 @@ public class DossierController {
     @GetMapping
     public DossierListResponse list(
             @RequestParam(required = false) String statut,
+            @RequestParam(required = false) String nomClient,
+            @RequestParam(required = false) String numeroDossier,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int pageSize) {
-        return queryBus.ask(new GetDossiersQuery(statut, page, pageSize));
+        return queryBus.ask(new GetDossiersQuery(statut, nomClient, numeroDossier, page, pageSize));
     }
 
     @GetMapping("/counts")
-    public DossierCountsResponse counts() {
-        return queryBus.ask(new GetDossierCountsQuery());
+    public DossierCountsResponse counts(
+            @RequestParam(required = false) String nomClient,
+            @RequestParam(required = false) String numeroDossier) {
+        return queryBus.ask(new GetDossierCountsQuery(nomClient, numeroDossier));
     }
 
     @GetMapping("/{id}")

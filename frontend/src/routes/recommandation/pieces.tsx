@@ -3,6 +3,7 @@ import { BadgeCheck, GraduationCap, IdCard, Loader2, Receipt, Sparkles } from 'l
 import * as React from 'react'
 import { Button } from '~/components/Button'
 import { piecesSontCompletes } from '~/domain/pieces'
+import { deposerFichier, type TypePiece } from '~/lib/fichier'
 import { m } from '~/paraglide/messages'
 import { useAppDispatch, useAppSelector } from '~/store/hooks'
 import {
@@ -91,16 +92,18 @@ function PiecesStep() {
       <ChampFichier
         icon={IdCard}
         label={m.wizard_pieces_id_card()}
+        type="PIECE_IDENTITE"
         nomFichier={wizard.pieceIdentiteNomFichier}
-        onChange={(nom) => dispatch(pieceIdentiteDeposee(nom))}
+        onDepose={(payload) => dispatch(pieceIdentiteDeposee(payload))}
       />
 
       {justificatifRequis ? (
         <ChampFichier
           icon={GraduationCap}
           label={m.wizard_pieces_school_cert()}
+          type="CERTIFICAT_SCOLARITE"
           nomFichier={wizard.justificatifEtudiantNomFichier}
-          onChange={(nom) => dispatch(justificatifEtudiantDepose(nom))}
+          onDepose={(payload) => dispatch(justificatifEtudiantDepose(payload))}
         />
       ) : null}
 
@@ -108,8 +111,9 @@ function PiecesStep() {
         <ChampFichier
           icon={Receipt}
           label={m.wizard_pieces_scholarship_notif()}
+          type="NOTIFICATION_BOURSE"
           nomFichier={wizard.notificationBourseNomFichier}
-          onChange={(nom) => dispatch(notificationBourseDeposee(nom))}
+          onDepose={(payload) => dispatch(notificationBourseDeposee(payload))}
         />
       ) : null}
 
@@ -136,15 +140,32 @@ function PiecesStep() {
 function ChampFichier({
   icon: Icon,
   label,
+  type,
   nomFichier,
-  onChange,
+  onDepose,
 }: {
   icon: typeof IdCard
   label: string
+  type: TypePiece
   nomFichier: string | null
-  onChange: (nomFichier: string) => void
+  onDepose: (payload: { nomFichier: string; cleObjet: string }) => void
 }) {
   const inputId = React.useId()
+  const [enUpload, setEnUpload] = React.useState(false)
+  const [erreur, setErreur] = React.useState<string | null>(null)
+
+  async function uploader(fichier: File) {
+    setEnUpload(true)
+    setErreur(null)
+    try {
+      const reponse = await deposerFichier(fichier, type)
+      onDepose({ nomFichier: reponse.nomOriginal ?? fichier.name, cleObjet: reponse.cle })
+    } catch {
+      setErreur(m.wizard_pieces_upload_error())
+    } finally {
+      setEnUpload(false)
+    }
+  }
 
   return (
     <label
@@ -154,15 +175,20 @@ function ChampFichier({
       <Icon className="h-6 w-6 shrink-0 text-primary" strokeWidth={1.75} />
       <div className="flex-1">
         <p className="font-semibold text-dark">{label}</p>
-        <p className="text-sm text-gray-700">{nomFichier ?? m.wizard_pieces_no_file()}</p>
+        <p className="text-sm text-gray-700">
+          {enUpload ? m.wizard_pieces_uploading() : (nomFichier ?? m.wizard_pieces_no_file())}
+        </p>
+        {erreur ? <p className="text-xs text-danger">{erreur}</p> : null}
       </div>
+      {enUpload ? <Loader2 className="h-5 w-5 animate-spin text-primary" strokeWidth={1.75} /> : null}
       <input
         id={inputId}
         type="file"
         className="hidden"
+        disabled={enUpload}
         onChange={(event) => {
           const fichier = event.target.files?.[0]
-          if (fichier) onChange(fichier.name)
+          if (fichier) void uploader(fichier)
         }}
       />
     </label>

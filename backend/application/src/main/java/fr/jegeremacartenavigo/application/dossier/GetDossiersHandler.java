@@ -13,7 +13,7 @@ public class GetDossiersHandler implements QueryHandler<GetDossiersQuery, Dossie
 
     @Override
     public DossierListResponse handle(GetDossiersQuery query) {
-        var page = repository.findPage(query.statut(), query.page(), query.pageSize());
+        var page = repository.findPage(query.statut(), query.nomClient(), query.numeroDossier(), query.page(), query.pageSize());
         return DossierListResponse.from(page);
     }
 }

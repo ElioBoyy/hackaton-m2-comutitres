@@ -11,7 +11,79 @@ import java.util.List;
 
 public interface DossierJpaRepository extends JpaRepository<Dossier, Integer> {
 
-    Page<Dossier> findByStatutActuel_Categorie(StatutDossier.Categorie categorie, Pageable pageable);
+    @Query("""
+            select d from Dossier d
+            join fetch d.utilisateurPorteur up
+            join fetch d.utilisateurPayeur pp
+            join fetch d.statutActuel sd
+            join fetch d.typeAbonnement ta
+            where sd.code <> 'BROUILLON'
+            order by d.dateCreation desc
+            """)
+    Page<Dossier> findAllExceptBrouillon(Pageable pageable);
+
+    @Query("""
+            select d from Dossier d
+            join fetch d.utilisateurPorteur up
+            join fetch d.utilisateurPayeur pp
+            join fetch d.statutActuel sd
+            join fetch d.typeAbonnement ta
+            where sd.categorie = :categorie and sd.code <> 'BROUILLON'
+            order by d.dateCreation desc
+            """)
+    Page<Dossier> findByCategorieExceptBrouillon(@Param("categorie") StatutDossier.Categorie categorie, Pageable pageable);
+
+    @Query("""
+            select d from Dossier d
+            join fetch d.utilisateurPorteur up
+            join fetch d.utilisateurPayeur pp
+            join fetch d.statutActuel sd
+            join fetch d.typeAbonnement ta
+            where sd.code <> 'BROUILLON'
+              and (lower(concat(concat(up.prenom, ' '), up.nom)) like lower(concat(concat('%', :terme), '%'))
+                or lower(concat(concat(up.nom, ' '), up.prenom)) like lower(concat(concat('%', :terme), '%')))
+            order by d.dateCreation desc
+            """)
+    Page<Dossier> findByNomClient(@Param("terme") String terme, Pageable pageable);
+
+    @Query("""
+            select d from Dossier d
+            join fetch d.utilisateurPorteur up
+            join fetch d.utilisateurPayeur pp
+            join fetch d.statutActuel sd
+            join fetch d.typeAbonnement ta
+            where sd.categorie = :categorie and sd.code <> 'BROUILLON'
+              and (lower(concat(concat(up.prenom, ' '), up.nom)) like lower(concat(concat('%', :terme), '%'))
+                or lower(concat(concat(up.nom, ' '), up.prenom)) like lower(concat(concat('%', :terme), '%')))
+            order by d.dateCreation desc
+            """)
+    Page<Dossier> findByNomClientAndCategorie(@Param("categorie") StatutDossier.Categorie categorie,
+                                               @Param("terme") String terme, Pageable pageable);
+
+    @Query("""
+            select d from Dossier d
+            join fetch d.utilisateurPorteur up
+            join fetch d.utilisateurPayeur pp
+            join fetch d.statutActuel sd
+            join fetch d.typeAbonnement ta
+            where sd.code <> 'BROUILLON'
+              and lower(d.numeroDossier) like lower(concat(concat('%', :terme), '%'))
+            order by d.dateCreation desc
+            """)
+    Page<Dossier> findByNumeroDossier(@Param("terme") String terme, Pageable pageable);
+
+    @Query("""
+            select d from Dossier d
+            join fetch d.utilisateurPorteur up
+            join fetch d.utilisateurPayeur pp
+            join fetch d.statutActuel sd
+            join fetch d.typeAbonnement ta
+            where sd.categorie = :categorie and sd.code <> 'BROUILLON'
+              and lower(d.numeroDossier) like lower(concat(concat('%', :terme), '%'))
+            order by d.dateCreation desc
+            """)
+    Page<Dossier> findByNumeroDossierAndCategorie(@Param("categorie") StatutDossier.Categorie categorie,
+                                                   @Param("terme") String terme, Pageable pageable);
 
     /**
      * Dossiers ou l'utilisateur est porteur et/ou payeur (un dossier ou il
@@ -33,6 +105,26 @@ public interface DossierJpaRepository extends JpaRepository<Dossier, Integer> {
             """)
     List<Dossier> findAllPourUtilisateur(@Param("idUtilisateur") Integer idUtilisateur);
 
-    @Query("SELECT d.statutActuel.categorie, COUNT(d) FROM Dossier d GROUP BY d.statutActuel.categorie")
+    @Query("SELECT d.statutActuel.categorie, COUNT(d) FROM Dossier d JOIN d.statutActuel sd WHERE sd.code <> 'BROUILLON' GROUP BY d.statutActuel.categorie")
     List<Object[]> countGroupByCategorie();
+
+    @Query("""
+            select d.statutActuel.categorie, count(d) from Dossier d
+            join d.utilisateurPorteur up
+            join d.statutActuel sd
+            where sd.code <> 'BROUILLON'
+              and (lower(concat(concat(up.prenom, ' '), up.nom)) like lower(concat(concat('%', :terme), '%'))
+                or lower(concat(concat(up.nom, ' '), up.prenom)) like lower(concat(concat('%', :terme), '%')))
+            group by d.statutActuel.categorie
+            """)
+    List<Object[]> countByNomClientGroupByCategorie(@Param("terme") String terme);
+
+    @Query("""
+            select d.statutActuel.categorie, count(d) from Dossier d
+            join d.statutActuel sd
+            where sd.code <> 'BROUILLON'
+              and lower(d.numeroDossier) like lower(concat(concat('%', :terme), '%'))
+            group by d.statutActuel.categorie
+            """)
+    List<Object[]> countByNumeroDossierGroupByCategorie(@Param("terme") String terme);
 }

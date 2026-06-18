@@ -28,11 +28,16 @@ export interface WizardState {
   // recommandation principale calculee par calculerRecommandation.
   abonnementSelectionneId: string | null
   // PreVerificationIA (cf. CONTEXT.md) : pieces deposees a l'etape /pieces et
-  // statut de la verification. Pas de vrai upload reseau, juste le nom du
-  // fichier choisi par l'usager.
+  // statut de la verification. L'upload reel passe par POST /fichiers (bucket
+  // MinIO prive) : on stocke le nom d'origine pour l'affichage ET la cle
+  // objet renvoyee par le backend, transmise dans CreerDossierPayload comme
+  // {@code chemin*}.
   pieceIdentiteNomFichier: string | null
+  pieceIdentiteCleObjet: string | null
   justificatifEtudiantNomFichier: string | null
+  justificatifEtudiantCleObjet: string | null
   notificationBourseNomFichier: string | null
+  notificationBourseCleObjet: string | null
   verificationIA: 'NON_DEMANDEE' | 'EFFECTUEE'
   // Abonnement sauvegarde via le bouton "Sauvegarder et quitter", lu par le
   // dashboard. Distinct de abonnementSelectionneId pour ne pas confondre
@@ -60,8 +65,11 @@ const initialState: WizardState = {
   residence: RESIDENCE_DEFAULT,
   abonnementSelectionneId: null,
   pieceIdentiteNomFichier: null,
+  pieceIdentiteCleObjet: null,
   justificatifEtudiantNomFichier: null,
+  justificatifEtudiantCleObjet: null,
   notificationBourseNomFichier: null,
+  notificationBourseCleObjet: null,
   verificationIA: 'NON_DEMANDEE',
   abonnementSauvegardeId: null,
   paiementEffectue: false,
@@ -96,14 +104,17 @@ const wizardSlice = createSlice({
     abonnementSelectionne(state, action: PayloadAction<string>) {
       state.abonnementSelectionneId = action.payload
     },
-    pieceIdentiteDeposee(state, action: PayloadAction<string>) {
-      state.pieceIdentiteNomFichier = action.payload
+    pieceIdentiteDeposee(state, action: PayloadAction<{ nomFichier: string; cleObjet: string }>) {
+      state.pieceIdentiteNomFichier = action.payload.nomFichier
+      state.pieceIdentiteCleObjet = action.payload.cleObjet
     },
-    justificatifEtudiantDepose(state, action: PayloadAction<string>) {
-      state.justificatifEtudiantNomFichier = action.payload
+    justificatifEtudiantDepose(state, action: PayloadAction<{ nomFichier: string; cleObjet: string }>) {
+      state.justificatifEtudiantNomFichier = action.payload.nomFichier
+      state.justificatifEtudiantCleObjet = action.payload.cleObjet
     },
-    notificationBourseDeposee(state, action: PayloadAction<string>) {
-      state.notificationBourseNomFichier = action.payload
+    notificationBourseDeposee(state, action: PayloadAction<{ nomFichier: string; cleObjet: string }>) {
+      state.notificationBourseNomFichier = action.payload.nomFichier
+      state.notificationBourseCleObjet = action.payload.cleObjet
     },
     verificationIAEffectuee(state) {
       state.verificationIA = 'EFFECTUEE'
