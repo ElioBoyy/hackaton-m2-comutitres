@@ -10,6 +10,8 @@ export interface Personne {
 export interface PieceJustificative {
   id: number
   libelleTypePiece: string
+  /** Cle MinIO (peut etre absente si pas encore deposee). A passer a recupererContenu(). */
+  cheminFichier: string | null
   statutValidation: 'en_attente' | 'validee' | 'rejetee'
   dateDepot: string
   motifRejet: string | null
