@@ -19,7 +19,8 @@ public record DossierDetailResponse(
         LocalDate dateDebutDroits,
         LocalDate dateFinDroits,
         BigDecimal montantTotal,
-        List<PieceJustificativeResponse> pieces
+        List<PieceJustificativeResponse> pieces,
+        List<PieceRequiseResponse> piecesRequises
 ) implements Response {
 
     public static DossierDetailResponse from(DossierDetail d) {
@@ -34,7 +35,8 @@ public record DossierDetailResponse(
                 d.dateDebutDroits(),
                 d.dateFinDroits(),
                 d.montantTotal(),
-                d.pieces().stream().map(PieceJustificativeResponse::from).toList()
+                d.pieces().stream().map(PieceJustificativeResponse::from).toList(),
+                d.piecesRequises().stream().map(PieceRequiseResponse::from).toList()
         );
     }
 }

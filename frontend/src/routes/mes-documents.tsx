@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { ArrowRight, Loader2 } from 'lucide-react'
+import { ExternalLink, FileText, Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { DashboardLayout } from '~/components/DashboardLayout'
 import { ApiError } from '~/lib/api'
@@ -122,55 +122,57 @@ function MesDocumentsPage() {
             ) : fichiers && fichiers.length === 0 ? (
               <p className="px-4 py-6 text-sm text-gray-700">{m.documents_empty()}</p>
             ) : fichiers ? (
-              <table className="w-full text-left" aria-label={m.nav_my_documents()}>
-                <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-700">{m.documents_col_name()}</th>
-                    <th className="hidden px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-700 sm:table-cell">{m.documents_col_size()}</th>
-                    <th className="hidden px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-700 sm:table-cell">{m.documents_col_date()}</th>
-                    <th className="px-4 py-3" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {fichiers.map((fichier) => {
-                    const libelle = libelleAffichage(fichier)
-                    return (
-                    <tr key={fichier.cle} className="border-b border-gray-200 last:border-0">
-                      <td className="px-4 py-3">
-                        <p className="truncate text-sm font-medium text-gray-900">{libelle}</p>
-                      </td>
-                      <td className="hidden px-4 py-3 text-sm text-gray-700 sm:table-cell">
-                        {formaterTaille(fichier.tailleOctets)}
-                      </td>
-                      <td className="hidden px-4 py-3 text-sm text-gray-700 sm:table-cell">
-                        {formaterDate(fichier.dateDepot)}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <button
-                          type="button"
-                          onClick={() => void ouvrir(fichier.cle)}
-                          disabled={ouvertureCle === fichier.cle}
-                          aria-label={m.documents_open_aria({ name: libelle })}
-                          className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-primary transition hover:bg-blue-pale focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60"
-                        >
-                          {ouvertureCle === fichier.cle ? (
-                            <>
-                              <Loader2 size={16} className="animate-spin" aria-hidden="true" />
-                              <span className="hidden sm:inline">{m.documents_opening()}</span>
-                            </>
-                          ) : (
-                            <>
-                              <ArrowRight size={16} aria-hidden="true" />
-                              <span className="hidden sm:inline">{m.documents_open()}</span>
-                            </>
-                          )}
-                        </button>
-                      </td>
+              <div className="overflow-hidden">
+                <table className="w-full text-left" aria-label={m.nav_my_documents()}>
+                  <thead>
+                    <tr className="border-b border-gray-200 bg-gray-50">
+                      <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-gray-500">{m.documents_col_name()}</th>
+                      <th className="hidden px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-gray-500 sm:table-cell">{m.documents_col_size()}</th>
+                      <th className="hidden px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-gray-500 sm:table-cell">{m.documents_col_date()}</th>
+                      <th className="px-4 py-2.5" />
                     </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {fichiers.map((fichier) => {
+                      const libelle = libelleAffichage(fichier)
+                      return (
+                      <tr key={fichier.cle} className="border-b border-gray-200 last:border-0">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2.5">
+                            <FileText size={15} className="shrink-0 text-gray-400" aria-hidden="true" />
+                            <p className="truncate text-sm font-medium text-dark">{libelle}</p>
+                          </div>
+                        </td>
+                        <td className="hidden px-4 py-3 text-sm text-gray-600 sm:table-cell">
+                          {formaterTaille(fichier.tailleOctets)}
+                        </td>
+                        <td className="hidden px-4 py-3 text-sm text-gray-600 sm:table-cell">
+                          {formaterDate(fichier.dateDepot)}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            type="button"
+                            onClick={() => void ouvrir(fichier.cle)}
+                            disabled={ouvertureCle === fichier.cle}
+                            aria-label={m.documents_open_aria({ name: libelle })}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:border-primary hover:text-primary disabled:opacity-50"
+                          >
+                            {ouvertureCle === fichier.cle ? (
+                              <Loader2 size={12} className="animate-spin" aria-hidden="true" />
+                            ) : (
+                              <ExternalLink size={12} aria-hidden="true" />
+                            )}
+                            <span className="hidden sm:inline">
+                              {ouvertureCle === fichier.cle ? m.documents_opening() : m.documents_open()}
+                            </span>
+                          </button>
+                        </td>
+                      </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
             ) : null}
           </div>
         </section>
@@ -186,14 +188,17 @@ function MesDocumentsPage() {
  * i18n via l'enum TypePiece.
  */
 function libelleAffichage(fichier: FichierListeEntree): string {
-  if (fichier.type) return LIBELLES_TYPE[fichier.type]()
+  if (fichier.type) return libelleType(fichier.type)
   return fichier.nomFichier
 }
 
-const LIBELLES_TYPE: Record<TypePiece, () => string> = {
+const LIBELLES_TYPE: Partial<Record<TypePiece, () => string>> = {
   PIECE_IDENTITE: m.documents_label_piece_identite,
   CERTIFICAT_SCOLARITE: m.documents_label_certificat_scolarite,
-  NOTIFICATION_BOURSE: m.documents_label_notification_bourse,
+}
+
+function libelleType(type: TypePiece): string {
+  return LIBELLES_TYPE[type]?.() ?? type
 }
 
 function formaterTaille(octets: number): string {

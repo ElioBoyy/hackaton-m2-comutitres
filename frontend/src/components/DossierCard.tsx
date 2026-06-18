@@ -1,4 +1,5 @@
 import React from 'react'
+import { Link } from '@tanstack/react-router'
 import { CalendarDays, Clock, Wallet, ArrowRight } from 'lucide-react'
 import { StatusBadge } from '~/components/backoffice/StatusBadge'
 import { m } from '~/paraglide/messages'
@@ -146,7 +147,10 @@ export function DossierCard({ dossier }: { dossier: DossierDashboard }) {
         className="flex items-center justify-between border-b border-blue-100 px-5 py-3"
         style={{ background: 'linear-gradient(to right, #f0f4ff, #eef2fb)' }}
       >
-        <StatusBadge libelle={dossier.statut.libelle} categorie={dossier.statut.categorie as any} />
+        <StatusBadge
+          libelle={dossier.statut.libelle}
+          categorie={dossier.statut.code === 'INCOMPLET' ? 'rejete' : dossier.statut.categorie as any}
+        />
         <span className="text-xs text-gray-500 sm:text-sm">
           N°&nbsp;<span className="font-mono font-semibold text-gray-700">{dossier.numeroDossier}</span>
         </span>
@@ -240,14 +244,15 @@ export function DossierCard({ dossier }: { dossier: DossierDashboard }) {
             </div>
           </div>
 
-          <a
-            href={`/dossier/${dossier.idDossier}`}
+          <Link
+            to="/dossier/$id"
+            params={{ id: String(dossier.idDossier) }}
             aria-label={m.dashboard_see_link_aria({ name: dossier.typeAbonnementLibelle })}
             className="mt-auto flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-focus focus:outline-none focus:ring-2 focus:ring-primary/40"
           >
             Gérer mon abonnement
             <ArrowRight size={15} aria-hidden />
-          </a>
+          </Link>
         </div>
       </div>
 
