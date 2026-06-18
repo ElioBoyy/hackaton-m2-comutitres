@@ -2,10 +2,13 @@ package fr.jegeremacartenavigo.domain.dossier.port;
 
 import fr.jegeremacartenavigo.domain.dossier.model.DossierDetail;
 import fr.jegeremacartenavigo.domain.dossier.model.DossierResume;
+import fr.jegeremacartenavigo.domain.dossier.model.HistoriqueEntree;
 import fr.jegeremacartenavigo.domain.dossier.model.PageResult;
 import fr.jegeremacartenavigo.domain.dossier.model.DossierCree;
 import fr.jegeremacartenavigo.domain.dossier.model.NouveauDossier;
+import fr.jegeremacartenavigo.domain.dossier.model.ValidationPiece;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -24,4 +27,8 @@ public interface DossierRepository {
 
     /** Nombre de dossiers par categorie de statut. */
     java.util.Map<String, Long> countByCategorie();
+
+    List<HistoriqueEntree> findHistoriqueByDossierId(Integer idDossier);
+
+    void validerOuRejeterPiece(ValidationPiece validation);
 }

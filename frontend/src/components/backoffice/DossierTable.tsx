@@ -1,7 +1,7 @@
 import { DossierTableRow } from '~/components/backoffice/DossierTableRow'
 import type { DossierResume } from '~/lib/types/dossier'
 
-const COLONNES = ['Titulaire', 'Abonnement', 'Pieces en attente', 'Soumis le', 'Statut', '']
+const COLONNES = ['N° dossier', 'Titulaire', 'Abonnement', 'Pieces en attente', 'Soumis le', 'Statut', '']
 
 export function DossierTable({
   dossiers,

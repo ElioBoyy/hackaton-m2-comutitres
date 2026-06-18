@@ -1,5 +1,44 @@
 export type StatutCategorie = 'en_cours' | 'abouti' | 'rejete' | 'clos'
 
+export interface Personne {
+  idUtilisateur: number
+  nom: string
+  prenom: string
+  email: string
+}
+
+export interface PieceJustificative {
+  id: number
+  libelleTypePiece: string
+  statutValidation: 'en_attente' | 'validee' | 'rejetee'
+  dateDepot: string
+  motifRejet: string | null
+}
+
+export interface DossierDetail {
+  idDossier: number
+  numeroDossier: string
+  titulaire: Personne
+  payeur: Personne
+  typeAbonnement: { code: string; libelle: string }
+  statut: { code: string; libelle: string; categorie: StatutCategorie }
+  dateCreation: string
+  dateDebutDroits: string | null
+  dateFinDroits: string | null
+  montantTotal: number
+  pieces: PieceJustificative[]
+}
+
+export interface HistoriqueEntree {
+  id: number
+  dateAction: string
+  typeAction: string
+  statutAvant: string | null
+  statutApres: string | null
+  nomAuteur: string
+  description: string | null
+}
+
 export interface StatutDossier {
   code: string
   libelle: string
@@ -13,6 +52,7 @@ export interface TypeAbonnement {
 
 export interface DossierResume {
   idDossier: number
+  numeroDossier: string
   nomTitulaire: string
   typeAbonnement: TypeAbonnement
   statut: StatutDossier

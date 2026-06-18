@@ -7,6 +7,7 @@ import type { DossierResume } from '~/lib/types/dossier'
 export function DossierTableRow({ dossier }: { dossier: DossierResume }) {
   return (
     <tr className="border-b border-gray-200 last:border-0">
+      <td className="px-4 py-3 text-sm font-mono font-medium text-gray-700">{dossier.numeroDossier}</td>
       <td className="px-4 py-3 text-sm font-medium text-gray-900">{dossier.nomTitulaire}</td>
       <td className="px-4 py-3">
         <AbonnementBadge typeAbonnement={dossier.typeAbonnement} />

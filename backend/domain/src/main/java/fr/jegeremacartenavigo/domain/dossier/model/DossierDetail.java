@@ -11,6 +11,7 @@ import java.util.List;
  */
 public record DossierDetail(
         Integer id,
+        String numeroDossier,
         Personne titulaire,
         Personne payeur,
         String codeTypeAbonnement,

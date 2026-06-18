@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 
 public record DossierResumeResponse(
         Integer idDossier,
+        String numeroDossier,
         String nomTitulaire,
         TypeAbonnementResponse typeAbonnement,
         StatutDossierResponse statut,
@@ -15,6 +16,7 @@ public record DossierResumeResponse(
     public static DossierResumeResponse from(DossierResume d) {
         return new DossierResumeResponse(
                 d.id(),
+                d.numeroDossier(),
                 d.nomTitulaire(),
                 new TypeAbonnementResponse(d.codeTypeAbonnement(), d.libelleTypeAbonnement()),
                 new StatutDossierResponse(d.codeStatut(), d.libelleStatut(), d.categorieStatut()),
