@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
  */
 public record DossierResume(
         Integer id,
+        String numeroDossier,
         String nomTitulaire,
         String codeTypeAbonnement,
         String libelleTypeAbonnement,

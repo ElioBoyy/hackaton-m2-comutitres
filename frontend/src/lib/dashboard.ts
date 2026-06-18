@@ -2,8 +2,17 @@ import { apiFetch } from './api'
 
 export type RoleDossier = 'PORTEUR_ET_PAYEUR' | 'PAYEUR' | 'PORTEUR'
 export type TypeAlerte = 'REMBOURSEMENT_DISPONIBLE' | 'REDUCTION_DISPONIBLE' | string
-export type FiltreDossiers = 'ACTIVE' | 'ALL'
+export const FiltreDossiers = {
+  ACTIVE:   'ACTIVE',
+  EN_COURS: 'EN_COURS',
+  FERME:    'FERME',
+  ALL:      'ALL',
+} as const
+
+export type FiltreDossiers = typeof FiltreDossiers[keyof typeof FiltreDossiers]
 export type CategorieStatut = 'abouti' | 'en_cours' | 'bloque' | string
+export type TransportMode = 'METRO' | 'RER' | 'TRAIN' | 'TRAMWAY' | 'BUS'
+export type ZoneNavigo = 'Z1' | 'Z2' | 'Z3' | 'Z4' | 'Z5'
 
 export interface UtilisateurIdentite {
   idUtilisateur: number
@@ -28,13 +37,18 @@ export interface AlerteDashboard {
 
 export interface DossierDashboard {
   idDossier: number
+  numeroDossier: string
   role: RoleDossier
-  autrePersonne: UtilisateurIdentite | null
+  porteurIdentite: UtilisateurIdentite
+  payeurIdentite: UtilisateurIdentite
   typeAbonnementLibelle: string
+  transports: TransportMode[]
+  zones: ZoneNavigo[]
   statut: StatutDossierResume
   dateCreation: string
-  dateDebutDroits: string
-  dateFinDroits: string
+  dateDebutDroits: string | null
+  dateFinDroits: string | null
+  dateRenouvellement: string | null
   montantTotal: number
   piecesADeposer: boolean
 }

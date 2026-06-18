@@ -67,6 +67,9 @@ public class Dossier {
     @JoinColumn(name = "id_dossier_precedent")
     private Dossier dossierPrecedent;
 
+    @Column(name = "numero_dossier", length = 20, unique = true)
+    private String numeroDossier;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "canal_creation", length = 20, nullable = false)
     private CanalCreation canalCreation;

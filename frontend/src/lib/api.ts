@@ -6,7 +6,13 @@
  * - Possede aussi le storage du JWT : seul module qui touche a localStorage,
  *   pour que le support de stockage puisse changer sans impacter les use cases.
  */
-import type { DossierListResponse, DossierResume } from '~/lib/types/dossier'
+import type {
+  DossierDetail,
+  DossierListResponse,
+  DossierResume,
+  HistoriqueEntree,
+  PieceJustificative,
+} from '~/lib/types/dossier'
 
 const API_URL: string = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
 
@@ -202,4 +208,24 @@ export function getDossierCounts(): Promise<DossierCounts> {
  */
 export function searchDossiers(q: string): Promise<DossierResume[]> {
   return apiFetch(`/dossiers/search?q=${encodeURIComponent(q)}`)
+}
+
+export function getDossierDetail(id: number | string): Promise<DossierDetail> {
+  return apiFetch(`/dossiers/${id}`)
+}
+
+export function getDossierHistorique(id: number | string): Promise<{ historique: HistoriqueEntree[] }> {
+  return apiFetch(`/dossiers/${id}/historique`)
+}
+
+export function validerPiece(
+  idDossier: number | string,
+  idPiece: number,
+  valider: boolean,
+  motifRejet?: string,
+): Promise<PieceJustificative> {
+  return apiFetch(`/dossiers/${idDossier}/pieces/${idPiece}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ valider, motifRejet: motifRejet ?? null }),
+  })
 }

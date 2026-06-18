@@ -4,16 +4,23 @@ import fr.jegeremacartenavigo.domain.auth.exception.UtilisateurIntrouvableExcept
 import fr.jegeremacartenavigo.domain.dossier.exception.DossierDejaFinaliseException;
 import fr.jegeremacartenavigo.domain.dossier.exception.DossierIntrouvableException;
 import fr.jegeremacartenavigo.domain.dossier.exception.ReferentielIntrouvableException;
+import fr.jegeremacartenavigo.domain.dossier.exception.PieceIntrouvableException;
 import fr.jegeremacartenavigo.domain.dossier.model.DemandePour;
 import fr.jegeremacartenavigo.domain.dossier.model.DossierCree;
 import fr.jegeremacartenavigo.domain.dossier.model.DossierDetail;
 import fr.jegeremacartenavigo.domain.dossier.model.DossierResume;
+import fr.jegeremacartenavigo.domain.dossier.model.HistoriqueEntree;
 import fr.jegeremacartenavigo.domain.dossier.model.ModePaiementDossier;
 import fr.jegeremacartenavigo.domain.dossier.model.NouveauDossier;
 import fr.jegeremacartenavigo.domain.dossier.model.PageResult;
 import fr.jegeremacartenavigo.domain.dossier.model.Personne;
 import fr.jegeremacartenavigo.domain.dossier.model.PieceJustificativeResume;
+import fr.jegeremacartenavigo.domain.dossier.model.ValidationPiece;
 import fr.jegeremacartenavigo.domain.dossier.port.DossierRepository;
+import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.backoffice.Agent;
+import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.backoffice.AgentJpaRepository;
+import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.backoffice.HistoriqueDossier;
+import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.backoffice.HistoriqueDossierJpaRepository;
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.identite.Utilisateur;
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.identite.UtilisateurJpaRepository;
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.paiement.Paiement;
@@ -56,6 +63,9 @@ public class DossierRepositoryAdapter implements DossierRepository {
     private final StatutDossierJpaRepository statutDossierJpaRepository;
     private final TypePieceJustificativeJpaRepository typePieceJpaRepository;
     private final PaiementJpaRepository paiementJpaRepository;
+    private final HistoriqueDossierJpaRepository historiqueJpa;
+    private final AgentJpaRepository agentJpaRepository;
+    private final SequenceAnnuelleDossierJpaRepository sequenceJpa;
 
     public DossierRepositoryAdapter(
             DossierJpaRepository dossierJpa,
@@ -64,7 +74,10 @@ public class DossierRepositoryAdapter implements DossierRepository {
             TypeAbonnementJpaRepository typeAbonnementJpaRepository,
             StatutDossierJpaRepository statutDossierJpaRepository,
             TypePieceJustificativeJpaRepository typePieceJpaRepository,
-            PaiementJpaRepository paiementJpaRepository) {
+            PaiementJpaRepository paiementJpaRepository,
+            HistoriqueDossierJpaRepository historiqueJpa,
+            AgentJpaRepository agentJpaRepository,
+            SequenceAnnuelleDossierJpaRepository sequenceJpa) {
         this.dossierJpa = dossierJpa;
         this.pieceJpa = pieceJpa;
         this.utilisateurJpaRepository = utilisateurJpaRepository;
@@ -72,6 +85,9 @@ public class DossierRepositoryAdapter implements DossierRepository {
         this.statutDossierJpaRepository = statutDossierJpaRepository;
         this.typePieceJpaRepository = typePieceJpaRepository;
         this.paiementJpaRepository = paiementJpaRepository;
+        this.historiqueJpa = historiqueJpa;
+        this.agentJpaRepository = agentJpaRepository;
+        this.sequenceJpa = sequenceJpa;
     }
 
     @Override
@@ -137,6 +153,9 @@ public class DossierRepositoryAdapter implements DossierRepository {
 
         Dossier dossier = resoudreDossier(nouveauDossier, connecte);
         appliquerChamps(dossier, nouveauDossier, connecte, typeAbonnement, statut, paiementFourni);
+        if (dossier.getNumeroDossier() == null) {
+            dossier.setNumeroDossier(genererNumeroDossier());
+        }
         dossierJpa.save(dossier);
 
         enregistrerOuRemplacerPiece(dossier, connecte, CODE_PIECE_IDENTITE, nouveauDossier.cheminPieceIdentite());
@@ -246,6 +265,7 @@ public class DossierRepositoryAdapter implements DossierRepository {
     private static DossierResume toResume(Dossier d, long nbPiecesEnAttente) {
         return new DossierResume(
                 d.getIdDossier(),
+                d.getNumeroDossier(),
                 nomComplet(d.getUtilisateurPorteur()),
                 d.getTypeAbonnement().getCode(),
                 d.getTypeAbonnement().getLibelle(),
@@ -266,6 +286,7 @@ public class DossierRepositoryAdapter implements DossierRepository {
 
         return new DossierDetail(
                 d.getIdDossier(),
+                d.getNumeroDossier(),
                 toPersonne(d.getUtilisateurPorteur()),
                 toPersonne(d.getUtilisateurPayeur()),
                 d.getTypeAbonnement().getCode(),
@@ -297,5 +318,76 @@ public class DossierRepositoryAdapter implements DossierRepository {
 
     private static String nomComplet(Utilisateur u) {
         return u.getPrenom() + " " + u.getNom();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<HistoriqueEntree> findHistoriqueByDossierId(Integer idDossier) {
+        return historiqueJpa.findByDossier_IdDossierOrderByDateActionDesc(idDossier)
+                .stream()
+                .map(h -> new HistoriqueEntree(
+                        h.getIdHistorique(),
+                        h.getDateAction(),
+                        h.getTypeAction().name(),
+                        h.getStatutAvant() != null ? h.getStatutAvant().getLibelle() : null,
+                        h.getStatutApres() != null ? h.getStatutApres().getLibelle() : null,
+                        resolveNomAuteur(h),
+                        h.getDescription()
+                ))
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public void validerOuRejeterPiece(ValidationPiece validation) {
+        PieceJustificative piece = pieceJpa.findById(validation.idPiece())
+                .filter(p -> p.getDossier().getIdDossier().equals(validation.idDossier()))
+                .orElseThrow(() -> new PieceIntrouvableException(validation.idPiece()));
+
+        Agent agent = agentJpaRepository.findById(validation.idAgent())
+                .orElseThrow(() -> new ReferentielIntrouvableException("Agent introuvable : " + validation.idAgent()));
+
+        piece.setStatutValidation(validation.valider()
+                ? PieceJustificative.StatutValidation.validee
+                : PieceJustificative.StatutValidation.rejetee);
+        piece.setAgentValidation(agent);
+        piece.setDateValidation(LocalDateTime.now());
+        piece.setMotifRejet(validation.valider() ? null : validation.motifRejet());
+        pieceJpa.save(piece);
+
+        Dossier dossier = dossierJpa.findById(validation.idDossier())
+                .orElseThrow(() -> new DossierIntrouvableException(validation.idDossier()));
+
+        HistoriqueDossier entree = new HistoriqueDossier();
+        entree.setDossier(dossier);
+        entree.setDateAction(LocalDateTime.now());
+        entree.setTypeAction(validation.valider()
+                ? HistoriqueDossier.TypeAction.validation_piece
+                : HistoriqueDossier.TypeAction.rejet_piece);
+        entree.setAgent(agent);
+        entree.setDescription(validation.valider()
+                ? "Pièce validée : " + piece.getTypePiece().getLibelle()
+                : "Pièce rejetée : " + piece.getTypePiece().getLibelle() + " — " + validation.motifRejet());
+        historiqueJpa.save(entree);
+    }
+
+    private String genererNumeroDossier() {
+        int annee = java.time.LocalDate.now().getYear();
+        SequenceAnnuelleDossier seq = sequenceJpa.findByAnneeForUpdate(annee)
+                .orElseGet(() -> {
+                    SequenceAnnuelleDossier nouveau = new SequenceAnnuelleDossier();
+                    nouveau.setAnnee(annee);
+                    nouveau.setDernierNumero(0);
+                    return sequenceJpa.save(nouveau);
+                });
+        seq.setDernierNumero(seq.getDernierNumero() + 1);
+        sequenceJpa.save(seq);
+        return String.format("DOS-%d-%06d", annee, seq.getDernierNumero());
+    }
+
+    private static String resolveNomAuteur(HistoriqueDossier h) {
+        if (h.getAgent() != null) return h.getAgent().getPrenom() + " " + h.getAgent().getNom();
+        if (h.getUtilisateur() != null) return h.getUtilisateur().getPrenom() + " " + h.getUtilisateur().getNom();
+        return "Système";
     }
 }

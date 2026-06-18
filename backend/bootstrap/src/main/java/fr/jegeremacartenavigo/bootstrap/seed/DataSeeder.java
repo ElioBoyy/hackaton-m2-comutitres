@@ -4,6 +4,8 @@ import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.backoffice.
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.backoffice.AgentJpaRepository;
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.dossier.Dossier;
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.dossier.DossierJpaRepository;
+import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.dossier.SequenceAnnuelleDossier;
+import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.dossier.SequenceAnnuelleDossierJpaRepository;
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.identite.Adresse;
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.identite.AdresseJpaRepository;
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.identite.RelationUtilisateur;
@@ -67,6 +69,7 @@ public class DataSeeder implements ApplicationRunner {
     private final AdresseJpaRepository adresseRepository;
     private final RelationUtilisateurJpaRepository relationUtilisateurRepository;
     private final DossierJpaRepository dossierRepository;
+    private final SequenceAnnuelleDossierJpaRepository sequenceRepository;
     private final NotificationJpaRepository notificationRepository;
     private final PasswordEncoder passwordEncoder;
 
@@ -83,6 +86,7 @@ public class DataSeeder implements ApplicationRunner {
             AdresseJpaRepository adresseRepository,
             RelationUtilisateurJpaRepository relationUtilisateurRepository,
             DossierJpaRepository dossierRepository,
+            SequenceAnnuelleDossierJpaRepository sequenceRepository,
             PasswordEncoder passwordEncoder,
             NotificationJpaRepository notificationRepository
     ) {
@@ -98,6 +102,7 @@ public class DataSeeder implements ApplicationRunner {
         this.adresseRepository = adresseRepository;
         this.relationUtilisateurRepository = relationUtilisateurRepository;
         this.dossierRepository = dossierRepository;
+        this.sequenceRepository = sequenceRepository;
         this.passwordEncoder = passwordEncoder;
         this.notificationRepository = notificationRepository;
     }
@@ -457,7 +462,20 @@ public class DataSeeder implements ApplicationRunner {
         d.setMontantTotal(montant);
         d.setPeriodicitePaiement(periodicite);
         d.setSituationCode("Etudiant");
+        d.setNumeroDossier(genererNumeroDossier(dateCreation.getYear()));
         return d;
+    }
+
+    private String genererNumeroDossier(int annee) {
+        SequenceAnnuelleDossier seq = sequenceRepository.findById(annee).orElseGet(() -> {
+            SequenceAnnuelleDossier nouveau = new SequenceAnnuelleDossier();
+            nouveau.setAnnee(annee);
+            nouveau.setDernierNumero(0);
+            return sequenceRepository.save(nouveau);
+        });
+        seq.setDernierNumero(seq.getDernierNumero() + 1);
+        sequenceRepository.save(seq);
+        return String.format("DOS-%d-%06d", annee, seq.getDernierNumero());
     }
 
     /**
