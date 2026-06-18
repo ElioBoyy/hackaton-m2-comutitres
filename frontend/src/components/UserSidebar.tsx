@@ -5,7 +5,7 @@ import {
   HelpCircle,
   Home,
   MapPin,
-  MessageCircle,
+  Phone,
   Search,
   Settings,
   ScanSearch,
