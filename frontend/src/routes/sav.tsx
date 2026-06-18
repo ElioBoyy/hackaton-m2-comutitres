@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { isAuthenticated, me } from '~/lib/auth'
 import { DashboardLayout } from '~/components/DashboardLayout'
+import { ContactBanner } from '~/components/ContactBanner'
 import { Button } from '~/components/Button'
 import { Field } from '~/components/Field'
 import { StatusBadge } from '~/components/backoffice/StatusBadge'
@@ -662,24 +663,7 @@ function SavPage() {
       <div className="mx-auto flex max-w-4xl flex-col gap-6">
 
         {/* Bandeau numéro de téléphone */}
-        <div className="flex flex-col gap-3 rounded-2xl border border-primary/20 bg-blue-pale p-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary">
-              <Phone size={18} className="text-white" aria-hidden="true" />
-            </div>
-            <div>
-              <p className="font-heading text-sm font-semibold text-dark">Service client Navigo</p>
-              <p className="text-xs text-gray-700">Lun–ven 7h–20h · Sam 9h–17h · Appel non surtaxé</p>
-            </div>
-          </div>
-          <a
-            href="tel:+14788005235"
-            className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-focus focus:outline-none focus:ring-2 focus:ring-primary/30"
-          >
-            <Phone size={15} aria-hidden="true" />
-            +1 (478) 800-5235
-          </a>
-        </div>
+        <ContactBanner />
 
         {/* Onglets */}
         <div
@@ -792,11 +776,12 @@ function SavPage() {
               </p>
               <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
                 <Link
-                  to="/contact"
+                  to="/sav"
+                  hash="contact"
                   className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-dark transition hover:bg-gray-50"
                 >
-                  <Ticket size={16} aria-hidden="true" />
-                  Consulter nos guides
+                  <Phone size={16} aria-hidden="true" />
+                  Appeler un conseiller
                 </Link>
                 <button
                   type="button"

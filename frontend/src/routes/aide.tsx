@@ -9,16 +9,15 @@ import {
   HelpCircle,
   LogOut,
   Menu,
-  MessageCircle,
   Search,
   ScanSearch,
-  Ticket,
   Train,
   Users,
   Wallet,
 } from 'lucide-react'
 import * as React from 'react'
 import { UserSidebar } from '~/components/UserSidebar'
+import { ContactBanner } from '~/components/ContactBanner'
 import { LanguageSwitcher } from '~/components/LanguageSwitcher'
 import { isAuthenticated, logout, me, type MeResponse } from '~/lib/auth'
 import { m } from '~/paraglide/messages'
@@ -569,13 +568,9 @@ function AidePage() {
             >
               <Menu size={18} aria-hidden="true" />
             </button>
-            <nav className="hidden text-sm text-gray-500 sm:flex items-center gap-1.5">
-              <Link to="/" className="hover:text-primary">Accueil</Link>
-              <span>/</span>
-              <span className="font-medium text-dark">Aide et contacts</span>
-              <span>/</span>
-              <span className="font-medium text-primary">FAQ</span>
-            </nav>
+            <h1 className="font-heading text-lg font-semibold text-gray-900">
+              {m.nav_help_contacts()}
+            </h1>
           </div>
 
           <div className="flex items-center gap-4">
@@ -609,6 +604,9 @@ function AidePage() {
         {/* Contenu */}
         <main className="flex-1 overflow-y-auto p-4 lg:p-8">
           <div className="mx-auto max-w-4xl flex flex-col gap-6">
+
+            {/* Bandeau numéro de téléphone */}
+            <ContactBanner />
 
             {/* Titre */}
             <div>
@@ -656,30 +654,6 @@ function AidePage() {
               {FAQ_SECTIONS.map((section) => (
                 <SectionFaqCard key={section.id} section={section} />
               ))}
-            </div>
-
-            {/* Footer CTA */}
-            <div className="rounded-2xl border border-gray-200 bg-white p-6 text-center">
-              <p className="font-heading font-semibold text-dark">
-                Vous ne trouvez pas la réponse à votre question ?
-              </p>
-              <p className="mt-1 mb-4 text-sm text-gray-700">Notre équipe est là pour vous aider.</p>
-              <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
-                <Link
-                  to="/contact"
-                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-dark hover:bg-gray-50 transition"
-                >
-                  <Ticket size={16} aria-hidden="true" />
-                  Consulter nos guides
-                </Link>
-                <Link
-                  to="/contact"
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-medium text-white hover:bg-primary/90 transition"
-                >
-                  <MessageCircle size={16} aria-hidden="true" />
-                  Nous contacter
-                </Link>
-              </div>
             </div>
 
           </div>

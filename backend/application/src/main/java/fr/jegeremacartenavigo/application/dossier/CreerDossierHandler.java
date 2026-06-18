@@ -33,7 +33,8 @@ public class CreerDossierHandler implements CommandHandler<CreerDossierCommand, 
                 command.cheminPieceIdentite(),
                 command.cheminCertificatScolarite(),
                 command.cheminNotificationBourse(),
-                command.modePaiement()
+                command.modePaiement(),
+                command.enAttentePaiement()
         );
 
         DossierCree cree = repository.enregistrer(nouveauDossier);
