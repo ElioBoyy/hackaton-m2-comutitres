@@ -11,8 +11,10 @@ import fr.jegeremacartenavigo.application.dossier.GetDossierCountsQuery;
 import fr.jegeremacartenavigo.application.dossier.GetDossierDetailQuery;
 import fr.jegeremacartenavigo.application.dossier.GetDossierHistoriqueQuery;
 import fr.jegeremacartenavigo.application.dossier.GetDossiersQuery;
+import fr.jegeremacartenavigo.application.dossier.EnregistrerPiecesCommand;
 import fr.jegeremacartenavigo.application.dossier.ResilierDossierCommand;
 import fr.jegeremacartenavigo.application.dossier.SoumettreEnVerificationCommand;
+import fr.jegeremacartenavigo.application.dossier.SupprimerBrouillonCommand;
 import fr.jegeremacartenavigo.application.dossier.StatutMisAJourResponse;
 import fr.jegeremacartenavigo.domain.dossier.model.PieceADeposer;
 import fr.jegeremacartenavigo.application.dossier.HistoriqueEntreeResponse;
@@ -22,6 +24,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -87,6 +90,22 @@ public class DossierController {
         );
         DossierResponse response = commandBus.send(command);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/{id}/pieces")
+    public StatutMisAJourResponse enregistrerPieces(@PathVariable Integer id,
+                                                     @RequestBody(required = false) SoumettreRequest body) {
+        List<PieceADeposer> pieces = body != null && body.pieces() != null
+                ? body.pieces().stream()
+                        .map(p -> new PieceADeposer(p.codeTypePiece(), p.cheminFichier()))
+                        .toList()
+                : List.of();
+        return commandBus.send(new EnregistrerPiecesCommand(id, pieces));
+    }
+
+    @DeleteMapping("/{id}")
+    public StatutMisAJourResponse supprimer(@PathVariable Integer id) {
+        return commandBus.send(new SupprimerBrouillonCommand(id));
     }
 
     @PostMapping("/{id}/resilier")

@@ -39,4 +39,6 @@ public interface DossierRepository {
     List<HistoriqueEntree> findHistoriqueByDossierId(Integer idDossier);
 
     void validerOuRejeterPiece(ValidationPiece validation);
+
+    void supprimer(Integer id);
 }

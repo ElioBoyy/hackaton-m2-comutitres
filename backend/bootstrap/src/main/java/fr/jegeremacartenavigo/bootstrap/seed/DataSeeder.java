@@ -26,6 +26,8 @@ import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.referentiel
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.referentiel.StatutDossierJpaRepository;
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.referentiel.TypeAbonnement;
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.referentiel.TypeAbonnementJpaRepository;
+import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.referentiel.PieceRequise;
+import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.referentiel.PieceRequiseJpaRepository;
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.referentiel.TypePieceJustificative;
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.referentiel.TypePieceJustificativeJpaRepository;
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.sav.CategorieSav;
@@ -73,6 +75,7 @@ public class DataSeeder implements ApplicationRunner {
     private final RelationUtilisateurJpaRepository relationUtilisateurRepository;
     private final DossierJpaRepository dossierRepository;
     private final PieceJustificativeJpaRepository pieceRepository;
+    private final PieceRequiseJpaRepository pieceRequiseRepository;
     private final SequenceAnnuelleDossierJpaRepository sequenceRepository;
     private final NotificationJpaRepository notificationRepository;
     private final PasswordEncoder passwordEncoder;
@@ -91,6 +94,7 @@ public class DataSeeder implements ApplicationRunner {
             RelationUtilisateurJpaRepository relationUtilisateurRepository,
             DossierJpaRepository dossierRepository,
             PieceJustificativeJpaRepository pieceRepository,
+            PieceRequiseJpaRepository pieceRequiseRepository,
             SequenceAnnuelleDossierJpaRepository sequenceRepository,
             PasswordEncoder passwordEncoder,
             NotificationJpaRepository notificationRepository
@@ -108,6 +112,7 @@ public class DataSeeder implements ApplicationRunner {
         this.relationUtilisateurRepository = relationUtilisateurRepository;
         this.dossierRepository = dossierRepository;
         this.pieceRepository = pieceRepository;
+        this.pieceRequiseRepository = pieceRequiseRepository;
         this.sequenceRepository = sequenceRepository;
         this.passwordEncoder = passwordEncoder;
         this.notificationRepository = notificationRepository;
@@ -128,6 +133,7 @@ public class DataSeeder implements ApplicationRunner {
         Map<String, TypeAbonnement> typesAbonnement = seedTypesAbonnement();
         Map<String, StatutDossier> statuts = seedStatutsDossier();
         seedTypesPieceJustificative();
+        seedPiecesRequises(typesAbonnement);
         Map<String, RoleAgent> roles = seedRolesAgent();
         seedCategoriesSav();
 
@@ -311,6 +317,44 @@ public class DataSeeder implements ApplicationRunner {
         p.setLibelle(libelle);
         p.setDureeValiditeJours(dureeValiditeJours);
         return p;
+    }
+
+    private void seedPiecesRequises(Map<String, TypeAbonnement> types) {
+        TypePieceJustificative cni = typePieceRepository.findByCode("PIECE_IDENTITE").orElseThrow();
+        TypePieceJustificative certif = typePieceRepository.findByCode("CERTIFICAT_SCOLARITE").orElseThrow();
+        TypePieceJustificative contrat = typePieceRepository.findByCode("CONTRAT_APPRENTISSAGE").orElseThrow();
+        TypePieceJustificative avis = typePieceRepository.findByCode("AVIS_IMPOSITION").orElseThrow();
+
+        List<PieceRequise> requises = new java.util.ArrayList<>();
+
+        // Tous les abonnements exigent la pièce d'identité
+        for (TypeAbonnement ta : types.values()) {
+            requises.add(pieceRequise(ta, cni, true));
+        }
+        // Abonnements scolaires / étudiants : certificat de scolarité
+        for (String code : new String[]{"IMAGINE_R_ETUDIANT", "IMAGINE_R_SCOLAIRE", "IMAGINE_R_JUNIOR",
+                "TRANSPORT_SCOLAIRE"}) {
+            if (types.containsKey(code)) requises.add(pieceRequise(types.get(code), certif, true));
+        }
+        // Apprenti : contrat d'apprentissage
+        if (types.containsKey("IMAGINE_R_APPRENTI"))
+            requises.add(pieceRequise(types.get("IMAGINE_R_APPRENTI"), contrat, true));
+        // Solidarité : avis d'imposition
+        for (String code : new String[]{"SOLIDARITE_75", "SOLIDARITE_50", "SOLIDARITE_GRATUITE",
+                "SOLIDARITE_TRANSPORT"}) {
+            if (types.containsKey(code)) requises.add(pieceRequise(types.get(code), avis, true));
+        }
+
+        pieceRequiseRepository.saveAll(requises);
+    }
+
+    private PieceRequise pieceRequise(TypeAbonnement typeAbonnement, TypePieceJustificative typePiece,
+                                      boolean obligatoire) {
+        PieceRequise pr = new PieceRequise();
+        pr.setTypeAbonnement(typeAbonnement);
+        pr.setTypePiece(typePiece);
+        pr.setObligatoire(obligatoire);
+        return pr;
     }
 
     private Map<String, RoleAgent> seedRolesAgent() {

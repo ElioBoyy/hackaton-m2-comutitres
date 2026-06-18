@@ -16,6 +16,7 @@ import fr.jegeremacartenavigo.domain.dossier.model.PieceADeposer;
 import fr.jegeremacartenavigo.domain.dossier.model.PageResult;
 import fr.jegeremacartenavigo.domain.dossier.model.Personne;
 import fr.jegeremacartenavigo.domain.dossier.model.PieceJustificativeResume;
+import fr.jegeremacartenavigo.domain.dossier.model.PieceRequiseResume;
 import fr.jegeremacartenavigo.domain.dossier.model.ValidationPiece;
 import fr.jegeremacartenavigo.domain.dossier.port.DossierRepository;
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.backoffice.Agent;
@@ -30,8 +31,11 @@ import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.referentiel
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.referentiel.StatutDossierJpaRepository;
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.referentiel.TypeAbonnement;
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.referentiel.TypeAbonnementJpaRepository;
+import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.referentiel.PieceRequise;
+import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.referentiel.PieceRequiseJpaRepository;
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.referentiel.TypePieceJustificative;
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.referentiel.TypePieceJustificativeJpaRepository;
+import jakarta.persistence.EntityManager;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -68,6 +72,8 @@ public class DossierRepositoryAdapter implements DossierRepository {
     private final HistoriqueDossierJpaRepository historiqueJpa;
     private final AgentJpaRepository agentJpaRepository;
     private final SequenceAnnuelleDossierJpaRepository sequenceJpa;
+    private final PieceRequiseJpaRepository pieceRequiseJpa;
+    private final EntityManager em;
 
     public DossierRepositoryAdapter(
             DossierJpaRepository dossierJpa,
@@ -79,7 +85,9 @@ public class DossierRepositoryAdapter implements DossierRepository {
             PaiementJpaRepository paiementJpaRepository,
             HistoriqueDossierJpaRepository historiqueJpa,
             AgentJpaRepository agentJpaRepository,
-            SequenceAnnuelleDossierJpaRepository sequenceJpa) {
+            SequenceAnnuelleDossierJpaRepository sequenceJpa,
+            PieceRequiseJpaRepository pieceRequiseJpa,
+            EntityManager em) {
         this.dossierJpa = dossierJpa;
         this.pieceJpa = pieceJpa;
         this.utilisateurJpaRepository = utilisateurJpaRepository;
@@ -90,6 +98,8 @@ public class DossierRepositoryAdapter implements DossierRepository {
         this.historiqueJpa = historiqueJpa;
         this.agentJpaRepository = agentJpaRepository;
         this.sequenceJpa = sequenceJpa;
+        this.pieceRequiseJpa = pieceRequiseJpa;
+        this.em = em;
     }
 
     @Override
@@ -321,6 +331,30 @@ public class DossierRepositoryAdapter implements DossierRepository {
         }
     }
 
+    @Override
+    @Transactional
+    public void supprimer(Integer id) {
+        if (!dossierJpa.existsById(id)) throw new DossierIntrouvableException(id);
+        // Nullifier les FK optionnelles avant suppression pour éviter la violation de contrainte
+        em.createNativeQuery("UPDATE utilisateur_situation SET id_dossier_justificatif = NULL WHERE id_dossier_justificatif = :id")
+                .setParameter("id", id).executeUpdate();
+        em.createNativeQuery("UPDATE notification SET id_dossier = NULL WHERE id_dossier = :id")
+                .setParameter("id", id).executeUpdate();
+        // Supprimer les entités dépendantes dans l'ordre (respect des FK NOT NULL)
+        em.createNativeQuery("DELETE FROM commentaire_echange WHERE id_dossier = :id")
+                .setParameter("id", id).executeUpdate();
+        em.createNativeQuery("DELETE FROM historique_dossier WHERE id_dossier = :id")
+                .setParameter("id", id).executeUpdate();
+        em.createNativeQuery("DELETE FROM piece_justificative WHERE id_dossier = :id")
+                .setParameter("id", id).executeUpdate();
+        em.createNativeQuery("DELETE FROM paiement WHERE id_dossier = :id")
+                .setParameter("id", id).executeUpdate();
+        em.createNativeQuery("DELETE FROM remboursement_aide WHERE id_dossier = :id")
+                .setParameter("id", id).executeUpdate();
+        em.createNativeQuery("DELETE FROM dossier WHERE id_dossier = :id")
+                .setParameter("id", id).executeUpdate();
+    }
+
     private static DossierResume toResume(Dossier d, long nbPiecesEnAttente) {
         return new DossierResume(
                 d.getIdDossier(),
@@ -343,6 +377,15 @@ public class DossierRepositoryAdapter implements DossierRepository {
                 .map(DossierRepositoryAdapter::toPieceResume)
                 .toList();
 
+        List<PieceRequiseResume> piecesRequises = pieceRequiseJpa
+                .findByTypeAbonnement_Code(d.getTypeAbonnement().getCode())
+                .stream()
+                .map(pr -> new PieceRequiseResume(
+                        pr.getTypePiece().getCode(),
+                        pr.getTypePiece().getLibelle(),
+                        pr.isObligatoire()))
+                .toList();
+
         return new DossierDetail(
                 d.getIdDossier(),
                 d.getNumeroDossier(),
@@ -357,7 +400,8 @@ public class DossierRepositoryAdapter implements DossierRepository {
                 d.getDateDebutDroits(),
                 d.getDateFinDroits(),
                 d.getMontantTotal(),
-                pieces
+                pieces,
+                piecesRequises
         );
     }
 

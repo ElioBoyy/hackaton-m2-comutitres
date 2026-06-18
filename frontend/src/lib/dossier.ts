@@ -56,6 +56,12 @@ export interface PieceJustificative {
   cheminFichier: string | null
 }
 
+export interface PieceRequise {
+  codeTypePiece: string
+  libelleTypePiece: string
+  obligatoire: boolean
+}
+
 export interface DossierDetail {
   idDossier: number
   titulaire: PersonneDetail
@@ -67,6 +73,7 @@ export interface DossierDetail {
   dateFinDroits: string | null
   montantTotal: number
   pieces: PieceJustificative[]
+  piecesRequises: PieceRequise[]
 }
 
 export interface StatutMisAJour {
@@ -92,6 +99,17 @@ export function soumettreEnVerification(id: number, pieces: PieceADeposer[]): Pr
     method: 'POST',
     body: JSON.stringify({ pieces }),
   })
+}
+
+export function enregistrerPieces(id: number, pieces: PieceADeposer[]): Promise<StatutMisAJour> {
+  return apiFetch<StatutMisAJour>(`/dossiers/${id}/pieces`, {
+    method: 'POST',
+    body: JSON.stringify({ pieces }),
+  })
+}
+
+export function supprimerDossier(id: number): Promise<StatutMisAJour> {
+  return apiFetch<StatutMisAJour>(`/dossiers/${id}`, { method: 'DELETE' })
 }
 
 export function creerDossier(payload: CreerDossierPayload): Promise<DossierResponse> {

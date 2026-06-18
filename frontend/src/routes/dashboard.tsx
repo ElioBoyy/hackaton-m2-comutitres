@@ -6,27 +6,54 @@ import { fetchDashboard, FiltreDossiers, type DashboardResponse } from '~/lib/da
 import { DashboardLayout } from '~/components/DashboardLayout'
 import { DossierCard } from '~/components/DossierCard'
 import { DossierCardSkeleton } from '~/components/DossierCardSkeleton'
+import { Pagination } from '~/components/backoffice/Pagination'
 import { m } from '~/paraglide/messages'
+
+const PAGE_SIZE = 10
 
 export const Route = createFileRoute('/dashboard')({
   component: DashboardPage,
 })
 
-const TABS: { label: string; filtre: FiltreDossiers; empty: string }[] = [
-  { label: 'Actifs',   filtre: FiltreDossiers.ACTIVE,   empty: "Aucun abonnement n'est actuellement actif." },
-  { label: 'En cours', filtre: FiltreDossiers.EN_COURS, empty: 'Aucune demande en cours de traitement.' },
-  { label: 'Fermés',   filtre: FiltreDossiers.FERME,    empty: "Aucun abonnement n'a été résilié ou refusé." },
+type TabFiltre = 'ACTIVE' | 'EN_COURS' | 'FERME' | 'TOUS'
+type AllData = Record<TabFiltre, DashboardResponse>
+
+const TABS: { label: string; filtre: TabFiltre; empty: string }[] = [
+  { label: 'Actifs',                  filtre: 'ACTIVE',   empty: "Aucun abonnement n'est actuellement actif." },
+  { label: 'Mes procédures en cours', filtre: 'EN_COURS', empty: 'Aucune demande en cours de traitement.' },
+  { label: 'Fermés',                  filtre: 'FERME',    empty: "Aucun abonnement n'a été résilié ou refusé." },
+  { label: 'TOUS',                    filtre: 'TOUS',     empty: 'Aucun dossier trouvé.' },
 ]
 
-type TabFiltre = 'ACTIVE' | 'EN_COURS' | 'FERME'
-type AllData = Record<TabFiltre, DashboardResponse>
+const VALID_TABS = new Set<string>(TABS.map((t) => t.filtre))
+const STORAGE_KEY = 'dashboard_tab'
+
+function savedTab(): TabFiltre {
+  try {
+    const v = sessionStorage.getItem(STORAGE_KEY)
+    return v && VALID_TABS.has(v) ? (v as TabFiltre) : 'ACTIVE'
+  } catch {
+    return 'ACTIVE'
+  }
+}
+
+function saveTab(tab: TabFiltre) {
+  try { sessionStorage.setItem(STORAGE_KEY, tab) } catch { /* ignore */ }
+}
 
 function DashboardPage() {
   const navigate = useNavigate()
   const [allData, setAllData] = useState<AllData | null>(null)
-  const [filtre, setFiltre] = useState<TabFiltre>(FiltreDossiers.ACTIVE as TabFiltre)
+  const [filtre, setFiltre] = useState<TabFiltre>(savedTab())
+  const [page, setPage] = useState(1)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+
+  function changeFiltre(next: TabFiltre) {
+    setFiltre(next)
+    setPage(1)
+    saveTab(next)
+  }
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -35,21 +62,36 @@ function DashboardPage() {
     }
     let cancelled = false
     setLoading(true)
-    Promise.all(
-      [FiltreDossiers.ACTIVE, FiltreDossiers.EN_COURS, FiltreDossiers.FERME].map((f) => fetchDashboard(f))
-    )
-      .then(([active, enCours, ferme]) => {
+    Promise.all([
+      fetchDashboard(FiltreDossiers.ACTIVE),
+      fetchDashboard(FiltreDossiers.EN_COURS),
+      fetchDashboard(FiltreDossiers.FERME),
+      fetchDashboard(FiltreDossiers.ALL),
+    ])
+      .then(([active, enCours, ferme, tous]) => {
         if (cancelled) return
+        // Trier TOUS par date de création décroissante
+        tous.dossiers.sort(
+          (a, b) => new Date(b.dateCreation).getTime() - new Date(a.dateCreation).getTime()
+        )
         const results: AllData = {
-          [FiltreDossiers.ACTIVE]: active,
-          [FiltreDossiers.EN_COURS]: enCours,
-          [FiltreDossiers.FERME]: ferme,
+          ACTIVE: active,
+          EN_COURS: enCours,
+          FERME: ferme,
+          TOUS: tous,
         }
         setAllData(results)
         setError(null)
-        // aller sur le premier onglet non vide
-        const firstNonEmpty = TABS.find((t) => results[t.filtre as TabFiltre].dossiers.length > 0)
-        setFiltre(firstNonEmpty ? firstNonEmpty.filtre as TabFiltre : FiltreDossiers.ACTIVE as TabFiltre)
+        // Garder le tab sauvegardé s'il a des données ; sinon aller sur le premier non vide
+        const current = savedTab()
+        if (results[current].dossiers.length > 0) {
+          setFiltre(current)
+        } else {
+          const firstNonEmpty = TABS.find((t) => results[t.filtre].dossiers.length > 0)
+          const next = firstNonEmpty ? firstNonEmpty.filtre : 'ACTIVE'
+          setFiltre(next)
+          saveTab(next)
+        }
       })
       .catch((err) => {
         if (cancelled) return
@@ -98,16 +140,19 @@ function DashboardPage() {
   const { prenom, nom } = currentData.utilisateur
   const userName = `${prenom} ${nom}`
   const activeTab = TABS.find((t) => t.filtre === filtre)!
+  const allDossiers = currentData.dossiers
+  const totalDossiers = allDossiers.length
+  const pageDossiers = allDossiers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   return (
     <DashboardLayout title={m.dashboard_title()} userName={userName} alertes={currentData.alertes}>
       <div className="mx-auto flex max-w-4xl flex-col">
 
         {/* Tabs */}
-        <div className="flex border-b border-gray-200" role="tablist" aria-label={m.dashboard_title()}>
+        <div className="flex flex-wrap border-b border-gray-200" role="tablist" aria-label={m.dashboard_title()}>
           {TABS.map((tab) => {
             const active = filtre === tab.filtre
-            const empty = allData[tab.filtre as TabFiltre].dossiers.length === 0
+            const empty = allData[tab.filtre].dossiers.length === 0
             return (
               <button
                 key={tab.filtre}
@@ -115,8 +160,8 @@ function DashboardPage() {
                 role="tab"
                 aria-selected={active}
                 disabled={empty}
-                onClick={() => !empty && setFiltre(tab.filtre as TabFiltre)}
-                className={`relative px-6 py-3 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-primary/30 ${
+                onClick={() => !empty && changeFiltre(tab.filtre)}
+                className={`relative px-5 py-3 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-primary/30 ${
                   empty
                     ? 'cursor-not-allowed text-gray-300'
                     : active
@@ -134,12 +179,22 @@ function DashboardPage() {
         </div>
 
         <div className="mt-5 flex flex-col gap-5" role="tabpanel" aria-label={activeTab.label}>
-          {currentData.dossiers.length === 0 ? (
+          {totalDossiers === 0 ? (
             <p className="text-sm text-gray-500">{activeTab.empty}</p>
           ) : (
-            currentData.dossiers.map((d) => (
-              <DossierCard key={d.idDossier} dossier={d} />
-            ))
+            <>
+              {pageDossiers.map((d) => (
+                <DossierCard key={d.idDossier} dossier={d} />
+              ))}
+              {totalDossiers > PAGE_SIZE && (
+                <Pagination
+                  page={page}
+                  pageSize={PAGE_SIZE}
+                  total={totalDossiers}
+                  onPageChange={setPage}
+                />
+              )}
+            </>
           )}
         </div>
       </div>

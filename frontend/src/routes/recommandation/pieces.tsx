@@ -111,7 +111,7 @@ function PiecesStep() {
         <ChampFichier
           icon={Receipt}
           label={m.wizard_pieces_scholarship_notif()}
-          type="NOTIFICATION_BOURSE"
+          type="AVIS_IMPOSITION"
           nomFichier={wizard.notificationBourseNomFichier}
           onDepose={(payload) => dispatch(notificationBourseDeposee(payload))}
         />

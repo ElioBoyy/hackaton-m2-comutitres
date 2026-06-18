@@ -23,6 +23,7 @@ public record DossierDetail(
         LocalDate dateDebutDroits,
         LocalDate dateFinDroits,
         BigDecimal montantTotal,
-        List<PieceJustificativeResume> pieces
+        List<PieceJustificativeResume> pieces,
+        List<PieceRequiseResume> piecesRequises
 ) {
 }

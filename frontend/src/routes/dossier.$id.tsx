@@ -4,24 +4,26 @@ import {
   ArrowLeft,
   BadgeCheck,
   CalendarDays,
-  ExternalLink,
   FileText,
   Loader2,
   Sparkles,
   Wallet,
-  XCircle,
 } from 'lucide-react'
 import { ApiError } from '~/lib/api'
+import { isAuthenticated, logout } from '~/lib/auth'
 import {
   fetchDossierDetail,
   resilierDossier,
   soumettreEnVerification,
+  enregistrerPieces,
+  supprimerDossier,
   type DossierDetail,
-  type PieceADeposer,
+  type PieceJustificative,
 } from '~/lib/dossier'
-import { deposerFichier, recupererContenu, type TypePiece } from '~/lib/fichier'
+import { deposerFichier, type TypePiece } from '~/lib/fichier'
 import { DashboardLayout } from '~/components/DashboardLayout'
 import { StatusBadge } from '~/components/backoffice/StatusBadge'
+import { TableauPieces } from '~/components/TableauPieces'
 import type { StatutCategorie } from '~/lib/types/dossier'
 
 export const Route = createFileRoute('/dossier/$id')({
@@ -55,12 +57,14 @@ function ChampFichier({
   label,
   typePiece,
   valeur,
-  onChange,
+  idDossier,
+  onSaved,
 }: {
   label: string
   typePiece: TypePiece
   valeur: PieceUploaded | null
-  onChange: (p: PieceUploaded | null) => void
+  idDossier: number
+  onSaved: (p: PieceUploaded) => void
 }) {
   const [uploading, setUploading] = useState(false)
   const [erreur, setErreur] = useState<string | null>(null)
@@ -71,7 +75,9 @@ function ChampFichier({
     setErreur(null)
     try {
       const rep = await deposerFichier(f, typePiece)
-      onChange({ nom: f.name, cle: rep.cle })
+      // Persist immédiatement en base
+      await enregistrerPieces(idDossier, [{ codeTypePiece: typePiece, cheminFichier: rep.cle }])
+      onSaved({ nom: f.name, cle: rep.cle })
     } catch {
       setErreur('Erreur lors de l\'envoi, réessayez.')
     } finally {
@@ -172,34 +178,97 @@ function DossierDetailPage() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [confirmerResilier, setConfirmerResilier] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [iaEtat, setIaEtat] = useState<IAEtat>('idle')
   const [iaPreVerifie, setIaPreVerifie] = useState(false)
 
-  const [ouverturePiece, setOuverturePiece] = useState<number | null>(null)
-
-  const [pieceIdentite, setPieceIdentite] = useState<PieceUploaded | null>(null)
-  const [pieceScolarite, setPieceScolarite] = useState<PieceUploaded | null>(null)
-  const [pieceBourse, setPieceBourse] = useState<PieceUploaded | null>(null)
+  // Pièces localement uploadées : codeTypePiece → PieceUploaded
+  const [piecesLocales, setPiecesLocales] = useState<PieceJustificative[]>([])
+  const [uploadedByCode, setUploadedByCode] = useState<Record<string, PieceUploaded>>({})
 
   useEffect(() => {
+    if (!isAuthenticated()) {
+      navigate({ to: '/login' })
+      return
+    }
     let cancelled = false
     setLoading(true)
     fetchDossierDetail(idNum)
       .then((d) => { if (!cancelled) { setData(d); setError(null) } })
       .catch((err) => {
         if (cancelled) return
+        if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+          logout()
+          navigate({ to: '/login' })
+          return
+        }
         setError(err instanceof ApiError ? 'Impossible de charger le dossier.' : 'Serveur inaccessible.')
       })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
-  }, [idNum])
+  }, [idNum, navigate])
 
-  function construirePieces(): PieceADeposer[] {
-    const pieces: PieceADeposer[] = []
-    if (pieceIdentite) pieces.push({ codeTypePiece: 'PIECE_IDENTITE', cheminFichier: pieceIdentite.cle })
-    if (pieceScolarite) pieces.push({ codeTypePiece: 'CERTIFICAT_SCOLARITE', cheminFichier: pieceScolarite.cle })
-    if (pieceBourse) pieces.push({ codeTypePiece: 'NOTIFICATION_BOURSE', cheminFichier: pieceBourse.cle })
-    return pieces
+  // Pré-remplir uploadedByCode depuis les pièces déjà en base (affiche "Modifier" au chargement)
+  useEffect(() => {
+    if (!data) return
+    setUploadedByCode((prev) => {
+      const next = { ...prev }
+      for (const req of data.piecesRequises) {
+        const dbPiece = data.pieces.find((p) => {
+          const lib = p.libelleTypePiece.toLowerCase()
+          const reqLib = req.libelleTypePiece.toLowerCase()
+          return lib === reqLib || p.cheminFichier?.includes(req.codeTypePiece.toLowerCase())
+        })
+        if (dbPiece?.cheminFichier && !next[req.codeTypePiece]) {
+          const nom = dbPiece.cheminFichier.split('/').pop() ?? dbPiece.cheminFichier
+          next[req.codeTypePiece] = { nom, cle: dbPiece.cheminFichier }
+        }
+      }
+      return next
+    })
+  }, [data])
+
+  function onPieceSaved(codeType: string, libelle: string, uploaded: PieceUploaded) {
+    setUploadedByCode((prev) => ({ ...prev, [codeType]: uploaded }))
+    // Affichage immédiat pendant le rechargement depuis le serveur
+    setPiecesLocales((prev) => {
+      const filtered = prev.filter((p) => p.libelleTypePiece !== libelle)
+      return [...filtered, {
+        id: Date.now(),
+        libelleTypePiece: libelle,
+        statutValidation: 'en_attente',
+        dateDepot: new Date().toISOString(),
+        motifRejet: null,
+        cheminFichier: uploaded.cle,
+      }]
+    })
+    // Recharger depuis le serveur pour synchroniser data.pieces (persistance entre sessions)
+    fetchDossierDetail(idNum)
+      .then((fresh) => { setData(fresh); setPiecesLocales([]) })
+      .catch(() => { /* affichage local conservé si le rechargement échoue */ })
+  }
+
+  // Toutes les pièces : DB + locales (les locales écrasent par libellé)
+  function toutesLesPieces(): PieceJustificative[] {
+    if (!data) return piecesLocales
+    const dbPieces = data.pieces.filter(
+      (p) => !piecesLocales.some((l) => l.libelleTypePiece === p.libelleTypePiece)
+    )
+    return [...dbPieces, ...piecesLocales]
+  }
+
+  // La CNI est obligatoire pour soumettre
+  function peutSoumettre(): boolean {
+    if (!data) return false
+    const obligatoires = (data.piecesRequises ?? []).filter((r) => r.obligatoire)
+    if (obligatoires.length === 0) return toutesLesPieces().length > 0
+    return obligatoires.every((r) => {
+      if (uploadedByCode[r.codeTypePiece]) return true
+      return toutesLesPieces().some((p) => {
+        const lib = p.libelleTypePiece.toLowerCase()
+        return lib === r.libelleTypePiece.toLowerCase() || p.cheminFichier?.includes(r.codeTypePiece.toLowerCase())
+      })
+    })
   }
 
   async function onResilier() {
@@ -217,10 +286,24 @@ function DossierDetailPage() {
   async function onSoumettre() {
     setSubmitting(true)
     try {
-      await soumettreEnVerification(idNum, construirePieces())
+      // Les pièces ont déjà été persistées individuellement à l'upload,
+      // on soumet sans re-envoyer les clés.
+      await soumettreEnVerification(idNum, [])
       navigate({ to: '/dashboard' })
     } catch {
       setError('Erreur lors de la soumission.')
+      setSubmitting(false)
+    }
+  }
+
+  async function onSupprimerConfirme() {
+    setShowDeleteModal(false)
+    setSubmitting(true)
+    try {
+      await supprimerDossier(idNum)
+      navigate({ to: '/dashboard' })
+    } catch {
+      setError('Erreur lors de la suppression.')
       setSubmitting(false)
     }
   }
@@ -246,7 +329,7 @@ function DossierDetailPage() {
         {/* ── Retour ── */}
         <button
           type="button"
-          onClick={() => navigate({ to: '/dashboard' })}
+          onClick={() => window.history.back()}
           aria-label="Retour au tableau de bord"
           className="mb-6 flex items-center gap-2 text-sm font-medium text-gray-500 transition hover:text-primary focus:outline-none"
         >
@@ -315,89 +398,7 @@ function DossierDetailPage() {
                 Pièces justificatives
               </h2>
 
-              {data.pieces.length === 0 ? (
-                <p className="text-sm text-gray-500">Aucune pièce déposée.</p>
-              ) : (
-                <div className="overflow-hidden rounded-xl border border-gray-200">
-                  <table className="w-full text-left">
-                    <thead>
-                      <tr className="border-b border-gray-200 bg-gray-50">
-                        <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-gray-500">Document</th>
-                        <th className="hidden px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-gray-500 sm:table-cell">Déposée le</th>
-                        <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-gray-500">Statut</th>
-                        <th className="px-4 py-2.5" />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {data.pieces.map((p) => (
-                        <tr key={p.id} className="border-b border-gray-200 last:border-0">
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2.5">
-                              {p.statutValidation === 'validee'
-                                ? <BadgeCheck size={15} className="shrink-0 text-success" />
-                                : p.statutValidation === 'rejetee'
-                                ? <XCircle size={15} className="shrink-0 text-danger" />
-                                : <FileText size={15} className="shrink-0 text-gray-400" />}
-                              <div className="min-w-0">
-                                <p className="truncate text-sm font-medium text-dark">{p.libelleTypePiece}</p>
-                                {p.motifRejet && (
-                                  <p className="mt-0.5 truncate text-xs text-danger">{p.motifRejet}</p>
-                                )}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="hidden px-4 py-3 text-sm text-gray-600 sm:table-cell">
-                            {formatDate(p.dateDepot)}
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className={`text-xs font-medium ${
-                              p.statutValidation === 'validee' ? 'text-success'
-                              : p.statutValidation === 'rejetee' ? 'text-danger'
-                              : 'text-gray-400'
-                            }`}>
-                              {p.statutValidation === 'validee' ? 'Validée'
-                              : p.statutValidation === 'rejetee' ? 'Rejetée'
-                              : 'En attente'}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            {p.cheminFichier && (
-                              <button
-                                type="button"
-                                disabled={ouverturePiece === p.id}
-                                onClick={async () => {
-                                  setOuverturePiece(p.id)
-                                  try {
-                                    const { url } = await recupererContenu(p.cheminFichier!)
-                                    const a = document.createElement('a')
-                                    a.href = url
-                                    a.target = '_blank'
-                                    a.rel = 'noopener noreferrer'
-                                    document.body.appendChild(a)
-                                    a.click()
-                                    document.body.removeChild(a)
-                                    setTimeout(() => URL.revokeObjectURL(url), 60_000)
-                                  } catch {
-                                    /* silencieux */
-                                  } finally {
-                                    setOuverturePiece(null)
-                                  }
-                                }}
-                                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:border-primary hover:text-primary disabled:opacity-50"
-                              >
-                                {ouverturePiece === p.id
-                                  ? <Loader2 size={12} className="animate-spin" aria-hidden />
-                                  : <ExternalLink size={12} aria-hidden />}
-                                Ouvrir
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+              <TableauPieces pieces={toutesLesPieces()} />
             </section>
 
             {/* ── Résiliation ── */}
@@ -458,9 +459,34 @@ function DossierDetailPage() {
                   )}
 
                   <div className="mt-4 space-y-3">
-                    <ChampFichier label="Pièce d'identité" typePiece="PIECE_IDENTITE" valeur={pieceIdentite} onChange={setPieceIdentite} />
-                    <ChampFichier label="Certificat de scolarité" typePiece="CERTIFICAT_SCOLARITE" valeur={pieceScolarite} onChange={setPieceScolarite} />
-                    <ChampFichier label="Notification de bourse" typePiece="NOTIFICATION_BOURSE" valeur={pieceBourse} onChange={setPieceBourse} />
+                    {(data.piecesRequises ?? [])
+                      .filter((req) => {
+                        // Montrer uniquement les pièces manquantes ou rejetées
+                        const existing = toutesLesPieces().find((p) => {
+                          const lib = p.libelleTypePiece.toLowerCase()
+                          return lib === req.libelleTypePiece.toLowerCase() || p.cheminFichier?.includes(req.codeTypePiece.toLowerCase())
+                        })
+                        return !existing || existing.statutValidation === 'rejete' || existing.statutValidation === 'rejetee'
+                      })
+                      .map((req) => (
+                        <ChampFichier
+                          key={req.codeTypePiece}
+                          label={`${req.libelleTypePiece} — ${data.titulaire.prenom} ${data.titulaire.nom}`}
+                          typePiece={req.codeTypePiece as TypePiece}
+                          valeur={uploadedByCode[req.codeTypePiece] ?? null}
+                          idDossier={idNum}
+                          onSaved={(u) => onPieceSaved(req.codeTypePiece, req.libelleTypePiece, u)}
+                        />
+                      ))}
+                    {(data.piecesRequises ?? []).filter((req) => {
+                      const existing = toutesLesPieces().find((p) => {
+                        const lib = p.libelleTypePiece.toLowerCase()
+                        return lib === req.libelleTypePiece.toLowerCase() || p.cheminFichier?.includes(req.codeTypePiece.toLowerCase())
+                      })
+                      return !existing || existing.statutValidation === 'rejete' || existing.statutValidation === 'rejetee'
+                    }).length === 0 && (
+                      <p className="text-sm text-success">Tous les documents requis ont été déposés.</p>
+                    )}
                   </div>
 
                   {iaEtat === 'loading' && (
@@ -477,11 +503,11 @@ function DossierDetailPage() {
                     </div>
                   )}
 
-                  <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+                  <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                     {!iaPreVerifie && iaEtat === 'idle' && (
                       <button
                         type="button"
-                        disabled={!pieceIdentite && !pieceScolarite && !pieceBourse}
+                        disabled={toutesLesPieces().length === 0}
                         onClick={onPreVerifierIA}
                         className="flex items-center justify-center gap-2 rounded-xl border-2 border-primary px-4 py-2.5 text-sm font-semibold text-primary transition hover:bg-blue-pale focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-40 sm:w-auto"
                       >
@@ -492,13 +518,25 @@ function DossierDetailPage() {
 
                     <button
                       type="button"
-                      disabled={submitting}
+                      disabled={submitting || !peutSoumettre()}
                       onClick={onSoumettre}
+                      title={!peutSoumettre() ? "Ajoutez au moins la pièce d'identité pour soumettre" : undefined}
                       className="flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-focus focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50 sm:w-auto"
                     >
                       {submitting && <Loader2 size={14} className="animate-spin" />}
                       Soumettre pour vérification
                     </button>
+
+                    {isBrouillon && (
+                      <button
+                        type="button"
+                        disabled={submitting}
+                        onClick={() => setShowDeleteModal(true)}
+                        className="flex items-center justify-center gap-2 rounded-xl border border-danger/40 px-4 py-2.5 text-sm font-medium text-danger transition hover:bg-danger/5 focus:outline-none focus:ring-2 focus:ring-danger/30 disabled:opacity-50 sm:w-auto sm:ml-auto"
+                      >
+                        Supprimer ce brouillon
+                      </button>
+                    )}
                   </div>
                 </section>
               </>
@@ -507,6 +545,48 @@ function DossierDetailPage() {
           </div>
         )}
       </div>
+
+      {/* ── Modal suppression brouillon ── */}
+      {showDeleteModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="modal-suppr-titre"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        >
+          {/* Fond opaque */}
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setShowDeleteModal(false)}
+          />
+          <div className="relative w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+            <h2 id="modal-suppr-titre" className="font-heading text-base font-semibold text-dark">
+              Supprimer ce brouillon ?
+            </h2>
+            <p className="mt-2 text-sm text-gray-600">
+              Cette action est irréversible. Le dossier et les documents associés seront définitivement supprimés.
+            </p>
+            <div className="mt-5 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(false)}
+                className="rounded-xl px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-100"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                disabled={submitting}
+                onClick={onSupprimerConfirme}
+                className="flex items-center gap-2 rounded-xl bg-danger px-5 py-2 text-sm font-semibold text-white transition hover:bg-danger/90 disabled:opacity-50"
+              >
+                {submitting && <Loader2 size={14} className="animate-spin" />}
+                Supprimer définitivement
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   )
 }
