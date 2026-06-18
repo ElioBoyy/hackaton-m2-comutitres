@@ -63,7 +63,7 @@ function RecapitulatifStep() {
       // idDossierExistant (porte par construirePayloadDossier via
       // wizard.idDossierBackend) complete un brouillon deja sauvegarde au
       // lieu d'en creer un nouveau.
-      const reponse = await creerDossier(construirePayloadDossier(wizard, abonnement.id))
+      const reponse = await creerDossier(construirePayloadDossier(wizard, abonnement.id, undefined, true))
       dispatch(dossierBackendDefini(reponse.idDossier))
       dispatch(abonnementSauvegarde(abonnement.id))
       navigate({ to: '/dashboard' })

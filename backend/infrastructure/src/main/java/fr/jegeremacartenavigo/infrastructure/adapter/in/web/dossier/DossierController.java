@@ -76,7 +76,8 @@ public class DossierController {
                 body.cheminPieceIdentite(),
                 body.cheminCertificatScolarite(),
                 body.cheminNotificationBourse(),
-                body.modePaiement()
+                body.modePaiement(),
+                body.enAttentePaiement()
         );
         DossierResponse response = commandBus.send(command);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
