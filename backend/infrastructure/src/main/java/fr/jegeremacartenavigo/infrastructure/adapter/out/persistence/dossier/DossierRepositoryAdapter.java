@@ -5,6 +5,7 @@ import fr.jegeremacartenavigo.domain.dossier.exception.DossierDejaFinaliseExcept
 import fr.jegeremacartenavigo.domain.dossier.exception.DossierIntrouvableException;
 import fr.jegeremacartenavigo.domain.dossier.exception.ReferentielIntrouvableException;
 import fr.jegeremacartenavigo.domain.dossier.exception.PieceIntrouvableException;
+import fr.jegeremacartenavigo.domain.dossier.model.CodeStatutDossier;
 import fr.jegeremacartenavigo.domain.dossier.model.DemandePour;
 import fr.jegeremacartenavigo.domain.dossier.model.DossierCree;
 import fr.jegeremacartenavigo.domain.dossier.model.DossierDetail;
@@ -55,9 +56,9 @@ import java.util.stream.Collectors;
 @Component
 public class DossierRepositoryAdapter implements DossierRepository {
 
-    private static final String STATUT_EN_VERIFICATION = "EN_VERIFICATION";
-    private static final String STATUT_EN_ATTENTE_PAIEMENT = "EN_ATTENTE_PAIEMENT";
-    private static final String STATUT_BROUILLON = "BROUILLON";
+    private static final String STATUT_EN_VERIFICATION = CodeStatutDossier.EN_VERIFICATION.name();
+    private static final String STATUT_EN_ATTENTE_PAIEMENT = CodeStatutDossier.EN_ATTENTE_PAIEMENT.name();
+    private static final String STATUT_BROUILLON = CodeStatutDossier.BROUILLON.name();
     private static final String CODE_PIECE_IDENTITE = "PIECE_IDENTITE";
     private static final String CODE_CERTIFICAT_SCOLARITE = "CERTIFICAT_SCOLARITE";
     private static final String CODE_NOTIFICATION_BOURSE = "NOTIFICATION_BOURSE";
@@ -409,6 +410,7 @@ public class DossierRepositoryAdapter implements DossierRepository {
         return new PieceJustificativeResume(
                 p.getIdPiece(),
                 p.getTypePiece().getLibelle(),
+                p.getCheminFichier(),
                 p.getStatutValidation().name(),
                 p.getDateDepot(),
                 p.getMotifRejet(),
@@ -472,6 +474,64 @@ public class DossierRepositoryAdapter implements DossierRepository {
         entree.setDescription(validation.valider()
                 ? "Pièce validée : " + piece.getTypePiece().getLibelle()
                 : "Pièce rejetée : " + piece.getTypePiece().getLibelle() + " — " + validation.motifRejet());
+        historiqueJpa.save(entree);
+
+        // Auto-transition : un rejet de piece bascule un dossier EN_VERIFICATION
+        // vers INCOMPLET pour signaler a l'usager qu'il doit re-uploader des pieces.
+        // La validation reste sans effet sur le statut (pilote par le bouton
+        // "Valider le dossier" cote backoffice).
+        if (!validation.valider() && CodeStatutDossier.EN_VERIFICATION.name().equals(dossier.getStatutActuel().getCode())) {
+            appliquerChangementStatut(dossier, CodeStatutDossier.INCOMPLET, agent,
+                    "Statut passé à INCOMPLET suite au rejet d'une pièce.");
+        }
+    }
+
+    /**
+     * Change le statut d'un dossier (action manuelle d'un agent depuis le
+     * backoffice). Trace l'evolution dans l'historique avec statutAvant /
+     * statutApres pour permettre l'affichage de la transition.
+     */
+    @Override
+    @Transactional
+    public void changerStatut(Integer idDossier, CodeStatutDossier codeStatut, Integer idAgent) {
+        Dossier dossier = dossierJpa.findById(idDossier)
+                .orElseThrow(() -> new DossierIntrouvableException(idDossier));
+        Agent agent = agentJpaRepository.findById(idAgent)
+                .orElseThrow(() -> new ReferentielIntrouvableException("Agent introuvable : " + idAgent));
+        // No-op si le statut est deja le bon (idempotence).
+        if (codeStatut.name().equals(dossier.getStatutActuel().getCode())) {
+            return;
+        }
+        appliquerChangementStatut(dossier, codeStatut, agent, null);
+    }
+
+    /**
+     * Coeur de la transition de statut. Pose le nouveau statut sur le dossier
+     * + entree d'historique (typeAction=changement_statut, statutAvant/Apres).
+     * {@code descriptionOverride} est utilise quand l'appelant veut documenter
+     * la cause (ex: rejet d'une piece) ; null = description par defaut.
+     */
+    private void appliquerChangementStatut(Dossier dossier, CodeStatutDossier nouveauCode,
+                                            Agent agent, String descriptionOverride) {
+        StatutDossier nouveauStatut = statutDossierJpaRepository.findByCode(nouveauCode.name())
+                .orElseThrow(() -> new ReferentielIntrouvableException("Statut introuvable : " + nouveauCode));
+        StatutDossier ancienStatut = dossier.getStatutActuel();
+
+        dossier.setStatutActuel(nouveauStatut);
+        dossierJpa.save(dossier);
+
+        HistoriqueDossier entree = new HistoriqueDossier();
+        entree.setDossier(dossier);
+        entree.setDateAction(LocalDateTime.now());
+        entree.setTypeAction(HistoriqueDossier.TypeAction.changement_statut);
+        entree.setStatutAvant(ancienStatut);
+        entree.setStatutApres(nouveauStatut);
+        entree.setAgent(agent);
+        // Pas de description par defaut pour un changement de statut : la transition
+        // est deja affichee cote UI via le pill {statutAvant -> statutApres}. La
+        // description n'est posee que pour expliciter la cause d'une auto-transition
+        // (ex: rejet d'une piece) via descriptionOverride.
+        entree.setDescription(descriptionOverride);
         historiqueJpa.save(entree);
     }
 

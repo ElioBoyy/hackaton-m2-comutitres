@@ -40,5 +40,13 @@ public interface DossierRepository {
 
     void validerOuRejeterPiece(ValidationPiece validation);
 
+    /**
+     * Change le statut d'un dossier (action backoffice). Pose une entree
+     * d'historique de type {@code changement_statut} avec statutAvant/Apres
+     * pour permettre l'affichage de la transition. Idempotent : si le dossier
+     * est deja dans {@code codeStatut}, no-op.
+     */
+    void changerStatut(Integer idDossier, fr.jegeremacartenavigo.domain.dossier.model.CodeStatutDossier codeStatut, Integer idAgent);
+
     void supprimer(Integer id);
 }

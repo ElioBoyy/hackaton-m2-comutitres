@@ -199,55 +199,59 @@ public class DataSeeder implements ApplicationRunner {
         List<TypeAbonnement> types = List.of(
                 // ── Navigo standard (tarifs 2026) ──────────────────────────────────
                 typeAbonnement("NAVIGO_ANNUEL", "Navigo Annuel", "Navigo standard",
-                        TypeAbonnement.Periodicite.annuelle, new BigDecimal("998.80")),
+                        TypeAbonnement.Periodicite.annuelle, new BigDecimal("998.80"),
+                        "Illimite toutes zones, valable 1 an"),
                 typeAbonnement("NAVIGO_MENSUEL", "Navigo Mensuel", "Navigo standard",
-                        TypeAbonnement.Periodicite.mensuelle, new BigDecimal("90.80")),
+                        TypeAbonnement.Periodicite.mensuelle, new BigDecimal("90.80"),
+                        "Illimite toutes zones, renouvelable chaque mois"),
                 typeAbonnement("NAVIGO_HEBDO", "Navigo Hebdomadaire", "Navigo standard",
-                        TypeAbonnement.Periodicite.hebdomadaire, new BigDecimal("32.40")),
+                        TypeAbonnement.Periodicite.hebdomadaire, new BigDecimal("32.40"),
+                        "Du lundi au dimanche, toutes zones"),
                 typeAbonnement("NAVIGO_LIBERTE_PLUS", "Navigo Liberte+", "Navigo standard",
-                        TypeAbonnement.Periodicite.sans_abonnement, null),
-                // Support physique rechargeable — pas un abonnement, frais de carte uniquement
+                        TypeAbonnement.Periodicite.sans_abonnement, null,
+                        "Paiement a la course, sans engagement"),
                 typeAbonnement("NAVIGO_DECOUVERTE", "Navigo Decouverte", "Navigo standard",
-                        TypeAbonnement.Periodicite.sans_abonnement, new BigDecimal("5.00")),
+                        TypeAbonnement.Periodicite.sans_abonnement, new BigDecimal("5.00"),
+                        "Support rechargeable, frais de carte uniquement"),
 
                 // ── Forfaits seniors ───────────────────────────────────────────────
-                // Navigo Senior : 50 % de reduction sur Navigo Annuel, reservé 62+ non-actif
                 typeAbonnement("NAVIGO_SENIOR", "Navigo Senior", "Forfait senior",
-                        TypeAbonnement.Periodicite.annuelle, new BigDecimal("544.80")),
-                // Amethyste : attribue et finance par le departement, tarif variable selon departement
+                        TypeAbonnement.Periodicite.annuelle, new BigDecimal("544.80"),
+                        "50 % de reduction, reserve aux 62 ans et plus non actifs"),
                 typeAbonnement("AMETHYSTE", "Amethyste", "Forfait senior",
-                        TypeAbonnement.Periodicite.annuelle, null),
+                        TypeAbonnement.Periodicite.annuelle, null,
+                        "Attribue par le departement, seniors et personnes handicapees"),
 
                 // ── Forfaits jeunes / scolaires ────────────────────────────────────
-                // Imagine R Junior : moins de 11 ans au 31/12
                 typeAbonnement("IMAGINE_R_JUNIOR", "Imagine R Junior", "Forfait scolaire-etudiant",
-                        TypeAbonnement.Periodicite.annuelle, new BigDecimal("24.40")),
-                // Imagine R Scolaire : moins de 16 ans au 1er sept ou apprenti moins de 26 ans
+                        TypeAbonnement.Periodicite.annuelle, new BigDecimal("24.40"),
+                        "Enfants de moins de 11 ans au 31 decembre"),
                 typeAbonnement("IMAGINE_R_SCOLAIRE", "Imagine R Scolaire", "Forfait scolaire-etudiant",
-                        TypeAbonnement.Periodicite.annuelle, new BigDecimal("374.40")),
-                // Imagine R Etudiant : etudiant moins de 26 ans (hors apprentissage)
+                        TypeAbonnement.Periodicite.annuelle, new BigDecimal("374.40"),
+                        "Lycéens et jeunes de moins de 16 ans au 1er septembre"),
                 typeAbonnement("IMAGINE_R_ETUDIANT", "Imagine R Etudiant", "Forfait scolaire-etudiant",
-                        TypeAbonnement.Periodicite.annuelle, new BigDecimal("374.40")),
-                // Imagine R Apprenti : apprenti moins de 26 ans (meme eligibilite que Scolaire)
+                        TypeAbonnement.Periodicite.annuelle, new BigDecimal("374.40"),
+                        "Etudiants de moins de 26 ans inscrits dans l'enseignement superieur"),
                 typeAbonnement("IMAGINE_R_APPRENTI", "Imagine R Apprenti", "Forfait scolaire-etudiant",
-                        TypeAbonnement.Periodicite.annuelle, new BigDecimal("374.40")),
-                // Transport Scolaire departemental : bus domicile-ecole, gratuit
+                        TypeAbonnement.Periodicite.annuelle, new BigDecimal("374.40"),
+                        "Apprentis et alternants de moins de 26 ans"),
                 typeAbonnement("TRANSPORT_SCOLAIRE", "Transport Scolaire departemental", "Forfait scolaire-etudiant",
-                        TypeAbonnement.Periodicite.annuelle, BigDecimal.ZERO),
+                        TypeAbonnement.Periodicite.annuelle, BigDecimal.ZERO,
+                        "Bus departemental domicile - ecole, gratuit"),
 
                 // ── Tarification solidaire ─────────────────────────────────────────
-                // Solidarite Gratuite : RSA / ASS, voyage gratuit toutes zones
                 typeAbonnement("SOLIDARITE_GRATUITE", "Solidarite Gratuite", "Tarification solidaire",
-                        TypeAbonnement.Periodicite.mensuelle, BigDecimal.ZERO),
-                // Solidarite 75 % : CSS beneficiaires, 75 % de reduction
+                        TypeAbonnement.Periodicite.mensuelle, BigDecimal.ZERO,
+                        "Voyage gratuit toutes zones, pour les beneficiaires RSA ou ASS"),
                 typeAbonnement("SOLIDARITE_75", "Navigo Solidarite 75%", "Tarification solidaire",
-                        TypeAbonnement.Periodicite.mensuelle, new BigDecimal("21.00")),
-                // Solidarite 50 % : AME beneficiaires, 50 % de reduction
+                        TypeAbonnement.Periodicite.mensuelle, new BigDecimal("21.00"),
+                        "75 % de reduction, pour les beneficiaires de la CSS"),
                 typeAbonnement("SOLIDARITE_50", "Navigo Solidarite 50%", "Tarification solidaire",
-                        TypeAbonnement.Periodicite.mensuelle, new BigDecimal("42.05")),
-                // Ancienne entree conservee pour compatibilite avec les dossiers de demo existants
+                        TypeAbonnement.Periodicite.mensuelle, new BigDecimal("42.05"),
+                        "50 % de reduction, pour les beneficiaires de l'AME"),
                 typeAbonnement("SOLIDARITE_TRANSPORT", "Solidarite Transport", "Tarification solidaire",
-                        TypeAbonnement.Periodicite.annuelle, null)
+                        TypeAbonnement.Periodicite.annuelle, null,
+                        "Tarification solidaire, conditions selon le departement")
         );
         typeAbonnementRepository.saveAll(types);
         return types.stream().collect(java.util.stream.Collectors.toMap(TypeAbonnement::getCode, t -> t));
@@ -257,13 +261,15 @@ public class DataSeeder implements ApplicationRunner {
     private static final String[] ZONES_TOUTES = {"Z1", "Z2", "Z3", "Z4", "Z5"};
 
     private TypeAbonnement typeAbonnement(String code, String libelle, String categorie,
-                                           TypeAbonnement.Periodicite periodicite, BigDecimal tarifPlein) {
+                                           TypeAbonnement.Periodicite periodicite, BigDecimal tarifPlein,
+                                           String description) {
         TypeAbonnement t = new TypeAbonnement();
         t.setCode(code);
         t.setLibelle(libelle);
         t.setCategorie(categorie);
         t.setPeriodicite(periodicite);
         t.setTarifPlein(tarifPlein);
+        t.setDescription(description);
         t.setActif(true);
         t.setTransports(TRANSPORTS_NAVIGO);
         t.setZones(ZONES_TOUTES);

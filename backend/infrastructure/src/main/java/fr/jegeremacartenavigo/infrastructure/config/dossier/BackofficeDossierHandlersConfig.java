@@ -1,5 +1,6 @@
 package fr.jegeremacartenavigo.infrastructure.config.dossier;
 
+import fr.jegeremacartenavigo.application.dossier.ChangerStatutDossierHandler;
 import fr.jegeremacartenavigo.application.dossier.GetDossierCountsHandler;
 import fr.jegeremacartenavigo.application.dossier.GetDossierDetailHandler;
 import fr.jegeremacartenavigo.application.dossier.GetDossierHistoriqueHandler;
@@ -59,5 +60,10 @@ public class BackofficeDossierHandlersConfig {
     @Bean
     SupprimerBrouillonHandler supprimerBrouillonHandler(DossierRepository repository) {
         return new SupprimerBrouillonHandler(repository);
+    }
+
+    @Bean
+    ChangerStatutDossierHandler changerStatutDossierHandler(DossierRepository repository) {
+        return new ChangerStatutDossierHandler(repository);
     }
 }

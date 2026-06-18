@@ -9,6 +9,7 @@ public record TypeAbonnementInfo(
         String categorie,
         String periodicite,
         BigDecimal tarifPlein,
+        String description,
         List<String> transports,
         List<String> zones
 ) {}

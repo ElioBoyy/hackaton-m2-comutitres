@@ -2,6 +2,7 @@ package fr.jegeremacartenavigo.infrastructure.adapter.in.web.dossier;
 
 import fr.jegeremacartenavigo.application.cqrs.CommandBus;
 import fr.jegeremacartenavigo.application.cqrs.QueryBus;
+import fr.jegeremacartenavigo.application.dossier.ChangerStatutDossierCommand;
 import fr.jegeremacartenavigo.application.dossier.CreerDossierCommand;
 import fr.jegeremacartenavigo.application.dossier.DossierCountsResponse;
 import fr.jegeremacartenavigo.application.dossier.DossierDetailResponse;
@@ -140,6 +141,24 @@ public class DossierController {
                 Integer.valueOf(jwt.getSubject()),
                 body.valider(),
                 body.motifRejet()
+        ));
+    }
+
+    /**
+     * Change le statut du dossier (boutons "Valider/Rejeter le dossier" cote
+     * backoffice). {@code codeStatut} doit etre un code du referentiel
+     * (VALIDE / REJETE / INCOMPLET / ...). Reserve aux agents par la chaine
+     * Security (matcher /dossiers/**).
+     */
+    @PatchMapping("/{id}/statut")
+    public DossierDetailResponse changerStatut(
+            @PathVariable Integer id,
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestBody ChangerStatutRequest body) {
+        return commandBus.send(new ChangerStatutDossierCommand(
+                id,
+                Integer.valueOf(jwt.getSubject()),
+                body.codeStatut()
         ));
     }
 }
