@@ -50,8 +50,9 @@ import java.util.stream.Collectors;
 @Component
 public class DossierRepositoryAdapter implements DossierRepository {
 
-    private static final String STATUT_ACTIF = "ACTIF";
-    private static final String STATUT_BROUILLON = "EN_ATTENTE_PAIEMENT";
+    private static final String STATUT_EN_VERIFICATION = "EN_VERIFICATION";
+    private static final String STATUT_EN_ATTENTE_PAIEMENT = "EN_ATTENTE_PAIEMENT";
+    private static final String STATUT_BROUILLON = "BROUILLON";
     private static final String CODE_PIECE_IDENTITE = "PIECE_IDENTITE";
     private static final String CODE_CERTIFICAT_SCOLARITE = "CERTIFICAT_SCOLARITE";
     private static final String CODE_NOTIFICATION_BOURSE = "NOTIFICATION_BOURSE";
@@ -165,7 +166,9 @@ public class DossierRepositoryAdapter implements DossierRepository {
                         "Type d'abonnement introuvable ou inactif : " + nouveauDossier.codeTypeAbonnement()));
 
         boolean paiementFourni = nouveauDossier.modePaiement() != null;
-        String codeStatut = paiementFourni ? STATUT_ACTIF : STATUT_BROUILLON;
+        String codeStatut = paiementFourni ? STATUT_EN_VERIFICATION
+                : Boolean.TRUE.equals(nouveauDossier.enAttentePaiement()) ? STATUT_EN_ATTENTE_PAIEMENT
+                : STATUT_BROUILLON;
         StatutDossier statut = statutDossierJpaRepository.findByCode(codeStatut)
                 .orElseThrow(() -> new ReferentielIntrouvableException(
                         "Statut de dossier introuvable : " + codeStatut));
@@ -203,7 +206,8 @@ public class DossierRepositoryAdapter implements DossierRepository {
         if (!existant.getUtilisateurPorteur().getIdUtilisateur().equals(connecte.getIdUtilisateur())) {
             throw new DossierIntrouvableException(nouveauDossier.idDossierExistant());
         }
-        if (!STATUT_BROUILLON.equals(existant.getStatutActuel().getCode())) {
+        String codeActuel = existant.getStatutActuel().getCode();
+        if (!STATUT_BROUILLON.equals(codeActuel) && !STATUT_EN_ATTENTE_PAIEMENT.equals(codeActuel)) {
             throw new DossierDejaFinaliseException();
         }
         return existant;
@@ -220,10 +224,6 @@ public class DossierRepositoryAdapter implements DossierRepository {
             dossier.setCanalCreation(Dossier.CanalCreation.en_ligne);
             dossier.setDateCreation(LocalDateTime.now());
             dossier.setDateDebutDroits(LocalDate.now());
-        }
-        if (paiementFourni) {
-            LocalDate debutDroits = dossier.getDateDebutDroits() != null ? dossier.getDateDebutDroits() : LocalDate.now();
-            dossier.setDateFinDroits(debutDroits.plusYears(1));
         }
         dossier.setMontantTotal(typeAbonnement.getTarifPlein() != null ? typeAbonnement.getTarifPlein() : BigDecimal.ZERO);
         dossier.setPeriodicitePaiement(mapPeriodicite(typeAbonnement.getPeriodicite()));

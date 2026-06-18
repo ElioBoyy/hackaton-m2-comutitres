@@ -248,7 +248,12 @@ function FormulaireCarteBancaire({
           placeholder="MM/AA"
           value={valeurs.expiration}
           erreur={erreurs.expiration}
-          onChange={(expiration) => { onChange({ ...valeurs, expiration }); onFieldChange('expiration') }}
+          onChange={(expiration) => {
+            const chiffres = expiration.replace(/\D/g, '').slice(0, 4)
+            const formate = chiffres.length > 2 ? chiffres.slice(0, 2) + '/' + chiffres.slice(2) : chiffres
+            onChange({ ...valeurs, expiration: formate })
+            onFieldChange('expiration')
+          }}
         />
         <ChampTexte
           label={m.wizard_paiement_cb_cvc()}

@@ -28,7 +28,7 @@ const PUBLIC_ITEMS: NavItem[] = [
 const AUTH_ITEMS: NavItem[] = [
   { labelKey: 'nav_home', icon: Home, to: '/' },
   { labelKey: 'nav_search_subscription', icon: Search },
-  { labelKey: 'nav_diagnostic', icon: ScanSearch, to: '/recommandation' },
+  { labelKey: 'nav_diagnostic', icon: ScanSearch, to: '/recommandation/pour-qui' },
   { labelKey: 'nav_my_subscriptions', icon: CalendarDays, to: '/dashboard' },
   { labelKey: 'nav_my_documents', icon: FileText, to: '/mes-documents' },
   { labelKey: 'nav_my_info', icon: User },

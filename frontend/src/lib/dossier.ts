@@ -29,6 +29,7 @@ export interface CreerDossierPayload {
   cheminCertificatScolarite?: string
   cheminNotificationBourse?: string
   modePaiement?: 'CB' | 'SEPA'
+  enAttentePaiement?: boolean
 }
 
 export interface DossierResponse {
@@ -65,6 +66,7 @@ export function construirePayloadDossier(
   wizard: WizardPourDossier,
   codeTypeAbonnement: string,
   modePaiement?: 'CB' | 'SEPA',
+  enAttentePaiement?: boolean,
 ): CreerDossierPayload {
   return {
     idDossierExistant: wizard.idDossierBackend ?? undefined,
@@ -81,5 +83,6 @@ export function construirePayloadDossier(
     cheminCertificatScolarite: wizard.justificatifEtudiantCleObjet ?? undefined,
     cheminNotificationBourse: wizard.notificationBourseCleObjet ?? undefined,
     modePaiement,
+    enAttentePaiement,
   }
 }
