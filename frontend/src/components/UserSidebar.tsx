@@ -4,7 +4,7 @@ import {
   FileText,
   HelpCircle,
   Home,
-  MessageCircle,
+  Phone,
   Search,
   Settings,
   ScanSearch,
@@ -113,6 +113,23 @@ export function UserSidebar({ isOpen, onClose }: UserSidebarProps) {
           })}
         </nav>
 
+        {isMobileDrawer && !connected && (
+          <div className="mt-4 flex flex-col gap-2 lg:hidden">
+            <Link
+              to="/login"
+              className="rounded-xl border border-gray-200 px-4 py-2.5 text-center text-sm font-medium text-gray-700 transition hover:bg-blue-pale"
+            >
+              Connexion
+            </Link>
+            <Link
+              to="/register"
+              className="rounded-xl bg-primary px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-focus"
+            >
+              Créer un compte
+            </Link>
+          </div>
+        )}
+
         {isMobileDrawer && (
           <div className="mt-4 lg:hidden">
             <LanguageSwitcher />
@@ -121,16 +138,15 @@ export function UserSidebar({ isOpen, onClose }: UserSidebarProps) {
 
         <div className="mt-4 rounded-2xl bg-blue-pale p-4">
             <div className="mb-1 flex items-center gap-2">
-              <MessageCircle size={20} className="shrink-0 text-primary" aria-hidden="true" />
+              <Phone size={20} className="shrink-0 text-primary" aria-hidden="true" />
               <p className="text-sm font-semibold text-primary">{m.help_title()}</p>
             </div>
             <p className="mb-3 text-xs text-gray-700">{m.help_subtitle()}</p>
             <a
-              href="#contact"
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-primary transition hover:underline focus:outline-none focus:ring-2 focus:ring-primary/30"
+              href="tel:+14788005235"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary transition hover:underline focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
-              {m.help_contact_cta()}
-              <span aria-hidden="true">→</span>
+              +1 (478) 800-5235
             </a>
           </div>
       </aside>

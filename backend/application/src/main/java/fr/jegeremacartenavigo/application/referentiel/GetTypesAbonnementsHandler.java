@@ -20,6 +20,7 @@ public class GetTypesAbonnementsHandler implements QueryHandler<GetTypesAbonneme
                         t.categorie(),
                         t.periodicite(),
                         t.tarifPlein(),
+                        t.description(),
                         t.transports(),
                         t.zones()
                 ))
