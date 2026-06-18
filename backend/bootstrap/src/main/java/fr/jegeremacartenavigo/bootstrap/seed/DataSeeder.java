@@ -4,6 +4,8 @@ import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.backoffice.
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.backoffice.AgentJpaRepository;
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.dossier.Dossier;
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.dossier.DossierJpaRepository;
+import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.dossier.PieceJustificative;
+import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.dossier.PieceJustificativeJpaRepository;
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.dossier.SequenceAnnuelleDossier;
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.dossier.SequenceAnnuelleDossierJpaRepository;
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.identite.Adresse;
@@ -42,6 +44,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Jeu de donnees de demo/dev : referentiels (valeurs de l'annexe du modele de
@@ -69,6 +72,7 @@ public class DataSeeder implements ApplicationRunner {
     private final AdresseJpaRepository adresseRepository;
     private final RelationUtilisateurJpaRepository relationUtilisateurRepository;
     private final DossierJpaRepository dossierRepository;
+    private final PieceJustificativeJpaRepository pieceRepository;
     private final SequenceAnnuelleDossierJpaRepository sequenceRepository;
     private final NotificationJpaRepository notificationRepository;
     private final PasswordEncoder passwordEncoder;
@@ -86,6 +90,7 @@ public class DataSeeder implements ApplicationRunner {
             AdresseJpaRepository adresseRepository,
             RelationUtilisateurJpaRepository relationUtilisateurRepository,
             DossierJpaRepository dossierRepository,
+            PieceJustificativeJpaRepository pieceRepository,
             SequenceAnnuelleDossierJpaRepository sequenceRepository,
             PasswordEncoder passwordEncoder,
             NotificationJpaRepository notificationRepository
@@ -102,6 +107,7 @@ public class DataSeeder implements ApplicationRunner {
         this.adresseRepository = adresseRepository;
         this.relationUtilisateurRepository = relationUtilisateurRepository;
         this.dossierRepository = dossierRepository;
+        this.pieceRepository = pieceRepository;
         this.sequenceRepository = sequenceRepository;
         this.passwordEncoder = passwordEncoder;
         this.notificationRepository = notificationRepository;
@@ -131,9 +137,10 @@ public class DataSeeder implements ApplicationRunner {
         Utilisateur retraite = utilisateurs.get("retraite");
         Utilisateur alternante = utilisateurs.get("alternante");
 
-        Dossier dossierActif = seedDossiersDemo(
+        List<Dossier> dossiersSeed = seedDossiersDemo(
                 List.of(etudiante, retraite, alternante), typesAbonnement, statuts, gestionnaire);
-        seedNotificationsDemo(etudiante, dossierActif);
+        seedPiecesDemo(dossiersSeed, etudiante);
+        seedNotificationsDemo(etudiante, dossiersSeed.get(0));
 
         log.info("Seed termine.");
     }
@@ -240,6 +247,9 @@ public class DataSeeder implements ApplicationRunner {
         return types.stream().collect(java.util.stream.Collectors.toMap(TypeAbonnement::getCode, t -> t));
     }
 
+    private static final String[] TRANSPORTS_NAVIGO = {"METRO", "RER", "TRAIN", "TRAMWAY", "BUS"};
+    private static final String[] ZONES_TOUTES = {"Z1", "Z2", "Z3", "Z4", "Z5"};
+
     private TypeAbonnement typeAbonnement(String code, String libelle, String categorie,
                                            TypeAbonnement.Periodicite periodicite, BigDecimal tarifPlein) {
         TypeAbonnement t = new TypeAbonnement();
@@ -249,6 +259,8 @@ public class DataSeeder implements ApplicationRunner {
         t.setPeriodicite(periodicite);
         t.setTarifPlein(tarifPlein);
         t.setActif(true);
+        t.setTransports(TRANSPORTS_NAVIGO);
+        t.setZones(ZONES_TOUTES);
         return t;
     }
 
@@ -427,12 +439,13 @@ public class DataSeeder implements ApplicationRunner {
         return a;
     }
 
-    private Dossier seedDossiersDemo(List<Utilisateur> clients, Map<String, TypeAbonnement> types,
+    private List<Dossier> seedDossiersDemo(List<Utilisateur> clients, Map<String, TypeAbonnement> types,
                                      Map<String, StatutDossier> statuts, Agent agentReferent) {
         Utilisateur lea = clients.get(0);
         Utilisateur jacques = clients.get(1);
         Utilisateur sophie = clients.get(2);
 
+        // index 0 = lea BROUILLON, 1 = lea EN_VERIFICATION, 2 = lea INCOMPLET, 3 = lea ACTIF
         List<Dossier> dossiers = List.of(
                 dossier(lea, types.get("IMAGINE_R_ETUDIANT"), statuts.get("BROUILLON"), null,
                         Dossier.CanalCreation.en_ligne, LocalDateTime.now().minusDays(1),
@@ -445,6 +458,10 @@ public class DataSeeder implements ApplicationRunner {
                 dossier(lea, types.get("IMAGINE_R_APPRENTI"), statuts.get("INCOMPLET"), agentReferent,
                         Dossier.CanalCreation.en_ligne, LocalDateTime.now().minusDays(20),
                         null, null, new BigDecimal("394.00"), Dossier.PeriodicitePaiement.annuel),
+
+                dossier(lea, types.get("IMAGINE_R_ETUDIANT"), statuts.get("ACTIF"), agentReferent,
+                        Dossier.CanalCreation.en_ligne, LocalDateTime.now().minusMonths(3),
+                        LocalDate.now().minusMonths(3), LocalDate.now().plusMonths(9), new BigDecimal("394.00"), Dossier.PeriodicitePaiement.annuel),
 
                 dossier(jacques, types.get("AMETHYSTE"), statuts.get("EN_ATTENTE_PAIEMENT"), agentReferent,
                         Dossier.CanalCreation.agence, LocalDateTime.now().minusDays(15),
@@ -471,7 +488,47 @@ public class DataSeeder implements ApplicationRunner {
                         LocalDate.now().minusMonths(3), LocalDate.now().minusDays(5), new BigDecimal("86.40"), Dossier.PeriodicitePaiement.mensuel)
         );
         dossierRepository.saveAll(dossiers);
-        return dossiers.get(0);
+        return dossiers;
+    }
+
+    private void seedPiecesDemo(List<Dossier> dossiers, Utilisateur lea) {
+        // dossier index 1 = lea EN_VERIFICATION : CNI + certificat en attente
+        Dossier dossierVerif = dossiers.get(1);
+        TypePieceJustificative tCni = typePieceRepository.findByCode("PIECE_IDENTITE").orElseThrow();
+        TypePieceJustificative tCertif = typePieceRepository.findByCode("CERTIFICAT_SCOLARITE").orElseThrow();
+        TypePieceJustificative tPhoto = typePieceRepository.findByCode("PHOTO_IDENTITE").orElseThrow();
+
+        // dossier index 2 = lea INCOMPLET : une CNI rejetee
+        Dossier dossierIncomplet = dossiers.get(2);
+
+        // dossier index 3 = lea ACTIF : CNI + certificat valides
+        Dossier dossierActif = dossiers.get(3);
+
+        pieceRepository.saveAll(List.of(
+                piece(dossierVerif, tCni, lea, "uploads/verif/cni_lea.pdf", PieceJustificative.StatutValidation.en_attente, null),
+                piece(dossierVerif, tCertif, lea, "uploads/verif/certif_lea.pdf", PieceJustificative.StatutValidation.en_attente, null),
+                piece(dossierVerif, tPhoto, lea, "uploads/verif/photo_lea.jpg", PieceJustificative.StatutValidation.en_attente, null),
+
+                piece(dossierIncomplet, tCni, lea, "uploads/incomplet/cni_lea_v1.pdf", PieceJustificative.StatutValidation.rejetee, "Photo floue, document illisible"),
+                piece(dossierIncomplet, tCertif, lea, "uploads/incomplet/certif_lea.pdf", PieceJustificative.StatutValidation.en_attente, null),
+
+                piece(dossierActif, tCni, lea, "uploads/actif/cni_lea.pdf", PieceJustificative.StatutValidation.validee, null),
+                piece(dossierActif, tCertif, lea, "uploads/actif/certif_lea.pdf", PieceJustificative.StatutValidation.validee, null),
+                piece(dossierActif, tPhoto, lea, "uploads/actif/photo_lea.jpg", PieceJustificative.StatutValidation.validee, null)
+        ));
+    }
+
+    private PieceJustificative piece(Dossier dossier, TypePieceJustificative type, Utilisateur depot,
+                                      String chemin, PieceJustificative.StatutValidation statut, String motifRejet) {
+        PieceJustificative p = new PieceJustificative();
+        p.setDossier(dossier);
+        p.setTypePiece(type);
+        p.setUtilisateurDepot(depot);
+        p.setCheminFichier(chemin);
+        p.setDateDepot(LocalDateTime.now().minusDays(2));
+        p.setStatutValidation(statut);
+        p.setMotifRejet(motifRejet);
+        return p;
     }
 
     private Dossier dossier(Utilisateur porteur, TypeAbonnement type, StatutDossier statut,
@@ -491,6 +548,7 @@ public class DataSeeder implements ApplicationRunner {
         d.setMontantTotal(montant);
         d.setPeriodicitePaiement(periodicite);
         d.setSituationCode("Etudiant");
+        d.setNumeroDossier("DOS-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
         d.setNumeroDossier(genererNumeroDossier(dateCreation.getYear()));
         return d;
     }

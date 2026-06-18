@@ -7,6 +7,7 @@ public record PieceJustificativeResume(
         String libelleTypePiece,
         String statutValidation,
         LocalDateTime dateDepot,
-        String motifRejet
+        String motifRejet,
+        String cheminFichier
 ) {
 }

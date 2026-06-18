@@ -27,6 +27,12 @@ public interface DossierRepository {
     Optional<DossierDetail> findDetailById(Integer id);
     DossierCree enregistrer(NouveauDossier nouveauDossier);
 
+    /** Nombre de dossiers par categorie de statut. */
+    java.util.Map<String, Long> countByCategorie();
+
+    void resilier(Integer id);
+    void soumettre(Integer id);
+    void ajouterOuRemplacerPieces(Integer idDossier, java.util.List<fr.jegeremacartenavigo.domain.dossier.model.PieceADeposer> pieces);
     /** Nombre de dossiers par categorie de statut, avec filtre optionnel de recherche. */
     java.util.Map<String, Long> countByCategorie(String nomClient, String numeroDossier);
 

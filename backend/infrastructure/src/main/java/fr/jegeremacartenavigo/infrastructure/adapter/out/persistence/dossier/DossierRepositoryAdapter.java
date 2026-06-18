@@ -12,6 +12,7 @@ import fr.jegeremacartenavigo.domain.dossier.model.DossierResume;
 import fr.jegeremacartenavigo.domain.dossier.model.HistoriqueEntree;
 import fr.jegeremacartenavigo.domain.dossier.model.ModePaiementDossier;
 import fr.jegeremacartenavigo.domain.dossier.model.NouveauDossier;
+import fr.jegeremacartenavigo.domain.dossier.model.PieceADeposer;
 import fr.jegeremacartenavigo.domain.dossier.model.PageResult;
 import fr.jegeremacartenavigo.domain.dossier.model.Personne;
 import fr.jegeremacartenavigo.domain.dossier.model.PieceJustificativeResume;
@@ -126,6 +127,12 @@ public class DossierRepositoryAdapter implements DossierRepository {
                 .toList();
 
         return new PageResult<>(dossiers, page, pageSize, resultat.getTotalElements());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Long> countByCategorie() {
+        return countByCategorie(null, null);
     }
 
     @Override
@@ -281,6 +288,39 @@ public class DossierRepositoryAdapter implements DossierRepository {
         paiementJpaRepository.save(paiement);
     }
 
+    @Override
+    @Transactional
+    public void resilier(Integer id) {
+        Dossier dossier = dossierJpa.findById(id)
+                .orElseThrow(() -> new DossierIntrouvableException(id));
+        StatutDossier statut = statutDossierJpaRepository.findByCode("RESILIE")
+                .orElseThrow(() -> new ReferentielIntrouvableException("Statut RESILIE introuvable"));
+        dossier.setStatutActuel(statut);
+        dossierJpa.save(dossier);
+    }
+
+    @Override
+    @Transactional
+    public void soumettre(Integer id) {
+        Dossier dossier = dossierJpa.findById(id)
+                .orElseThrow(() -> new DossierIntrouvableException(id));
+        StatutDossier statut = statutDossierJpaRepository.findByCode("EN_VERIFICATION")
+                .orElseThrow(() -> new ReferentielIntrouvableException("Statut EN_VERIFICATION introuvable"));
+        dossier.setStatutActuel(statut);
+        dossierJpa.save(dossier);
+    }
+
+    @Override
+    @Transactional
+    public void ajouterOuRemplacerPieces(Integer idDossier, java.util.List<PieceADeposer> pieces) {
+        Dossier dossier = dossierJpa.findById(idDossier)
+                .orElseThrow(() -> new DossierIntrouvableException(idDossier));
+        Utilisateur depositaire = dossier.getUtilisateurPorteur();
+        for (PieceADeposer piece : pieces) {
+            enregistrerOuRemplacerPiece(dossier, depositaire, piece.codeTypePiece(), piece.cheminFichier());
+        }
+    }
+
     private static DossierResume toResume(Dossier d, long nbPiecesEnAttente) {
         return new DossierResume(
                 d.getIdDossier(),
@@ -327,7 +367,8 @@ public class DossierRepositoryAdapter implements DossierRepository {
                 p.getTypePiece().getLibelle(),
                 p.getStatutValidation().name(),
                 p.getDateDepot(),
-                p.getMotifRejet()
+                p.getMotifRejet(),
+                p.getCheminFichier()
         );
     }
 
