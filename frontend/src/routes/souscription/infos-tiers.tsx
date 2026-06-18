@@ -1,12 +1,16 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { ArrowLeft } from 'lucide-react'
 import * as React from 'react'
+import { z } from 'zod'
 import { Button } from '~/components/Button'
+import { ProgressBar } from '~/components/ui/ProgressBar'
 import { InfosTiersSchema } from '~/lib/schemas'
 import { m } from '~/paraglide/messages'
 import { useAppDispatch, useAppSelector } from '~/store/hooks'
 import { infosTiersDefinies } from '~/store/wizardSlice'
 
-export const Route = createFileRoute('/recommandation/infos-tiers')({
+export const Route = createFileRoute('/souscription/infos-tiers')({
+  validateSearch: z.object({ code: z.string().optional() }),
   component: InfosTiersStep,
 })
 
@@ -20,6 +24,7 @@ function InfosTiersStep() {
   const dispatch = useAppDispatch()
   const infosTiers = useAppSelector((state) => state.wizard.infosTiers)
   const [erreurs, setErreurs] = React.useState<Record<string, string>>({})
+  const { code } = Route.useSearch()
 
   function handleSuivant() {
     const result = InfosTiersSchema.safeParse(infosTiers)
@@ -33,11 +38,20 @@ function InfosTiersStep() {
       return
     }
     setErreurs({})
-    navigate({ to: '/recommandation/pieces' })
+    navigate({ to: '/souscription/pieces', search: code ? { code } : {} })
   }
 
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-6 py-8">
+      <button
+        type="button"
+        onClick={() => navigate({ to: '/souscription/detail', search: code ? { code } : {} })}
+        className="flex items-center gap-1.5 self-start text-sm font-medium text-primary hover:underline"
+      >
+        <ArrowLeft size={15} />
+        {m.common_back()}
+      </button>
+      <ProgressBar etapeCourante={2} totalEtapes={5} />
       <h1 className="font-heading text-2xl font-bold tracking-tight text-dark">
         {m.wizard_infos_tiers_title()}
       </h1>
@@ -77,11 +91,8 @@ function InfosTiersStep() {
         {erreurs.nom && <p className="text-xs text-danger">{erreurs.nom}</p>}
       </div>
 
-      <div className="mt-4 flex items-center justify-between gap-3">
-        <Button variant="ghost" onClick={() => navigate({ to: '/recommandation/detail' })}>
-          {m.common_back()}
-        </Button>
-        <Button onClick={handleSuivant} className="flex-1">
+      <div className="mt-4">
+        <Button onClick={handleSuivant} className="w-full">
           {m.common_next()}
         </Button>
       </div>

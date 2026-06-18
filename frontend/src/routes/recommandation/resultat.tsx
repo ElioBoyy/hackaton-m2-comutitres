@@ -172,7 +172,7 @@ function ResultatStep() {
       ) : null}
 
       <div className="flex flex-col gap-3">
-        <Button onClick={() => navigate({ to: '/recommandation/detail' })}>
+        <Button onClick={() => navigate({ to: '/souscription/detail' })}>
           {m.wizard_resultat_subscribe()}
         </Button>
         <Button variant="ghost" onClick={sauvegarderEtQuitter} disabled={envoiEnCours}>
