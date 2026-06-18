@@ -177,7 +177,7 @@ function HomePage() {
             <p>© 2026 Comutitres — Île-de-France Mobilités</p>
             <div className="flex gap-4">
               <Link to="/aide" className="hover:text-gray-600 transition-colors">Aide</Link>
-              <Link to="/contact" className="hover:text-gray-600 transition-colors">Contact</Link>
+              <Link to="/aide" hash="contact" className="hover:text-gray-600 transition-colors">Contact</Link>
             </div>
           </footer>
         </main>
