@@ -47,6 +47,13 @@ spring:
       file: ../compose.yaml
       lifecycle-management: start-and-stop
 
+  # Limites de l'upload multipart (cf. FichierController). 10 Mo par fichier,
+  # 12 Mo par requete - on uploade un seul justificatif a la fois.
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 12MB
+
 server:
   port: 8080
 
@@ -81,6 +88,17 @@ app:
       secret: ${APP_SECURITY_JWT_SECRET:dev-secret-please-override-32-bytes-min-1234567890}
       issuer: jegeremacartenavigo
       expires-minutes: 1440
+
+  # --- Stockage des pieces justificatives (MinIO en dev, S3-compatible en prod).
+  # Le bucket est cree au demarrage par MinioConfig (idempotent) et reste prive ;
+  # les pieces ne sont accessibles que via des URLs pre-signees emises par le
+  # backend (cf. FichierController).
+  storage:
+    endpoint: ${APP_STORAGE_ENDPOINT:http://localhost:9000}
+    access-key: ${APP_STORAGE_ACCESS_KEY:jgmcn}
+    secret-key: ${APP_STORAGE_SECRET_KEY:jgmcnjgmcn}
+    bucket: ${APP_STORAGE_BUCKET:jegeremacartenavigo-pieces}
+    region: ${APP_STORAGE_REGION:us-east-1}
 
 # --- RAG (consomme par RagProperties, prefixe rag.*) ---
 rag:

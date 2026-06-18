@@ -231,5 +231,20 @@
   "wizard_validation_expiry": "Format invalide (MM/AA).",
   "wizard_validation_cvc": "CVC invalide (3 ou 4 chiffres).",
   "wizard_validation_iban": "IBAN invalide.",
-  "wizard_validation_bic": "BIC invalide (8 ou 11 caractères)."
+  "wizard_validation_bic": "BIC invalide (8 ou 11 caractères).",
+  "documents_loading": "Chargement de vos documents…",
+  "documents_empty": "Vous n'avez encore déposé aucun document.",
+  "documents_open": "Ouvrir",
+  "documents_opening": "Ouverture…",
+  "documents_open_error": "Impossible d'ouvrir ce document.",
+  "documents_load_error": "Impossible de charger vos documents. Réessayez plus tard.",
+  "documents_col_name": "Document",
+  "documents_col_size": "Taille",
+  "documents_col_date": "Déposé le",
+  "documents_open_aria": "Ouvrir le document {name}",
+  "wizard_pieces_uploading": "Envoi en cours…",
+  "wizard_pieces_upload_error": "Echec de l'envoi. Réessayez.",
+  "documents_label_piece_identite": "Pièce d'identité",
+  "documents_label_certificat_scolarite": "Certificat de scolarité",
+  "documents_label_notification_bourse": "Notification de bourse"
 }

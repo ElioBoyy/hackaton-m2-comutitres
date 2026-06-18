@@ -55,9 +55,9 @@ export interface WizardPourDossier {
   situation: CreerDossierPayload['situation'] | null
   situationPrecision: string
   boursier: boolean
-  pieceIdentiteNomFichier: string | null
-  justificatifEtudiantNomFichier: string | null
-  notificationBourseNomFichier: string | null
+  pieceIdentiteCleObjet: string | null
+  justificatifEtudiantCleObjet: string | null
+  notificationBourseCleObjet: string | null
   idDossierBackend: number | null
 }
 
@@ -77,9 +77,9 @@ export function construirePayloadDossier(
     situationPrecision: wizard.situationPrecision || undefined,
     boursier: wizard.boursier,
     codeTypeAbonnement,
-    cheminPieceIdentite: wizard.pieceIdentiteNomFichier ?? undefined,
-    cheminCertificatScolarite: wizard.justificatifEtudiantNomFichier ?? undefined,
-    cheminNotificationBourse: wizard.notificationBourseNomFichier ?? undefined,
+    cheminPieceIdentite: wizard.pieceIdentiteCleObjet ?? undefined,
+    cheminCertificatScolarite: wizard.justificatifEtudiantCleObjet ?? undefined,
+    cheminNotificationBourse: wizard.notificationBourseCleObjet ?? undefined,
     modePaiement,
   }
 }

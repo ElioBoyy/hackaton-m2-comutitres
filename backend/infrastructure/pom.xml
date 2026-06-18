@@ -71,6 +71,17 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!--
+          SDK MinIO/S3 pour stocker les pieces justificatives en bucket prive
+          (cf. MinioConfig + MinioFichierStorage). Pas d'AWS SDK : minio-java
+          est plus leger et couvre exactement nos besoins (put/get/presign).
+        -->
+        <dependency>
+            <groupId>io.minio</groupId>
+            <artifactId>minio</artifactId>
+            <version>8.5.17</version>
+        </dependency>
+
         <!-- Reduit le boilerplate getters/setters des entites JPA (anemiques par nature). -->
         <dependency>
             <groupId>org.projectlombok</groupId>
