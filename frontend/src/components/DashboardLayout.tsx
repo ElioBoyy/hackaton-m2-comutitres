@@ -27,10 +27,10 @@ export function DashboardLayout({ title, userName, alertes, children }: Dashboar
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
+    <div className="flex h-screen overflow-hidden bg-gray-100">
       <UserSidebar isOpen={sidebarOuverte} onClose={() => setSidebarOuverte(false)} />
 
-      <div className="flex flex-1 flex-col">
+      <div className="flex flex-1 flex-col overflow-hidden">
         <header className="flex h-16 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-3 sm:px-6">
           <div className="flex items-center gap-3">
             <button
@@ -86,7 +86,7 @@ export function DashboardLayout({ title, userName, alertes, children }: Dashboar
           </div>
         </header>
 
-        <main className="flex-1 overflow-x-hidden p-3 sm:p-6" id="main-content">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-6" id="main-content">
           {children}
         </main>
       </div>

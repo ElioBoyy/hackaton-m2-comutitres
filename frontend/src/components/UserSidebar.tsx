@@ -23,6 +23,8 @@ interface NavItem {
 
 const PUBLIC_ITEMS: NavItem[] = [
   { labelKey: 'nav_home', icon: Home, to: '/' },
+  { labelKey: 'nav_diagnostic', icon: ScanSearch, to: '/recommandation' },
+  { labelKey: 'nav_help_contacts', icon: HelpCircle, to: '/aide' },
 ]
 
 const AUTH_ITEMS: NavItem[] = [
@@ -32,7 +34,7 @@ const AUTH_ITEMS: NavItem[] = [
   { labelKey: 'nav_my_subscriptions', icon: CalendarDays, to: '/dashboard' },
   { labelKey: 'nav_my_documents', icon: FileText, to: '/mes-documents' },
   { labelKey: 'nav_my_info', icon: User },
-  { labelKey: 'nav_help_contacts', icon: HelpCircle, to: '/aide' },
+  { labelKey: 'nav_help_contacts', icon: HelpCircle, to: '/sav' },
   { labelKey: 'nav_settings', icon: Settings },
 ]
 
@@ -59,7 +61,7 @@ export function UserSidebar({ isOpen, onClose }: UserSidebarProps) {
         'flex w-64 shrink-0 flex-col border-r border-gray-200 bg-white p-4',
         isMobileDrawer
           ? `fixed inset-0 right-auto z-30 transition-transform duration-200 lg:static lg:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`
-          : 'hidden lg:flex',
+          : 'hidden lg:flex h-screen overflow-y-auto',
       ].join(' ')}>
         <div className="mb-8 flex items-center justify-between px-2">
           <Link to="/" aria-label="Comutitres - accueil">
@@ -117,8 +119,7 @@ export function UserSidebar({ isOpen, onClose }: UserSidebarProps) {
           </div>
         )}
 
-        {connected && (
-          <div className="mt-4 rounded-2xl bg-blue-pale p-4">
+        <div className="mt-4 rounded-2xl bg-blue-pale p-4">
             <div className="mb-1 flex items-center gap-2">
               <MessageCircle size={20} className="shrink-0 text-primary" aria-hidden="true" />
               <p className="text-sm font-semibold text-primary">{m.help_title()}</p>
@@ -132,7 +133,6 @@ export function UserSidebar({ isOpen, onClose }: UserSidebarProps) {
               <span aria-hidden="true">→</span>
             </a>
           </div>
-        )}
       </aside>
     </>
   )

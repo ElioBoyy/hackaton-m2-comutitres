@@ -50,6 +50,7 @@ public class SecurityConfig {
                         // (widget public, sans compte). L'admin RAG (ingestion) reste authentifie.
                         .requestMatchers("/api/chat/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/dossiers").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/referentiel/**").permitAll()
                         .requestMatchers("/dossiers/**", "/auth/agent/me").hasAuthority("ROLE_AGENT")
                         .requestMatchers(
                                 "/swagger-ui.html",

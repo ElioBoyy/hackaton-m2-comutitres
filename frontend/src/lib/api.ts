@@ -226,3 +226,18 @@ export function validerPiece(
     body: JSON.stringify({ valider, motifRejet: motifRejet ?? null }),
   })
 }
+
+export interface TypeAbonnement {
+  code: string
+  libelle: string
+  categorie: string | null
+  periodicite: string
+  tarifPlein: number | null
+  transports: string[]
+  zones: string[]
+}
+
+export function getAbonnements(): Promise<TypeAbonnement[]> {
+  return apiFetch('/referentiel/abonnements')
+}
+
