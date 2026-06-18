@@ -174,17 +174,17 @@ function traiterEvenement(brut: string, handlers: StreamChatHandlers): void {
 
 export interface GetDossiersParams {
   statut?: string
+  nomClient?: string
+  numeroDossier?: string
   page?: number
   pageSize?: number
 }
 
-/**
- * Liste des dossiers en attente de verification par un agent backoffice.
- * Endpoint pas encore implemente cote back (cf. CLAUDE.md, domaine sans controleur REST).
- */
 export function getDossiers(params: GetDossiersParams = {}): Promise<DossierListResponse> {
   const query = new URLSearchParams()
   if (params.statut) query.set('statut', params.statut)
+  if (params.nomClient) query.set('nomClient', params.nomClient)
+  if (params.numeroDossier) query.set('numeroDossier', params.numeroDossier)
   if (params.page !== undefined) query.set('page', String(params.page))
   if (params.pageSize !== undefined) query.set('pageSize', String(params.pageSize))
   const qs = query.toString()
@@ -199,15 +199,12 @@ export interface DossierCounts {
   clos: number
 }
 
-export function getDossierCounts(): Promise<DossierCounts> {
-  return apiFetch('/dossiers/counts')
-}
-
-/**
- * Recherche libre d'un dossier/client pour qu'un agent agisse a sa place.
- */
-export function searchDossiers(q: string): Promise<DossierResume[]> {
-  return apiFetch(`/dossiers/search?q=${encodeURIComponent(q)}`)
+export function getDossierCounts(params: { nomClient?: string; numeroDossier?: string } = {}): Promise<DossierCounts> {
+  const query = new URLSearchParams()
+  if (params.nomClient) query.set('nomClient', params.nomClient)
+  if (params.numeroDossier) query.set('numeroDossier', params.numeroDossier)
+  const qs = query.toString()
+  return apiFetch(`/dossiers/counts${qs ? `?${qs}` : ''}`)
 }
 
 export function getDossierDetail(id: number | string): Promise<DossierDetail> {

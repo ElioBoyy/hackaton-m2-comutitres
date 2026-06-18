@@ -92,13 +92,24 @@ public class DossierRepositoryAdapter implements DossierRepository {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResult<DossierResume> findPage(String categorieStatut, int page, int pageSize) {
+    public PageResult<DossierResume> findPage(String categorieStatut, String nomClient, String numeroDossier, int page, int pageSize) {
         PageRequest pageRequest = PageRequest.of(page - 1, pageSize, Sort.by("dateCreation").descending());
+        StatutDossier.Categorie categorie = categorieStatut == null ? null : StatutDossier.Categorie.valueOf(categorieStatut);
 
-        Page<Dossier> resultat = categorieStatut == null
-                ? dossierJpa.findAll(pageRequest)
-                : dossierJpa.findByStatutActuel_Categorie(
-                        StatutDossier.Categorie.valueOf(categorieStatut), pageRequest);
+        Page<Dossier> resultat;
+        if (nomClient != null && !nomClient.isBlank()) {
+            resultat = categorie == null
+                    ? dossierJpa.findByNomClient(nomClient.trim(), pageRequest)
+                    : dossierJpa.findByNomClientAndCategorie(categorie, nomClient.trim(), pageRequest);
+        } else if (numeroDossier != null && !numeroDossier.isBlank()) {
+            resultat = categorie == null
+                    ? dossierJpa.findByNumeroDossier(numeroDossier.trim(), pageRequest)
+                    : dossierJpa.findByNumeroDossierAndCategorie(categorie, numeroDossier.trim(), pageRequest);
+        } else {
+            resultat = categorie == null
+                    ? dossierJpa.findAllExceptBrouillon(pageRequest)
+                    : dossierJpa.findByCategorieExceptBrouillon(categorie, pageRequest);
+        }
 
         List<Integer> idsDossier = resultat.getContent().stream().map(Dossier::getIdDossier).toList();
         Map<Integer, Long> nbPiecesEnAttenteParDossier = idsDossier.isEmpty()
@@ -118,9 +129,17 @@ public class DossierRepositoryAdapter implements DossierRepository {
 
     @Override
     @Transactional(readOnly = true)
-    public Map<String, Long> countByCategorie() {
+    public Map<String, Long> countByCategorie(String nomClient, String numeroDossier) {
+        List<Object[]> rows;
+        if (nomClient != null && !nomClient.isBlank()) {
+            rows = dossierJpa.countByNomClientGroupByCategorie(nomClient.trim());
+        } else if (numeroDossier != null && !numeroDossier.isBlank()) {
+            rows = dossierJpa.countByNumeroDossierGroupByCategorie(numeroDossier.trim());
+        } else {
+            rows = dossierJpa.countGroupByCategorie();
+        }
         Map<String, Long> result = new HashMap<>();
-        for (Object[] row : dossierJpa.countGroupByCategorie()) {
+        for (Object[] row : rows) {
             StatutDossier.Categorie categorie = (StatutDossier.Categorie) row[0];
             Long count = (Long) row[1];
             result.put(categorie.name(), count);

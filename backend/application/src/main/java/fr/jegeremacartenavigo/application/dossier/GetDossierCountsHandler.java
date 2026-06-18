@@ -15,7 +15,7 @@ public class GetDossierCountsHandler implements QueryHandler<GetDossierCountsQue
 
     @Override
     public DossierCountsResponse handle(GetDossierCountsQuery query) {
-        Map<String, Long> counts = dossierRepository.countByCategorie();
+        Map<String, Long> counts = dossierRepository.countByCategorie(query.nomClient(), query.numeroDossier());
         long enCours = counts.getOrDefault("en_cours", 0L);
         long abouti  = counts.getOrDefault("abouti",   0L);
         long rejete  = counts.getOrDefault("rejete",   0L);
