@@ -5,11 +5,10 @@ import {
   HelpCircle,
   Home,
   MapPin,
-  MessageCircle,
+  Phone,
   Search,
   Settings,
   ScanSearch,
-  User,
   X,
 } from "lucide-react";
 import { isAuthenticated } from "~/lib/auth";

@@ -227,6 +227,21 @@ export function validerPiece(
   })
 }
 
+/**
+ * Change le statut d'un dossier (boutons "Valider/Rejeter le dossier" cote
+ * backoffice). codeStatut doit etre un code du referentiel statut_dossier
+ * (VALIDE, REJETE, INCOMPLET, ...). L'historique est mis a jour cote backend.
+ */
+export function changerStatutDossier(
+  idDossier: number | string,
+  codeStatut: 'VALIDE' | 'REJETE' | 'INCOMPLET',
+): Promise<DossierDetail> {
+  return apiFetch(`/dossiers/${idDossier}/statut`, {
+    method: 'PATCH',
+    body: JSON.stringify({ codeStatut }),
+  })
+}
+
 export interface TypeAbonnement {
   code: string
   libelle: string
