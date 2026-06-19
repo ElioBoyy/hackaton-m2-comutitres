@@ -67,7 +67,7 @@ export function DashboardLayout({ title, children, loading }: DashboardLayoutPro
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-6" id="main-content">
+        <main className="relative flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-6" id="main-content">
           {children}
         </main>
       </div>

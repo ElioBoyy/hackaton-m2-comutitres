@@ -126,7 +126,7 @@ function ModalPieceExamen({
   const estImage = contentType.startsWith('image/')
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-black/80">
+    <div className="absolute inset-0 z-10 flex flex-col bg-black/80">
       <header className="flex items-center justify-between border-b border-gray-800 bg-gray-900 px-4 py-3 text-white">
         <h2 className="font-heading text-sm font-semibold">{piece.libelleTypePiece}</h2>
         <button

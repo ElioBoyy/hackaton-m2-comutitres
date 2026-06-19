@@ -23,6 +23,7 @@ import {
 } from '~/lib/dossier'
 import { deposerFichier, type TypePiece } from '~/lib/fichier'
 import { DashboardLayout } from '~/components/DashboardLayout'
+import { DocumentPreviewModal } from '~/components/DocumentPreviewModal'
 import { StatusBadge } from '~/components/backoffice/StatusBadge'
 import { TableauPieces } from '~/components/TableauPieces'
 import { m } from '~/paraglide/messages'
@@ -189,6 +190,7 @@ function DossierDetailPage() {
   // Pièces localement uploadées : codeTypePiece → PieceUploaded
   const [piecesLocales, setPiecesLocales] = useState<PieceJustificative[]>([])
   const [uploadedByCode, setUploadedByCode] = useState<Record<string, PieceUploaded>>({})
+  const [apercu, setApercu] = useState<{ cle: string; titre: string } | null>(null)
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -491,6 +493,7 @@ function DossierDetailPage() {
                 pieces={toutesLesPieces()}
                 canEdit={canEdit}
                 onRemplacer={(piece, file) => void handleRemplacerPiece(piece, file)}
+                onPreview={(cle, titre) => setApercu({ cle, titre })}
               />
             </section>
 
@@ -719,6 +722,14 @@ function DossierDetailPage() {
             </div>
           </div>
         </div>
+      )}
+      {apercu && (
+        <DocumentPreviewModal
+          inline
+          cheminFichier={apercu.cle}
+          titre={apercu.titre}
+          onClose={() => setApercu(null)}
+        />
       )}
     </DashboardLayout>
   )
