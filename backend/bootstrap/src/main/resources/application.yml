@@ -69,6 +69,7 @@ app:
     allowed-origins:
       - http://localhost:3000 # TanStack Start (dev)
       - http://localhost:5173 # Vite (port par defaut, au cas ou)
+      - http://10.102.111.55:3000 # acces depuis telephone sur le reseau local
     allowed-methods:
       - GET
       - POST
