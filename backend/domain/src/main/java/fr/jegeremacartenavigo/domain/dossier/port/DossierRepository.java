@@ -28,6 +28,18 @@ public interface DossierRepository {
     Optional<DossierDetail> findDetailById(Integer id);
     DossierCree enregistrer(NouveauDossier nouveauDossier);
 
+    /**
+     * Vrai si un dossier "actif" existe deja chez ce porteur pour la cible
+     * donnee : statut ACTIF ou VALIDE et droits non expires (dateFinDroits
+     * NULL ou >= aujourd'hui).
+     *
+     * <p>Pour DemandePour.MOI passer {@code beneficiaireNomComplet=null} : la
+     * recherche cible alors les dossiers ou {@code beneficiaire_nom_complet}
+     * est NULL. Pour DemandePour.TIERS passer le nom : la recherche est
+     * insensible a la casse et aux espaces de bordure.
+     */
+    boolean existeAbonnementActifPour(Integer idPorteur, String beneficiaireNomComplet, java.time.LocalDate aujourdhui);
+
     /** Nombre de dossiers par categorie de statut. */
     java.util.Map<String, Long> countByCategorie();
 

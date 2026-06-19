@@ -925,25 +925,38 @@ function DossierDetailPage() {
               </dl>
             </section>
 
-            {/* Porteur + Payeur */}
+            {/* Porteur + Payeur. Pour un dossier TIERS, le porteur est le
+                beneficiaire de l'abonnement (celui qui aura la carte) - PAS
+                le createur du compte. Le createur (= compte connecte) figure
+                comme payeur. L'email n'est rempli que cote compte (le tiers
+                est un simple nom dans le payload). */}
             <div className="grid grid-cols-2 gap-6">
               {[
-                { label: m.bo_dossier_info_holder(), personne: dossier.titulaire },
-                { label: m.bo_dossier_info_payer(), personne: dossier.payeur },
-              ].map(({ label, personne }) => (
+                {
+                  label: m.bo_dossier_info_holder(),
+                  nom: dossier.beneficiaireNomComplet
+                    ?? `${dossier.titulaire.prenom} ${dossier.titulaire.nom}`,
+                  email: dossier.beneficiaireNomComplet ? null : dossier.titulaire.email,
+                },
+                {
+                  label: m.bo_dossier_info_payer(),
+                  nom: `${dossier.payeur.prenom} ${dossier.payeur.nom}`,
+                  email: dossier.payeur.email,
+                },
+              ].map(({ label, nom, email }) => (
                 <section key={label} className="rounded-2xl border border-gray-200 bg-white p-6">
                   <h2 className="mb-3 font-heading text-base font-semibold text-gray-800">{label}</h2>
                   <dl className="space-y-2 text-sm">
                     <div>
                       <dt className="text-gray-500">{m.bo_dossier_info_name()}</dt>
-                      <dd className="font-medium text-gray-900">
-                        {personne.prenom} {personne.nom}
-                      </dd>
+                      <dd className="font-medium text-gray-900">{nom}</dd>
                     </div>
-                    <div>
-                      <dt className="text-gray-500">{m.bo_dossier_info_email()}</dt>
-                      <dd className="font-medium text-gray-900">{personne.email}</dd>
-                    </div>
+                    {email && (
+                      <div>
+                        <dt className="text-gray-500">{m.bo_dossier_info_email()}</dt>
+                        <dd className="font-medium text-gray-900">{email}</dd>
+                      </div>
+                    )}
                   </dl>
                 </section>
               ))}
@@ -1093,7 +1106,9 @@ function DossierDetailPage() {
                         <span className="text-xs text-gray-400">
                           {new Date(entree.dateAction).toLocaleString('fr-FR')}
                         </span>
-                        <span className="text-xs text-gray-500">par {entree.nomAuteur}</span>
+                        <span className="text-xs text-gray-500">
+                          par {entree.nomAuteur}{entree.auteurEstAgent && ' (agent)'}
+                        </span>
                       </div>
                       {entree.description && (
                         <p className="mt-1 text-sm text-gray-600">{entree.description}</p>

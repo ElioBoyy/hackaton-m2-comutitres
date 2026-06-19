@@ -109,7 +109,11 @@ function ResultatStep() {
       if (err instanceof ApiError && err.status === 401) {
         setErreur({ type: 'non-authentifie', action: 'save' })
       } else if (err instanceof ApiError) {
-        setErreur({ type: 'autre', message: err.message })
+        // Extrait le {@code detail} ProblemDetail (RFC 7807) plutot que le
+        // libelle HTTP brut. Couvre notamment le 422 "abonnement actif
+        // existant" pour ne pas afficher "422 Unprocessable" a l'user.
+        const body = err.body as { detail?: string } | undefined
+        setErreur({ type: 'autre', message: body?.detail ?? err.message })
       } else {
         setErreur({ type: 'autre', message: 'Impossible de joindre le serveur. Réessayez.' })
       }
@@ -160,7 +164,7 @@ function ResultatStep() {
         <div className="flex items-start gap-3 border-2 border-dashed border-success p-4 text-sm">
           <PiggyBank className="h-6 w-6 shrink-0 text-success" strokeWidth={1.75} />
           <div>
-            <p className="font-mono font-semibold text-success">
+            <p className="font-semibold text-success">
               {m.wizard_resultat_savings({ amount: economieAnnuelleEuros.toFixed(0) })}
             </p>
             <p className="text-gray-700">{m.wizard_resultat_savings_vs()}</p>

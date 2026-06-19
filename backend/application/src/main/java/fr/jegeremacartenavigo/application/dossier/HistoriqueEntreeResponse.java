@@ -13,13 +13,14 @@ public record HistoriqueEntreeResponse(
         String statutAvant,
         String statutApres,
         String nomAuteur,
+        boolean auteurEstAgent,
         String description
 ) implements Response {
 
     public static HistoriqueEntreeResponse from(HistoriqueEntree e) {
         return new HistoriqueEntreeResponse(
                 e.id(), e.dateAction(), e.typeAction(),
-                e.statutAvant(), e.statutApres(), e.nomAuteur(), e.description());
+                e.statutAvant(), e.statutApres(), e.nomAuteur(), e.auteurEstAgent(), e.description());
     }
 
     public record ListResponse(List<HistoriqueEntreeResponse> historique) implements Response {}

@@ -222,7 +222,7 @@
   "dossier_ia_checking": "AI check in progress…",
   "dossier_ia_done": "Documents pre-checked — no issue detected.",
   "dossier_pre_verify_ia": "Pre-check with AI",
-  "dossier_submit_min_piece_tooltip": "Add at least the ID document to submit",
+  "dossier_submit_min_piece_tooltip": "Upload all required documents before submitting",
   "dossier_submit_for_review": "Submit for review",
   "dossier_delete_draft_button": "Delete this draft",
   "dossier_pay_and_submit": "Pay and submit",
@@ -562,5 +562,8 @@
   "sav_faq_section_paiement": "Payment & renewal",
   "sav_faq_section_arrivant": "New arrival in Île-de-France",
   "sav_faq_section_accessibilite": "Accessibility & specific needs",
-  "sav_faq_section_proche": "Managing a relative's subscription"
+  "sav_faq_section_proche": "Managing a relative's subscription",
+  "wizard_pour_qui_moi_deja_actif": "You already have an active subscription for yourself.",
+  "bo_dossier_info_beneficiary": "Subscription holder",
+  "bo_dossier_info_beneficiary_note": "Subscription created for a third party"
 }

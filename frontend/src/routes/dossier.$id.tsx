@@ -132,6 +132,50 @@ function ChampFichier({
   )
 }
 
+/* ─── Pieces fallback par type d'abonnement ────────────────────────────── */
+
+/**
+ * Liste de pieces a uploader quand le referentiel backend
+ * {@code data.piecesRequises} est vide. Adapte au type d'abonnement et au
+ * statut boursier saisi au wizard :
+ *  - Navigo standard (Hebdo/Mensuel/Annuel/Liberte+/Decouverte) : ID seule
+ *  - Imagine R / Transport scolaire : ID + certificat de scolarite (+ notif
+ *    bourse seulement si l'utilisateur s'est declare boursier)
+ *  - Senior / Solidarite / Amethyste : ID seule (les pieces metier
+ *    departementales arriveront via le referentiel quand seede)
+ */
+function piecesFallbackPourAbonnement(code: string, boursier: boolean) {
+  const pieceIdentite = {
+    codeTypePiece: 'PIECE_IDENTITE',
+    libelleTypePiece: m.dossier_piece_identity_label(),
+    obligatoire: true,
+  }
+  const certificatScolarite = {
+    codeTypePiece: 'CERTIFICAT_SCOLARITE',
+    libelleTypePiece: m.dossier_piece_certificat_scolarite(),
+    obligatoire: true,
+  }
+  const notificationBourse = {
+    codeTypePiece: 'NOTIFICATION_BOURSE',
+    libelleTypePiece: m.dossier_piece_notification_bourse(),
+    obligatoire: false,
+  }
+
+  const estEtudiant = code.startsWith('IMAGINE_R_') || code === 'TRANSPORT_SCOLAIRE'
+  if (estEtudiant) {
+    // Notif bourse uniquement si declaree au wizard (et seulement pour les
+    // forfaits ou elle a un sens : pas l'Imagine R Junior).
+    const peutEtreBoursier = code === 'IMAGINE_R_ETUDIANT'
+      || code === 'IMAGINE_R_APPRENTI'
+      || code === 'IMAGINE_R_SCOLAIRE'
+    return boursier && peutEtreBoursier
+      ? [pieceIdentite, certificatScolarite, notificationBourse]
+      : [pieceIdentite, certificatScolarite]
+  }
+
+  return [pieceIdentite]
+}
+
 /* ─── Skeleton ─────────────────────────────────────────────────────────── */
 
 function DossierDetailSkeleton() {
@@ -235,17 +279,23 @@ function DossierDetailPage() {
     })
   }, [data])
 
-  // Pré-remplir uploadedByCode depuis les pièces déjà en base (affiche "Modifier" au chargement)
+  // Pré-remplir uploadedByCode depuis les pièces déjà en base (affiche
+  // "Modifier" au chargement). Source : data.piecesRequises si renseigne par
+  // le backend, sinon le fallback adapte au type d'abonnement — sinon les
+  // dossiers fallback (cas typique : seed sans piece_requise) n'auraient
+  // jamais leur uploadedByCode peuple et peutSoumettre() les considererait
+  // comme incomplets. Le match par codeTypePiece est stable, contrairement
+  // au match par libelle qui se cassait sur les accents (DB sans accents
+  // vs libelles i18n avec accents).
   useEffect(() => {
     if (!data) return
+    const source = data.piecesRequises.length > 0
+      ? data.piecesRequises
+      : piecesFallbackPourAbonnement(data.typeAbonnement.code, data.boursier)
     setUploadedByCode((prev) => {
       const next = { ...prev }
-      for (const req of data.piecesRequises) {
-        const dbPiece = data.pieces.find((p) => {
-          const lib = p.libelleTypePiece.toLowerCase()
-          const reqLib = req.libelleTypePiece.toLowerCase()
-          return lib === reqLib || p.cheminFichier?.includes(req.codeTypePiece.toLowerCase())
-        })
+      for (const req of source) {
+        const dbPiece = data.pieces.find((p) => p.codeTypePiece === req.codeTypePiece)
         if (dbPiece?.cheminFichier && !next[req.codeTypePiece]) {
           const nom = dbPiece.cheminFichier.split('/').pop() ?? dbPiece.cheminFichier
           next[req.codeTypePiece] = { nom, cle: dbPiece.cheminFichier }
@@ -303,17 +353,31 @@ function DossierDetailPage() {
     return [...dbPieces, ...piecesLocales]
   }
 
-  // La CNI est obligatoire pour soumettre
+  // Soumission autorisee uniquement si TOUTES les pieces obligatoires sont
+  // deposees (validees, en_attente, peu importe le statut, tant qu'elles ont
+  // un cheminFichier). Source verite : data.piecesRequises si renseigne par
+  // le backend, sinon le fallback adapte au type d'abonnement + boursier
+  // (cf. piecesFallbackPourAbonnement). Une obligatoire est consideree
+  // satisfaite si elle figure dans uploadedByCode, ou dans data.pieces avec
+  // un statut autre que rejete (un rejet doit etre re-uploaded).
   function peutSoumettre(): boolean {
     if (!data) return false
-    const obligatoires = (data.piecesRequises ?? []).filter((r) => r.obligatoire)
+    const source = (data.piecesRequises ?? []).length > 0
+      ? (data.piecesRequises ?? [])
+      : piecesFallbackPourAbonnement(data.typeAbonnement.code, data.boursier)
+    const obligatoires = source.filter((r) => r.obligatoire)
     if (obligatoires.length === 0) return toutesLesPieces().length > 0
     return obligatoires.every((r) => {
       if (uploadedByCode[r.codeTypePiece]) return true
-      return toutesLesPieces().some((p) => {
-        const lib = p.libelleTypePiece.toLowerCase()
-        return lib === r.libelleTypePiece.toLowerCase() || p.cheminFichier?.includes(r.codeTypePiece.toLowerCase())
-      })
+      // Match par codeTypePiece (stable cote DB et fallback), contrairement
+      // au libelle qui se cassait sur les accents (DB sans accents vs
+      // libelles i18n avec accents). Une piece rejetee ne compte pas : il
+      // faut la re-uploader.
+      return toutesLesPieces().some((p) =>
+        p.codeTypePiece === r.codeTypePiece
+          && p.statutValidation !== 'rejete'
+          && p.statutValidation !== 'rejetee'
+      )
     })
   }
 
@@ -556,18 +620,14 @@ function DossierDetailPage() {
 
                   <div className="mt-4 space-y-3">
                     {(() => {
-                      // Source des pieces a uploader : referentiel piecesRequises si
-                      // defini pour ce type d'abonnement, sinon fallback sur les 3
-                      // types courants pour debloquer l'utilisateur cote front (cas
-                      // ou le seed n'a pas de piece_requise pour ce type).
-                      const FALLBACK = [
-                        { codeTypePiece: 'PIECE_IDENTITE', libelleTypePiece: m.dossier_piece_identity_label(), obligatoire: true },
-                        { codeTypePiece: 'CERTIFICAT_SCOLARITE', libelleTypePiece: m.dossier_piece_certificat_scolarite(), obligatoire: false },
-                        { codeTypePiece: 'NOTIFICATION_BOURSE', libelleTypePiece: m.dossier_piece_notification_bourse(), obligatoire: false },
-                      ]
+                      // Source des pieces a uploader : referentiel piecesRequises
+                      // backend si renseigne, sinon fallback adapte au type
+                      // d'abonnement (cf. piecesFallbackPourAbonnement). Le seed
+                      // ne contient pas de piece_requise par type, donc on tombe
+                      // quasi toujours dans le fallback.
                       const source = (data.piecesRequises ?? []).length > 0
                         ? (data.piecesRequises ?? [])
-                        : FALLBACK
+                        : piecesFallbackPourAbonnement(data.typeAbonnement.code, data.boursier)
                       const codesDeposes = new Set(data.pieces.map((p) => p.codeTypePiece))
                       const aUploader = source.filter((req) => {
                         const existing = toutesLesPieces().find((p) => {
