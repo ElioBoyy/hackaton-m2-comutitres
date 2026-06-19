@@ -9,6 +9,7 @@ import fr.jegeremacartenavigo.domain.dossier.exception.DossierIntrouvableExcepti
 import fr.jegeremacartenavigo.domain.dossier.exception.PieceIntrouvableException;
 import fr.jegeremacartenavigo.domain.dossier.exception.ReferentielIntrouvableException;
 import fr.jegeremacartenavigo.domain.exception.DomainException;
+import fr.jegeremacartenavigo.domain.identite.exception.ServiceOtpIndisponibleException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
@@ -69,6 +70,13 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleAgentIntrouvable(AgentIntrouvableException ex) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
         problem.setTitle("Ressource introuvable");
+        return problem;
+    }
+
+    @ExceptionHandler(ServiceOtpIndisponibleException.class)
+    public ProblemDetail handleServiceOtpIndisponible(ServiceOtpIndisponibleException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
+        problem.setTitle("Service indisponible");
         return problem;
     }
 

@@ -47,6 +47,7 @@ public class RegisterHandler implements CommandHandler<RegisterCommand, TokenRes
                 command.nom(),
                 command.prenom(),
                 command.dateNaissance(),
+                command.telephone().trim(),
                 adresse,
                 StatutCompte.actif
         );

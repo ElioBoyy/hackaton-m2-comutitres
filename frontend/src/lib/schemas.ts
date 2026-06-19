@@ -39,9 +39,22 @@ export const StepIdentitySchema = z.object({
   dateNaissance: BirthDateSchema,
 })
 
+// numero FR mobile ou fixe, separateurs espace/point optionnels. Le backend
+// normalise au format MSISDN avant l'envoi du SMS.
+const PHONE_REGEX = /^(?:\+33|0)[1-9](?:[ .]?\d{2}){4}$/
+
 export const StepAccessSchema = z.object({
   email: z.email(),
   password: z.string().min(8).max(100),
+  telephone: z
+    .string()
+    .trim()
+    .regex(PHONE_REGEX, { error: 'register_validation_phone_invalid' }),
+})
+
+// code OTP recu par SMS (Infobip 2FA), 4 a 8 chiffres
+export const OtpSchema = z.object({
+  code: z.string().regex(/^\d{4,8}$/, { error: 'onboarding_validation_code_invalid' }),
 })
 
 // Pas de min(8) sur le mot de passe : un compte ancien peut avoir <8 chars.
