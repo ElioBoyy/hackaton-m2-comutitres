@@ -10,6 +10,7 @@ import { isAuthenticated } from '~/lib/auth'
 import { construirePayloadDossier, creerDossier } from '~/lib/dossier'
 import { piecesSontCompletes } from '~/domain/pieces'
 import { calculerRecommandation, selectionnerAbonnement } from '~/domain/recommendation'
+import { useCatalogueAbonnements } from '~/domain/useCatalogueAbonnements'
 import { CarteBancaireSchema, MandatSepaSchema } from '~/lib/schemas'
 import { m } from '~/paraglide/messages'
 import { useAppDispatch, useAppSelector } from '~/store/hooks'
@@ -50,15 +51,20 @@ function PaiementStep() {
   }, [code])
 
   const isDirectPath = !!code
+  const catalogue = useCatalogueAbonnements()
 
   const resultat = React.useMemo(() => {
     if (isDirectPath || !wizard.situation || !wizard.frequenceDeplacement) return null
-    return calculerRecommandation({
-      situation: wizard.situation,
-      frequenceDeplacement: wizard.frequenceDeplacement,
-      residence: wizard.residence,
-    })
-  }, [isDirectPath, wizard.situation, wizard.frequenceDeplacement, wizard.residence])
+    if (!catalogue) return null
+    return calculerRecommandation(
+      {
+        situation: wizard.situation,
+        frequenceDeplacement: wizard.frequenceDeplacement,
+        residence: wizard.residence,
+      },
+      catalogue,
+    )
+  }, [isDirectPath, wizard.situation, wizard.frequenceDeplacement, wizard.residence, catalogue])
 
   if (!isDirectPath && !resultat) {
     return (

@@ -9,6 +9,7 @@ import { isAuthenticated } from '~/lib/auth'
 import { construirePayloadDossier, creerDossier } from '~/lib/dossier'
 import { piecesSontCompletes } from '~/domain/pieces'
 import { calculerRecommandation, selectionnerAbonnement } from '~/domain/recommendation'
+import { useCatalogueAbonnements } from '~/domain/useCatalogueAbonnements'
 import { SITUATIONS } from '~/domain/situation'
 import { m } from '~/paraglide/messages'
 import { useAppDispatch, useAppSelector } from '~/store/hooks'
@@ -43,18 +44,24 @@ function RecapitulatifStep() {
   const [erreur, setErreur] = React.useState<ErreurSauvegarde | null>(null)
   const { code } = Route.useSearch()
   const { abo: aboDirecte, chargement } = useAbonnementParCode(code)
+  const catalogue = useCatalogueAbonnements()
 
   const isDirectPath = !!code
 
-  // Chemin questionnaire : calculer la recommandation
+  // Chemin questionnaire : calculer la recommandation avec le catalogue
+  // reel (memes prix que ceux affiches sur l'ecran resultat).
   const resultat = React.useMemo(() => {
     if (isDirectPath || !wizard.situation || !wizard.frequenceDeplacement) return null
-    return calculerRecommandation({
-      situation: wizard.situation,
-      frequenceDeplacement: wizard.frequenceDeplacement,
-      residence: wizard.residence,
-    })
-  }, [isDirectPath, wizard.situation, wizard.frequenceDeplacement, wizard.residence])
+    if (!catalogue) return null
+    return calculerRecommandation(
+      {
+        situation: wizard.situation,
+        frequenceDeplacement: wizard.frequenceDeplacement,
+        residence: wizard.residence,
+      },
+      catalogue,
+    )
+  }, [isDirectPath, wizard.situation, wizard.frequenceDeplacement, wizard.residence, catalogue])
 
   // Ni chemin direct ni questionnaire rempli
   if (!isDirectPath && !resultat) {

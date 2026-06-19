@@ -8,6 +8,7 @@ import { ProgressBar } from '~/components/ui/ProgressBar'
 import { TransportBadges, ZoneBadges } from '~/components/TransportZoneBadges'
 import { POUR_QUI } from '~/domain/pourQui'
 import { calculerRecommandation, selectionnerAbonnement } from '~/domain/recommendation'
+import { useCatalogueAbonnements } from '~/domain/useCatalogueAbonnements'
 import { getAbonnements, type TypeAbonnement } from '~/lib/api'
 import { m } from '~/paraglide/messages'
 import { useAppDispatch, useAppSelector } from '~/store/hooks'
@@ -187,6 +188,7 @@ function DetailStep() {
   const { code } = Route.useSearch()
   const [aboDirecte, setAboDirecte] = React.useState<TypeAbonnement | null>(null)
   const [chargement, setChargement] = React.useState(false)
+  const catalogue = useCatalogueAbonnements()
 
   React.useEffect(() => {
     if (!code) return
@@ -243,11 +245,22 @@ function DetailStep() {
     )
   }
 
-  const resultat = calculerRecommandation({
-    situation: wizard.situation,
-    frequenceDeplacement: wizard.frequenceDeplacement,
-    residence: wizard.residence,
-  })
+  if (!catalogue) {
+    return (
+      <main className="mx-auto flex max-w-2xl flex-col items-center gap-4 py-24 text-center">
+        <p className="text-sm text-gray-500">{m.common_loading_short()}</p>
+      </main>
+    )
+  }
+
+  const resultat = calculerRecommandation(
+    {
+      situation: wizard.situation,
+      frequenceDeplacement: wizard.frequenceDeplacement,
+      residence: wizard.residence,
+    },
+    catalogue,
+  )
 
   const { abonnement } = selectionnerAbonnement(resultat, wizard.abonnementSelectionneId)
 
