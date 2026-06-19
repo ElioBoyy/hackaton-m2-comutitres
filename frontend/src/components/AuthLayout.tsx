@@ -21,7 +21,7 @@ export function AuthLayout({ title, subtitle, children, footer }: AuthLayoutProp
         <LanguageSwitcher />
       </div>
       <Link to="/" aria-label={m.authlayout_home_aria()} className="mb-6 inline-block relative z-10">
-        <img src="/logo.svg" alt="Comutitres" className="h-10 w-auto" />
+        <img src="/logo.svg" alt="Comutitres" className="h-16 w-auto" />
       </Link>
       <div className="relative z-10 w-full max-w-md bg-white rounded-3xl shadow-[0_10px_40px_-20px_rgba(37,48,59,0.18)] p-8">
         <h1 className="font-heading text-2xl font-bold text-dark">{title}</h1>
