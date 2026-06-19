@@ -58,6 +58,7 @@ public class UtilisateurAuthRepositoryAdapter implements UtilisateurAuthReposito
         entite.setNom(domaine.nom());
         entite.setPrenom(domaine.prenom());
         entite.setDateNaissance(domaine.dateNaissance());
+        entite.setTelephone(domaine.telephone());
         entite.setDateCreationCompte(LocalDateTime.now());
         entite.setStatutCompte(Utilisateur.StatutCompte.valueOf(domaine.statut().name()));
         try {
@@ -101,6 +102,7 @@ public class UtilisateurAuthRepositoryAdapter implements UtilisateurAuthReposito
                 e.getNom(),
                 e.getPrenom(),
                 e.getDateNaissance(),
+                e.getTelephone(),
                 null,
                 StatutCompte.valueOf(e.getStatutCompte().name())
         );

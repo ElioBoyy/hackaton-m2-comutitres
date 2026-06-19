@@ -20,11 +20,22 @@ export interface RegisterPayload {
   nom: string
   prenom: string
   dateNaissance: string
+  telephone: string
   numeroEtVoie: string
   codePostal: string
   ville: string
   departementCode: string
   departementLibelle: string
+}
+
+export interface EnvoiCodeResponse {
+  telephoneMasque: string
+  dejaVerifie: boolean
+}
+
+export interface VerificationResponse {
+  verifie: boolean
+  tentativesRestantes: number | null
 }
 
 export function isAuthenticated(): boolean {
@@ -55,4 +66,17 @@ export function logout(): void {
 
 export function me(): Promise<MeResponse> {
   return apiFetch<MeResponse>('/auth/me')
+}
+
+// --- Verification du telephone (Infobip 2FA), etape d'onboarding ---
+
+export function envoyerCodeTelephone(): Promise<EnvoiCodeResponse> {
+  return apiFetch<EnvoiCodeResponse>('/auth/telephone/code', { method: 'POST' })
+}
+
+export function verifierCodeTelephone(code: string): Promise<VerificationResponse> {
+  return apiFetch<VerificationResponse>('/auth/telephone/verifier', {
+    method: 'POST',
+    body: JSON.stringify({ code }),
+  })
 }

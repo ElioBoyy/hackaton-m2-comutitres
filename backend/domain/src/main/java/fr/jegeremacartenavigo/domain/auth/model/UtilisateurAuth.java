@@ -19,6 +19,7 @@ public record UtilisateurAuth(
         String nom,
         String prenom,
         LocalDate dateNaissance,
+        String telephone,
         AdresseDomicile adresseDomicile,
         StatutCompte statut
 ) {
