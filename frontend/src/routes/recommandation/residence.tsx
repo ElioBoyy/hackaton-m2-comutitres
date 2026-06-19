@@ -1,23 +1,32 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { Info, MapPin } from 'lucide-react'
+import { Gift } from 'lucide-react'
 import { WizardStepLayout } from '~/components/ui/WizardStepLayout'
-import { REGIONS, type Region } from '~/domain/residence'
+import { DEPARTEMENTS_HORS_IDF, DEPARTEMENTS_IDF, getDepartement } from '~/domain/residence'
 import { m } from '~/paraglide/messages'
 import { useAppDispatch, useAppSelector } from '~/store/hooks'
-import { residenceDefinie } from '~/store/wizardSlice'
+import { abonnementSelectionne, residenceDefinie } from '~/store/wizardSlice'
 
 export const Route = createFileRoute('/recommandation/residence')({
   component: ResidenceStep,
 })
-
-const AUTRES_REGIONS = REGIONS.filter((region) => region !== 'Île-de-France')
 
 function ResidenceStep() {
   const navigate = useNavigate()
   const dispatch = useAppDispatch()
   const pourQui = useAppSelector((state) => state.wizard.pourQui)
   const residence = useAppSelector((state) => state.wizard.residence)
-  const vitHorsIDF = !residence.resideEnIledeFrance
+
+  const dept = getDepartement(residence.departement)
+
+  function handleChange(code: string) {
+    const d = getDepartement(code)
+    if (!d) return
+    dispatch(residenceDefinie({ departement: code, resideEnIledeFrance: d.resideEnIledeFrance }))
+    if (!d.resideEnIledeFrance) {
+      dispatch(abonnementSelectionne('NAVIGO_LIBERTE_PLUS'))
+      navigate({ to: '/recommandation/resultat' })
+    }
+  }
 
   return (
     <WizardStepLayout
@@ -28,56 +37,51 @@ function ResidenceStep() {
       onSuivant={() => navigate({ to: '/recommandation/resultat' })}
     >
       <div className="flex flex-col gap-1">
-        <span className="text-sm font-medium text-gray-700">{m.wizard_residence_region()}</span>
-        {vitHorsIDF ? (
-          <select
-            className="rounded-lg border border-gray-300 bg-white px-3 py-2 font-sans text-dark"
-            value={residence.region}
-            onChange={(event) =>
-              dispatch(residenceDefinie({ ...residence, region: event.target.value as Region }))
-            }
-          >
-            {AUTRES_REGIONS.map((region) => (
-              <option key={region} value={region}>
-                {region}
-              </option>
+        <span className="text-sm font-medium text-gray-700">Département de résidence</span>
+        <select
+          className="rounded-lg border border-gray-300 bg-white px-3 py-2 font-sans text-dark"
+          value={residence.departement}
+          onChange={(e) => handleChange(e.target.value)}
+        >
+          <optgroup label="Île-de-France">
+            {DEPARTEMENTS_IDF.map((d) => (
+              <option key={d.code} value={d.code}>{d.nom}</option>
             ))}
-          </select>
-        ) : (
-          <div className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2">
-            <MapPin className="h-5 w-5 text-primary" strokeWidth={1.75} />
-            <span className="font-sans font-semibold text-dark">Île-de-France</span>
-          </div>
-        )}
+          </optgroup>
+          <optgroup label="Hors Île-de-France">
+            {DEPARTEMENTS_HORS_IDF.map((d) => (
+              <option key={d.code} value={d.code}>{d.nom}</option>
+            ))}
+          </optgroup>
+        </select>
       </div>
 
-      <label className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 p-3">
-        <span className="text-sm font-medium text-dark">
-          {pourQui === 'TIERS' ? m.wizard_residence_outside_idf_other() : m.wizard_residence_outside_idf_self()}
-        </span>
-        <input
-          type="checkbox"
-          checked={vitHorsIDF}
-          onChange={(event) => {
-            const horsIDF = event.target.checked
-            dispatch(
-              residenceDefinie({
-                region: horsIDF ? AUTRES_REGIONS[0] : 'Île-de-France',
-                resideEnIledeFrance: !horsIDF,
-              }),
-            )
-          }}
-        />
-      </label>
+      {dept?.aides && dept.aides.length > 0 && (
+        <div className="flex flex-col gap-3 rounded-xl border border-primary/20 bg-blue-pale p-4">
+          <div className="flex items-center gap-2">
+            <Gift size={16} className="shrink-0 text-primary" aria-hidden="true" />
+            <span className="text-sm font-semibold text-primary">
+              Réductions disponibles dans votre département
+            </span>
+          </div>
+          <ul className="flex flex-col gap-2">
+            {dept.aides.map((aide) => (
+              <li key={aide.titre} className="flex flex-col gap-0.5">
+                <span className="text-sm font-medium text-dark">{aide.titre}</span>
+                <span className="text-xs text-gray-700">{aide.detail}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
-      {vitHorsIDF ? (
+      {dept && !dept.resideEnIledeFrance && (
         <div className="flex items-start gap-2 rounded-lg bg-blue-pale p-3 text-sm text-dark">
-          <Info className="h-5 w-5 shrink-0 text-primary" strokeWidth={1.75} />
           <span>
             {pourQui === 'TIERS' ? m.wizard_residence_outside_idf_info_other() : m.wizard_residence_outside_idf_info_self()}
           </span>
         </div>
-      ) : null}
+      )}
     </WizardStepLayout>
   )
 }
