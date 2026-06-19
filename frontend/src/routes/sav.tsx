@@ -675,7 +675,7 @@ function SavPage() {
   ).length
 
   return (
-    <DashboardLayout title={m.sav_page_title()} userName={userName} alertes={[]}>
+    <DashboardLayout title={m.sav_page_title()} userName={userName} alertes={[]} loading={!userName}>
       <div className="mx-auto flex max-w-4xl flex-col gap-6">
 
         {/* Bandeau numéro de téléphone */}

@@ -31,6 +31,8 @@ public record DossierDashboard(
         LocalDate dateFinDroits,
         LocalDate dateRenouvellement,
         BigDecimal montantTotal,
-        boolean piecesADeposer
+        boolean piecesADeposer,
+        /** Nom complet du beneficiaire quand demandePour=TIERS. Null pour MOI. */
+        String beneficiaireNomComplet
 ) {
 }

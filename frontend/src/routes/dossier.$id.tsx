@@ -26,6 +26,8 @@ import { DashboardLayout } from '~/components/DashboardLayout'
 import { StatusBadge } from '~/components/backoffice/StatusBadge'
 import { TableauPieces } from '~/components/TableauPieces'
 import { m } from '~/paraglide/messages'
+import { useAppDispatch } from '~/store/hooks'
+import { abonnementSauvegarde, dossierBackendDefini } from '~/store/wizardSlice'
 import type { StatutCategorie } from '~/lib/types/dossier'
 
 export const Route = createFileRoute('/dossier/$id')({
@@ -173,6 +175,7 @@ type IAEtat = 'idle' | 'loading' | 'done'
 function DossierDetailPage() {
   const { id } = Route.useParams()
   const navigate = useNavigate()
+  const dispatch = useAppDispatch()
   const idNum = Number(id)
 
   const [data, setData] = useState<DossierDetail | null>(null)
@@ -369,9 +372,19 @@ function DossierDetailPage() {
   const codeStatut = data?.statut.code ?? ''
   const categorie = categorieFromCode(codeStatut)
   const isActif = codeStatut === 'ACTIF' || codeStatut === 'VALIDE'
+  // EN_ATTENTE_PAIEMENT reste reconnu pour les anciens dossiers, traite comme
+  // un brouillon : pieces editables + bouton "Payer et soumettre".
   const isBrouillon = codeStatut === 'BROUILLON' || codeStatut === 'EN_ATTENTE_PAIEMENT'
   const isIncomplet = codeStatut === 'INCOMPLET'
   const canEdit = isBrouillon || isIncomplet
+  // Paiement effectue = le dossier a quitte les statuts pre-paiement. Tant
+  // qu'on est en BROUILLON/EN_ATTENTE_PAIEMENT, le bouton final est "Payer
+  // et soumettre" ; au-dela (INCOMPLET, EN_VERIFICATION, etc.), "Soumettre".
+  const paiementEffectue = !isBrouillon
+  // Quand TIERS : on affiche le nom du beneficiaire comme titulaire affiche
+  // (le porteur technique reste l'utilisateur connecte pour la liaison FK).
+  const nomTitulaireAffiche = data?.beneficiaireNomComplet
+    || (data ? `${data.titulaire.prenom} ${data.titulaire.nom}` : '')
 
   const estActifOuValide = codeStatut === 'ACTIF' || codeStatut === 'VALIDE'
   const aDesDroitsConnus = estActifOuValide
@@ -388,7 +401,7 @@ function DossierDetailPage() {
   const userName = data ? `${data.titulaire.prenom} ${data.titulaire.nom}` : ''
 
   return (
-    <DashboardLayout title={m.dossier_layout_title()} userName={userName} alertes={[]}>
+    <DashboardLayout title={m.dossier_layout_title()} userName={userName} alertes={[]} loading={loading}>
       <div className="mx-auto max-w-2xl">
 
         {/* ── Retour ── */}
@@ -430,8 +443,13 @@ function DossierDetailPage() {
                 {m.dossier_section_info_title()}
               </h2>
               <dl className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-3">
-                <InfoItem label={m.dossier_info_holder()} value={`${data.titulaire.prenom} ${data.titulaire.nom}`} />
-                <InfoItem label={m.dossier_info_payer()} value={`${data.payeur.prenom} ${data.payeur.nom}`} />
+                <InfoItem label={m.dossier_info_holder()} value={nomTitulaireAffiche} />
+                {/* Payeur = utilisateur du compte connecte (fixe a la creation
+                    du dossier). Affiche seulement apres paiement effectif pour
+                    eviter de pre-afficher un payeur sur un brouillon. */}
+                {paiementEffectue && (
+                  <InfoItem label={m.dossier_info_payer()} value={`${data.payeur.prenom} ${data.payeur.nom}`} />
+                )}
                 <InfoItem label={m.dossier_info_type()} value={data.typeAbonnement.libelle} />
               </dl>
 
@@ -611,16 +629,36 @@ function DossierDetailPage() {
                       ) : null
                     })()}
 
-                    <button
-                      type="button"
-                      disabled={submitting || !peutSoumettre()}
-                      onClick={onSoumettre}
-                      title={!peutSoumettre() ? m.dossier_submit_min_piece_tooltip() : undefined}
-                      className="flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-focus focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50 sm:w-auto"
-                    >
-                      {submitting && <Loader2 size={14} className="animate-spin" />}
-                      {m.dossier_submit_for_review()}
-                    </button>
+                    {/* Bouton principal : "Payer et soumettre" si le paiement
+                        n'a pas encore eu lieu (BROUILLON / EN_ATTENTE_PAIEMENT),
+                        sinon "Soumettre pour vérification" pour les INCOMPLET
+                        qui ont déjà payé. */}
+                    {!paiementEffectue ? (
+                      <button
+                        type="button"
+                        disabled={submitting || !peutSoumettre()}
+                        onClick={() => {
+                          dispatch(dossierBackendDefini(data.idDossier))
+                          dispatch(abonnementSauvegarde(data.typeAbonnement.code))
+                          navigate({ to: '/souscription/paiement', search: { code: data.typeAbonnement.code } })
+                        }}
+                        title={!peutSoumettre() ? m.dossier_submit_min_piece_tooltip() : undefined}
+                        className="flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-focus focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50 sm:w-auto"
+                      >
+                        {m.dossier_pay_and_submit()}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={submitting || !peutSoumettre()}
+                        onClick={onSoumettre}
+                        title={!peutSoumettre() ? m.dossier_submit_min_piece_tooltip() : undefined}
+                        className="flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-focus focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50 sm:w-auto"
+                      >
+                        {submitting && <Loader2 size={14} className="animate-spin" />}
+                        {m.dossier_submit_for_review()}
+                      </button>
+                    )}
 
                     {isBrouillon && (
                       <button

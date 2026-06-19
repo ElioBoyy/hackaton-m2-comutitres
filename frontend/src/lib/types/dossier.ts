@@ -40,6 +40,8 @@ export interface DossierDetail {
   dateDebutDroits: string | null
   dateFinDroits: string | null
   montantTotal: number
+  /** Nom complet du beneficiaire quand demandePour=TIERS. Null pour MOI. */
+  beneficiaireNomComplet: string | null
   pieces: PieceJustificative[]
   piecesRequises: PieceRequise[]
 }

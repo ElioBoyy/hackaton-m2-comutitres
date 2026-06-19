@@ -295,13 +295,37 @@ function Carousel({ categorie, items }: { categorie: string; items: TypeAbonneme
 
 function CarouselSkeleton() {
   return (
-    <div className="flex gap-3 px-1">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="shrink-0 rounded-2xl">
-          <div className="h-24 animate-pulse rounded-t-2xl bg-gray-200" />
-          <div className="h-20 animate-pulse rounded-b-2xl bg-gray-100 mt-0.5" />
-        </div>
-      ))}
+    <div className="flex flex-col gap-3" aria-hidden="true">
+      {/* Titre catégorie placeholder */}
+      <div className="flex items-center gap-3">
+        <div className="h-3 w-32 animate-pulse rounded bg-gray-200" />
+        <div className="h-px flex-1 bg-gray-100" />
+      </div>
+
+      {/* Cards placeholder (4) — meme h-64 et w-64 que les vraies AbonnementCard */}
+      <div className="flex gap-3 overflow-hidden px-1">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <article
+            key={i}
+            className="flex h-64 w-64 shrink-0 flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm"
+            style={{ animationDelay: `${i * 80}ms` }}
+          >
+            {/* Bandeau image */}
+            <div className="h-28 animate-pulse bg-gray-200" />
+
+            {/* Corps */}
+            <div className="flex flex-1 flex-col gap-3 p-4">
+              <div className="h-4 w-3/4 animate-pulse rounded bg-gray-200" />
+              <div className="h-3 w-full animate-pulse rounded bg-gray-100" />
+              <div className="h-3 w-5/6 animate-pulse rounded bg-gray-100" />
+              <div className="mt-auto flex items-center justify-between gap-2">
+                <div className="h-6 w-20 animate-pulse rounded-full bg-gray-200" />
+                <div className="h-7 w-16 animate-pulse rounded-lg bg-gray-200" />
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
     </div>
   )
 }
@@ -313,13 +337,26 @@ function HomePage() {
   const [abonnements, setAbonnements] = useState<TypeAbonnement[]>([])
   const [loading, setLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [authentifie, setAuthentifie] = useState(false)
+  // null = etat inconnu (SSR + 1er render client avant useEffect). On rend
+  // un skeleton pendant ce temps : ni "Se connecter" ni "Bonjour X" ne sont
+  // affiches a la place de l'autre, donc pas de flash de texte au refresh.
+  // authResolu reste false tant que (a) le 1er useEffect n'a pas tourne ET,
+  // si l'user est connecte, (b) me() n'a pas fini : evite le micro-flash
+  // entre "logout seul" et "avatar + Bonjour X".
+  const [authentifie, setAuthentifie] = useState<boolean | null>(null)
+  const [authResolu, setAuthResolu] = useState(false)
   const [utilisateur, setUtilisateur] = useState<MeResponse | null>(null)
 
   useEffect(() => {
-    if (isAuthenticated()) {
-      setAuthentifie(true)
-      me().then(setUtilisateur).catch(() => {})
+    const co = isAuthenticated()
+    setAuthentifie(co)
+    if (co) {
+      me()
+        .then(setUtilisateur)
+        .catch(() => {})
+        .finally(() => setAuthResolu(true))
+    } else {
+      setAuthResolu(true)
     }
     getAbonnements()
       .then(setAbonnements)
@@ -354,7 +391,7 @@ function HomePage() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-100">
-      <UserSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <UserSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} loading={!authResolu} />
 
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Top bar */}
@@ -369,9 +406,17 @@ function HomePage() {
             <Menu size={20} />
           </button>
 
-          {/* Auth zone — desktop only */}
+          {/* Auth zone — desktop only. Tant que authentifie === null (SSR +
+              avant useEffect), on rend un skeleton de meme hauteur pour
+              eviter le flash de texte entre etat suppose et etat reel. */}
           <div className="hidden items-center gap-3 lg:flex">
-            {authentifie ? (
+            {!authResolu ? (
+              <div className="flex items-center gap-2" aria-hidden="true">
+                <div className="h-8 w-8 animate-pulse rounded-full bg-gray-100" />
+                <div className="h-4 w-28 animate-pulse rounded-md bg-gray-100" />
+                <div className="h-9 w-9 animate-pulse rounded-full bg-gray-100" />
+              </div>
+            ) : authentifie ? (
               <>
                 {prenom && (
                   <div className="flex items-center gap-2">
