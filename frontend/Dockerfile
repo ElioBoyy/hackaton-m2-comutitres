@@ -23,6 +23,8 @@ COPY package.json ./
 # Copie node_modules depuis le build stage — srvx y est inclus, pas besoin de réinstaller.
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
+# srvx sert les fichiers statiques depuis public/ par defaut.
+COPY --from=build /app/dist/client ./public
 
 EXPOSE 3000
 # srvx ecoute sur $PORT (defaut 3000). "npm start" -> npx srvx --prod ...
