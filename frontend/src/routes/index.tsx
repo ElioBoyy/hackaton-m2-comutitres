@@ -425,10 +425,10 @@ function HomePage() {
             />
             <div className="relative flex h-full flex-col justify-center gap-3 p-5 sm:flex-row sm:items-center sm:justify-between" style={{ minHeight: '13rem' }}>
               <div>
-                <p className="font-heading text-sm font-semibold text-white">
+                <p className="font-heading text-xl font-bold text-white leading-snug">
                   {m.home_recommend_title()}
                 </p>
-                <p className="text-xs text-white/70">
+                <p className="mt-1 text-sm text-white/80">
                   {m.home_recommend_subtitle()}
                 </p>
               </div>
@@ -452,8 +452,8 @@ function HomePage() {
           <footer className="mt-6 flex items-center justify-between text-xs text-gray-400">
             <p>© 2026 Comutitres — Île-de-France Mobilités</p>
             <div className="flex gap-4">
-              <Link to="/aide" className="hover:text-gray-600 transition-colors">Aide</Link>
-              <Link to="/aide" hash="contact" className="hover:text-gray-600 transition-colors">Contact</Link>
+              <Link to="/sav" className="hover:text-gray-600 transition-colors">Aide</Link>
+              <Link to="/sav" hash="contact" className="hover:text-gray-600 transition-colors">Contact</Link>
             </div>
           </footer>
         </main>

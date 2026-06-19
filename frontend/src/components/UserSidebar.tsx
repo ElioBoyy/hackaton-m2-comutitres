@@ -20,7 +20,7 @@ interface NavItem {
 const PUBLIC_ITEMS: NavItem[] = [
   { labelKey: "nav_home", icon: Home, to: "/" },
   { labelKey: "nav_points_de_vente", icon: MapPin, to: "/points-de-vente" },
-  { labelKey: "nav_help_contacts", icon: HelpCircle, to: "/aide" },
+  { labelKey: "nav_help_contacts", icon: HelpCircle, to: "/sav" },
 ];
 
 const AUTH_ITEMS: NavItem[] = [
