@@ -30,8 +30,6 @@ import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.referentiel
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.referentiel.PieceRequiseJpaRepository;
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.referentiel.TypePieceJustificative;
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.referentiel.TypePieceJustificativeJpaRepository;
-import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.sav.CategorieSav;
-import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.sav.CategorieSavJpaRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -68,7 +66,6 @@ public class DataSeeder implements ApplicationRunner {
     private final StatutDossierJpaRepository statutDossierRepository;
     private final TypePieceJustificativeJpaRepository typePieceRepository;
     private final RoleAgentJpaRepository roleAgentRepository;
-    private final CategorieSavJpaRepository categorieSavRepository;
     private final AgentJpaRepository agentRepository;
     private final UtilisateurJpaRepository utilisateurRepository;
     private final AdresseJpaRepository adresseRepository;
@@ -87,7 +84,6 @@ public class DataSeeder implements ApplicationRunner {
             StatutDossierJpaRepository statutDossierRepository,
             TypePieceJustificativeJpaRepository typePieceRepository,
             RoleAgentJpaRepository roleAgentRepository,
-            CategorieSavJpaRepository categorieSavRepository,
             AgentJpaRepository agentRepository,
             UtilisateurJpaRepository utilisateurRepository,
             AdresseJpaRepository adresseRepository,
@@ -97,15 +93,13 @@ public class DataSeeder implements ApplicationRunner {
             PieceRequiseJpaRepository pieceRequiseRepository,
             SequenceAnnuelleDossierJpaRepository sequenceRepository,
             PasswordEncoder passwordEncoder,
-            NotificationJpaRepository notificationRepository
-    ) {
+            NotificationJpaRepository notificationRepository) {
         this.departementRepository = departementRepository;
         this.situationRepository = situationRepository;
         this.typeAbonnementRepository = typeAbonnementRepository;
         this.statutDossierRepository = statutDossierRepository;
         this.typePieceRepository = typePieceRepository;
         this.roleAgentRepository = roleAgentRepository;
-        this.categorieSavRepository = categorieSavRepository;
         this.agentRepository = agentRepository;
         this.utilisateurRepository = utilisateurRepository;
         this.adresseRepository = adresseRepository;
@@ -135,7 +129,6 @@ public class DataSeeder implements ApplicationRunner {
         seedTypesPieceJustificative();
         seedPiecesRequises(typesAbonnement);
         Map<String, RoleAgent> roles = seedRolesAgent();
-        seedCategoriesSav();
 
         Agent gestionnaire = seedAgents(roles);
         Map<String, Utilisateur> utilisateurs = seedUtilisateursEtAdresses(departements);
@@ -379,28 +372,6 @@ public class DataSeeder implements ApplicationRunner {
         r.setLibelle(libelle);
         r.setPermissions(permissions);
         return r;
-    }
-
-    private void seedCategoriesSav() {
-        categorieSavRepository.saveAll(List.of(
-                categorieSav("ACCES_COMPTE", "Probleme d'acces compte", CategorieSav.CanalPrioritaire.chatbot),
-                categorieSav("PIECE_REFUSEE", "Piece refusee", CategorieSav.CanalPrioritaire.chatbot),
-                categorieSav("ERREUR_PRELEVEMENT", "Erreur de prelevement", CategorieSav.CanalPrioritaire.telephone),
-                categorieSav("DEMANDE_REMBOURSEMENT", "Demande de remboursement", CategorieSav.CanalPrioritaire.email),
-                categorieSav("PERTE_VOL_CARTE", "Perte/vol de carte", CategorieSav.CanalPrioritaire.telephone),
-                categorieSav("ABONNEMENT_NON_ACTIVE", "Abonnement non active", CategorieSav.CanalPrioritaire.chatbot),
-                categorieSav("QUESTION_TARIFAIRE", "Question tarifaire", CategorieSav.CanalPrioritaire.chatbot),
-                categorieSav("RECLAMATION", "Reclamation", CategorieSav.CanalPrioritaire.email),
-                categorieSav("AUTRE", "Autre", CategorieSav.CanalPrioritaire.chat_agent)
-        ));
-    }
-
-    private CategorieSav categorieSav(String code, String libelle, CategorieSav.CanalPrioritaire canal) {
-        CategorieSav c = new CategorieSav();
-        c.setCode(code);
-        c.setLibelle(libelle);
-        c.setCanalPrioritaire(canal);
-        return c;
     }
 
     private Agent seedAgents(Map<String, RoleAgent> roles) {
