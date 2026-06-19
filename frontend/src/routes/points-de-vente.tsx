@@ -1,10 +1,11 @@
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { useEffect, useMemo, useState } from 'react'
-import { CalendarClock, Crosshair, LocateFixed, LogOut, MapPin, Menu, Search } from 'lucide-react'
+import { CalendarClock, Crosshair, LocateFixed, MapPin, Menu, Search } from 'lucide-react'
 import { CartePointsDeVente } from '~/components/CartePointsDeVente'
+import { HeaderAuthZone } from '~/components/HeaderAuthZone'
 import { PriseRdvModal } from '~/components/PriseRdvModal'
 import { UserSidebar } from '~/components/UserSidebar'
-import { isAuthenticated, logout, me, type MeResponse } from '~/lib/auth'
+import { isAuthenticated, me, type MeResponse } from '~/lib/auth'
 import { m } from '~/paraglide/messages'
 import {
   adresseComplete,
@@ -32,7 +33,6 @@ type PointAffiche = PointDeVente & { distanceKm?: number }
 const PLAFOND_LISTE = 50
 
 function PointsDeVentePage() {
-  const navigate = useNavigate()
   const [authentifie, setAuthentifie] = useState(false)
   const [utilisateur, setUtilisateur] = useState<MeResponse | null>(null)
   const [sidebarOuverte, setSidebarOuverte] = useState(false)
@@ -112,13 +112,6 @@ function PointsDeVentePage() {
     setPointRdv(point)
   }
 
-  function onLogout() {
-    logout()
-    setAuthentifie(false)
-    setUtilisateur(null)
-    navigate({ to: '/login' })
-  }
-
   const prenom = utilisateur?.prenom ?? ''
 
   return (
@@ -138,43 +131,7 @@ function PointsDeVentePage() {
           </button>
 
           <div className="hidden items-center gap-3 lg:flex">
-            {authentifie ? (
-              <>
-                {prenom && (
-                  <div className="flex items-center gap-2">
-                    <div
-                      aria-hidden="true"
-                      className="flex h-8 w-8 items-center justify-center rounded-full bg-focus text-sm font-semibold text-white"
-                    >
-                      {prenom.charAt(0).toUpperCase()}
-                    </div>
-                    <span className="text-sm font-medium text-gray-900">
-                      {m.dashboard_hello()} {prenom}
-                    </span>
-                  </div>
-                )}
-                <button
-                  type="button"
-                  onClick={onLogout}
-                  aria-label={m.me_sign_out()}
-                  className="flex h-9 w-9 items-center justify-center rounded-full text-gray-700 transition hover:bg-blue-pale focus:outline-none focus:ring-2 focus:ring-primary/30"
-                >
-                  <LogOut size={18} aria-hidden="true" />
-                </button>
-              </>
-            ) : (
-              <>
-                <Link to="/login" className="text-sm font-medium text-gray-600 transition hover:text-primary">
-                  {m.auth_sign_in()}
-                </Link>
-                <Link
-                  to="/register"
-                  className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-focus"
-                >
-                  {m.home_signup_cta()}
-                </Link>
-              </>
-            )}
+            <HeaderAuthZone prenom={prenom || null} />
           </div>
         </header>
 

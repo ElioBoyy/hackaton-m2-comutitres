@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
-import { ArrowRight, ChevronLeft, ChevronRight, Info, LogOut, Menu, Sparkles, X } from 'lucide-react'
+import { ArrowRight, ChevronLeft, ChevronRight, Info, Menu, Sparkles, X } from 'lucide-react'
+import { HeaderAuthZone } from '~/components/HeaderAuthZone'
 import { UserSidebar } from '~/components/UserSidebar'
 import { NavigoIllustration } from '~/components/illustrations/NavigoIllustration'
 import { ImagineRIllustration } from '~/components/illustrations/ImagineRIllustration'
@@ -358,13 +359,11 @@ function HomePage() {
   // authResolu reste false tant que (a) le 1er useEffect n'a pas tourne ET,
   // si l'user est connecte, (b) me() n'a pas fini : evite le micro-flash
   // entre "logout seul" et "avatar + Bonjour X".
-  const [authentifie, setAuthentifie] = useState<boolean | null>(null)
   const [authResolu, setAuthResolu] = useState(false)
   const [utilisateur, setUtilisateur] = useState<MeResponse | null>(null)
 
   useEffect(() => {
     const co = isAuthenticated()
-    setAuthentifie(co)
     if (co) {
       me()
         .then(setUtilisateur)
@@ -377,13 +376,6 @@ function HomePage() {
       .then(setAbonnements)
       .finally(() => setLoading(false))
   }, [])
-
-  function onLogout() {
-    logout()
-    setAuthentifie(false)
-    setUtilisateur(null)
-    navigate({ to: '/login' })
-  }
 
   const prenom = utilisateur?.prenom ?? ''
 
@@ -431,42 +423,8 @@ function HomePage() {
                 <div className="h-4 w-28 animate-pulse rounded-md bg-gray-100" />
                 <div className="h-9 w-9 animate-pulse rounded-full bg-gray-100" />
               </div>
-            ) : authentifie ? (
-              <>
-                {prenom && (
-                  <div className="flex items-center gap-2">
-                    <div
-                      aria-hidden="true"
-                      className="flex h-8 w-8 items-center justify-center rounded-full bg-focus text-sm font-semibold text-white"
-                    >
-                      {prenom.charAt(0).toUpperCase()}
-                    </div>
-                    <span className="text-sm font-medium text-gray-900">
-                      {m.dashboard_hello()} {prenom}
-                    </span>
-                  </div>
-                )}
-                <button
-                  type="button"
-                  onClick={onLogout}
-                  aria-label={m.me_sign_out()}
-                  className="flex h-9 w-9 items-center justify-center rounded-full text-gray-700 transition hover:bg-blue-pale focus:outline-none focus:ring-2 focus:ring-primary/30"
-                >
-                  <LogOut size={18} aria-hidden="true" />
-                </button>
-              </>
             ) : (
-              <>
-                <Link to="/login" className="text-sm font-medium text-gray-600 transition hover:text-primary">
-                  {m.auth_sign_in()}
-                </Link>
-                <Link
-                  to="/register"
-                  className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-focus"
-                >
-                  {m.home_signup_cta()}
-                </Link>
-              </>
+              <HeaderAuthZone prenom={prenom || null} />
             )}
           </div>
         </header>

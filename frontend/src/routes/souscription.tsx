@@ -1,8 +1,9 @@
 import { createFileRoute, Outlet, useNavigate } from '@tanstack/react-router'
-import { LogOut, Menu } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import * as React from 'react'
+import { HeaderAuthZone } from '~/components/HeaderAuthZone'
 import { UserSidebar } from '~/components/UserSidebar'
-import { isAuthenticated, logout, me, type MeResponse } from '~/lib/auth'
+import { isAuthenticated, me, type MeResponse } from '~/lib/auth'
 import { m } from '~/paraglide/messages'
 
 export const Route = createFileRoute('/souscription')({
@@ -15,25 +16,12 @@ function SouscriptionLayout() {
   const [sidebarOuverte, setSidebarOuverte] = React.useState(false)
 
   React.useEffect(() => {
-    // Garde d'auth sur tout /souscription/* : sans utilisateur le backend
-    // refuse la creation du dossier (401). Bouclier supplementaire en plus
-    // des checks inline sur les CTA d'entree (home modal / resultat wizard) :
-    // couvre aussi les acces directs par URL ou deep links externes. Le
-    // check ne tourne que cote client (isAuthenticated lit localStorage).
     if (!isAuthenticated()) {
       navigate({ to: '/login' })
       return
     }
     me().then(setUtilisateur).catch(() => {})
   }, [navigate])
-
-  function onLogout() {
-    logout()
-    navigate({ to: '/login' })
-  }
-
-  const prenom = utilisateur ? utilisateur.prenom : ''
-  const initiale = utilisateur ? utilisateur.prenom.charAt(0).toUpperCase() : ''
 
   return (
     <div className="flex min-h-screen bg-gray-100">
@@ -50,34 +38,12 @@ function SouscriptionLayout() {
               <Menu size={18} aria-hidden="true" />
             </button>
             <h1 className="font-heading text-lg font-semibold text-gray-900">
-              Souscription
+              {m.nav_my_subscriptions()}
             </h1>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="hidden lg:flex lg:items-center lg:gap-4">
-              {utilisateur && (
-                <div className="flex items-center gap-2">
-                  <div
-                    aria-hidden="true"
-                    className="flex h-8 w-8 items-center justify-center rounded-full bg-focus text-sm font-semibold text-white"
-                  >
-                    {initiale}
-                  </div>
-                  <span className="text-sm font-medium text-gray-900">
-                    {m.dashboard_hello()} {prenom}
-                  </span>
-                </div>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={onLogout}
-              aria-label={m.me_sign_out()}
-              className="flex h-9 w-9 items-center justify-center rounded-full text-gray-700 transition hover:bg-blue-pale focus:outline-none focus:ring-2 focus:ring-primary/30"
-            >
-              <LogOut size={18} aria-hidden="true" />
-            </button>
+          <div className="hidden items-center gap-3 lg:flex">
+            <HeaderAuthZone prenom={utilisateur?.prenom ?? null} />
           </div>
         </header>
 
