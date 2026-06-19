@@ -12,7 +12,7 @@ export function HeaderAuthZone({ prenom }: Props) {
 
   function onLogout() {
     logout()
-    navigate({ to: '/login' })
+    navigate({ to: '/' })
   }
 
   if (prenom) {
