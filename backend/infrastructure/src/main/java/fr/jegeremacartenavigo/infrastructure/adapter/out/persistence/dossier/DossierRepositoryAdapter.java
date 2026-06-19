@@ -459,6 +459,13 @@ public class DossierRepositoryAdapter implements DossierRepository {
         );
     }
 
+    @Override
+    public boolean existeAbonnementActifPour(Integer idPorteur, String beneficiaireNomComplet, java.time.LocalDate aujourdhui) {
+        String beneficiaire = beneficiaireNomComplet == null ? null : beneficiaireNomComplet.trim();
+        if (beneficiaire != null && beneficiaire.isEmpty()) beneficiaire = null;
+        return dossierJpa.countAbonnementsActifsPour(idPorteur, beneficiaire, aujourdhui) > 0;
+    }
+
     private DossierDetail toDetail(Dossier d) {
         List<PieceJustificativeResume> pieces = pieceJpa
                 .findByDossier_IdDossierOrderByDateDepotDesc(d.getIdDossier())
@@ -490,6 +497,7 @@ public class DossierRepositoryAdapter implements DossierRepository {
                 d.getDateFinDroits(),
                 d.getMontantTotal(),
                 d.getBeneficiaireNomComplet(),
+                d.isBoursier(),
                 pieces,
                 piecesRequises
         );

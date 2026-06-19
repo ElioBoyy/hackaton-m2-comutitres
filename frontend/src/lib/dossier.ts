@@ -78,6 +78,8 @@ export interface DossierDetail {
   dateFinDroits: string | null
   montantTotal: number
   beneficiaireNomComplet: string | null
+  /** Vrai si l'utilisateur s'est declare boursier au wizard de souscription. */
+  boursier: boolean
   pieces: PieceJustificative[]
   piecesRequises: PieceRequise[]
 }

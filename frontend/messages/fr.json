@@ -222,7 +222,7 @@
   "dossier_ia_checking": "Vérification IA en cours…",
   "dossier_ia_done": "Documents pré-vérifiés — aucune anomalie détectée.",
   "dossier_pre_verify_ia": "Pré-vérifier avec l'IA",
-  "dossier_submit_min_piece_tooltip": "Ajoutez au moins la pièce d'identité pour soumettre",
+  "dossier_submit_min_piece_tooltip": "Déposez toutes les pièces obligatoires avant de soumettre",
   "dossier_submit_for_review": "Soumettre pour vérification",
   "dossier_delete_draft_button": "Supprimer ce brouillon",
   "dossier_pay_and_submit": "Payer et soumettre",
@@ -559,5 +559,6 @@
   "sav_faq_section_paiement": "Paiement & renouvellement",
   "sav_faq_section_arrivant": "Nouvel arrivant en Île-de-France",
   "sav_faq_section_accessibilite": "Accessibilité & besoins spécifiques",
-  "sav_faq_section_proche": "Gérer l'abonnement d'un proche"
+  "sav_faq_section_proche": "Gérer l'abonnement d'un proche",
+  "wizard_pour_qui_moi_deja_actif": "Vous avez déjà un abonnement actif pour vous-même."
 }

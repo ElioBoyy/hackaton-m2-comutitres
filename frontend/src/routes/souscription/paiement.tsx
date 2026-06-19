@@ -16,7 +16,11 @@ import { m } from '~/paraglide/messages'
 import { useAppDispatch, useAppSelector } from '~/store/hooks'
 import { abonnementSauvegarde, dossierBackendDefini, paiementValide } from '~/store/wizardSlice'
 
-type ErreurPaiement = { type: 'non-authentifie' } | { type: 'pieces-manquantes' } | { type: 'autre'; message: string }
+type ErreurPaiement =
+  | { type: 'non-authentifie' }
+  | { type: 'pieces-manquantes' }
+  | { type: 'abonnement-actif'; message: string }
+  | { type: 'autre'; message: string }
 type MoyenPaiement = 'CB' | 'SEPA'
 
 export const Route = createFileRoute('/souscription/paiement')({
@@ -27,6 +31,14 @@ export const Route = createFileRoute('/souscription/paiement')({
 function translateValidation(key: string): string {
   const messages = m as unknown as Record<string, () => string>
   return typeof messages[key] === 'function' ? messages[key]() : key
+}
+
+// Lit le {@code detail} d'un ProblemDetail RFC 7807 si dispo, sinon fallback
+// sur le message d'erreur HTTP par defaut. Permet de distinguer cote UI les
+// differentes causes d'un 422 (pieces manquantes vs doublon d'abonnement).
+function errorDetail(err: ApiError): string {
+  const body = err.body as { detail?: string } | undefined
+  return body?.detail ?? err.message
 }
 
 function PaiementStep() {
@@ -122,10 +134,15 @@ function PaiementStep() {
       if (err instanceof ApiError && err.status === 401) {
         setErreur({ type: 'non-authentifie' })
       } else if (err instanceof ApiError && err.status === 422) {
-        // Le backend exige des pieces justificatives obligatoires (piece
-        // d'identite + certificat scolarite si etudiant). Redirige vers
-        // l'etape pieces avec un message clair.
-        setErreur({ type: 'pieces-manquantes' })
+        // 422 = regle metier violee (cf. GlobalExceptionHandler). On regarde
+        // le detail pour distinguer "abonnement actif existant" (cas user qui
+        // veut redoubler son abo) des pieces justificatives manquantes.
+        const detail = errorDetail(err)
+        if (detail.toLowerCase().includes('abonnement actif')) {
+          setErreur({ type: 'abonnement-actif', message: detail })
+        } else {
+          setErreur({ type: 'pieces-manquantes' })
+        }
       } else if (err instanceof ApiError) {
         setErreur({ type: 'autre', message: err.message })
       } else {
@@ -176,6 +193,11 @@ function PaiementStep() {
               >
                 {m.wizard_paiement_pieces_go()}
               </button>
+            </>
+          ) : erreur.type === 'abonnement-actif' ? (
+            <>
+              {erreur.message}{' '}
+              <Link to="/dashboard" className="font-medium underline">{m.dashboard_title()}</Link>
             </>
           ) : erreur.message}
         </div>

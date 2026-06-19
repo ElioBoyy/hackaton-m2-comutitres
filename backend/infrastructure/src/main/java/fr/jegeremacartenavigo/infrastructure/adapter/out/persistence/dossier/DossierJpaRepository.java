@@ -11,6 +11,28 @@ import java.util.List;
 
 public interface DossierJpaRepository extends JpaRepository<Dossier, Integer> {
 
+    /**
+     * Compte les dossiers "actifs" (statut ACTIF ou VALIDE, droits non expires)
+     * pour un porteur donne, avec ou sans beneficiaire nomme. Permet de
+     * bloquer la creation d'un nouveau dossier qui ferait doublon (cf.
+     * AbonnementActifExistantException). Le matching beneficiaire est
+     * insensible a la casse pour absorber les saisies utilisateur.
+     */
+    @Query("""
+            select count(d) from Dossier d
+            join d.statutActuel sd
+            where d.utilisateurPorteur.idUtilisateur = :idPorteur
+              and sd.code in ('ACTIF', 'VALIDE')
+              and (d.dateFinDroits is null or d.dateFinDroits >= :aujourdhui)
+              and (
+                   (:beneficiaire is null and d.beneficiaireNomComplet is null)
+                or (:beneficiaire is not null and lower(d.beneficiaireNomComplet) = lower(:beneficiaire))
+              )
+            """)
+    long countAbonnementsActifsPour(@Param("idPorteur") Integer idPorteur,
+                                    @Param("beneficiaire") String beneficiaireNomComplet,
+                                    @Param("aujourdhui") java.time.LocalDate aujourdhui);
+
     @Query("""
             select d from Dossier d
             join fetch d.utilisateurPorteur up
