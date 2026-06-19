@@ -11,7 +11,7 @@ ARG VITE_API_URL
 ENV VITE_API_URL=$VITE_API_URL
 
 COPY . .
-RUN npm run build && echo "=== BUILD OUTPUT ===" && find /app/dist /app/.output -maxdepth 3 2>/dev/null || true
+RUN npm run build
 
 # --- Runtime : sert le build SSR avec srvx (cf. script "start") ---
 FROM node:24-alpine
@@ -23,6 +23,8 @@ COPY package.json ./
 # Copie node_modules depuis le build stage — srvx y est inclus, pas besoin de réinstaller.
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
+# srvx cherche les fichiers statiques dans public/ par defaut — symlink vers dist/client.
+RUN ln -sf /app/dist/client /app/public
 
 EXPOSE 3000
 # srvx ecoute sur $PORT (defaut 3000). "npm start" -> npx srvx --prod ...
