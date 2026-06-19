@@ -66,6 +66,16 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/dossiers/**").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/dossiers/**").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/dossiers/**").authenticated()
+                        // reclamations (SAV) : file paginee, compteurs et actions de
+                        // traitement reserves aux agents. A matcher AVANT les regles
+                        // generiques /reclamations/** ouvertes aux clients.
+                        .requestMatchers(HttpMethod.GET, "/reclamations", "/reclamations/counts").hasAuthority("ROLE_AGENT")
+                        .requestMatchers(HttpMethod.PATCH, "/reclamations/*/statut").hasAuthority("ROLE_AGENT")
+                        .requestMatchers(HttpMethod.POST, "/reclamations/*/assigner").hasAuthority("ROLE_AGENT")
+                        // clients : suivi, ouverture, messages, lecture d'un detail
+                        // (ownership verifie cote code pour la lecture/reponse)
+                        .requestMatchers(HttpMethod.GET, "/reclamations/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/reclamations", "/reclamations/**").authenticated()
                         .requestMatchers(
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
