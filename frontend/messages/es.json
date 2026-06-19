@@ -544,5 +544,7 @@
   "sav_faq_section_arrivant": "Recién llegado a Île-de-France",
   "sav_faq_section_accessibilite": "Accesibilidad y necesidades específicas",
   "sav_faq_section_proche": "Gestionar el abono de un familiar",
-  "wizard_pour_qui_moi_deja_actif": "Ya tiene un abono activo para usted."
+  "wizard_pour_qui_moi_deja_actif": "Ya tiene un abono activo para usted.",
+  "bo_dossier_info_beneficiary": "Titular del abono",
+  "bo_dossier_info_beneficiary_note": "Abono creado para un tercero"
 }

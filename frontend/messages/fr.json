@@ -560,5 +560,7 @@
   "sav_faq_section_arrivant": "Nouvel arrivant en Île-de-France",
   "sav_faq_section_accessibilite": "Accessibilité & besoins spécifiques",
   "sav_faq_section_proche": "Gérer l'abonnement d'un proche",
-  "wizard_pour_qui_moi_deja_actif": "Vous avez déjà un abonnement actif pour vous-même."
+  "wizard_pour_qui_moi_deja_actif": "Vous avez déjà un abonnement actif pour vous-même.",
+  "bo_dossier_info_beneficiary": "Titulaire de l'abonnement",
+  "bo_dossier_info_beneficiary_note": "Abonnement souscrit pour un tiers"
 }

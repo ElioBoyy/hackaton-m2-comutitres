@@ -544,5 +544,7 @@
   "sav_faq_section_arrivant": "Recém-chegado à Île-de-France",
   "sav_faq_section_accessibilite": "Acessibilidade e necessidades específicas",
   "sav_faq_section_proche": "Gerir o passe de um familiar",
-  "wizard_pour_qui_moi_deja_actif": "Já tem uma assinatura ativa para si."
+  "wizard_pour_qui_moi_deja_actif": "Já tem uma assinatura ativa para si.",
+  "bo_dossier_info_beneficiary": "Titular da assinatura",
+  "bo_dossier_info_beneficiary_note": "Assinatura criada para um terceiro"
 }

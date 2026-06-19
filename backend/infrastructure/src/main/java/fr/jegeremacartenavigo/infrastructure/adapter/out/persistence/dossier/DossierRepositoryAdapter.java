@@ -298,11 +298,20 @@ public class DossierRepositoryAdapter implements DossierRepository {
         }
         dossier.setMontantTotal(typeAbonnement.getTarifPlein() != null ? typeAbonnement.getTarifPlein() : BigDecimal.ZERO);
         dossier.setPeriodicitePaiement(mapPeriodicite(typeAbonnement.getPeriodicite()));
-        dossier.setSituationCode(nouveauDossier.situation().name());
-        dossier.setSituationPrecision(nouveauDossier.situationPrecision());
-        dossier.setBoursier(nouveauDossier.boursier());
-        dossier.setBeneficiaireNomComplet(
-                nouveauDossier.demandePour() == DemandePour.TIERS ? nouveauDossier.beneficiaireNomComplet() : null);
+        // Champs d'identite : ne sont peuples que sur un dossier vierge. Sur la
+        // poursuite d'un brouillon existant (idDossierExistant != null, ex:
+        // bouton "Payer et soumettre" depuis /dossier/{id}), le wizard
+        // Redux peut etre vide et renverrait des defauts (pourQui=MOI,
+        // beneficiaire=null, etc.) qui ecraseraient les valeurs initiales
+        // saisies au moment de la creation du brouillon. On les laisse donc
+        // intactes : le brouillon est la source de verite pour la cible.
+        if (nouveauDossierVierge) {
+            dossier.setSituationCode(nouveauDossier.situation().name());
+            dossier.setSituationPrecision(nouveauDossier.situationPrecision());
+            dossier.setBoursier(nouveauDossier.boursier());
+            dossier.setBeneficiaireNomComplet(
+                    nouveauDossier.demandePour() == DemandePour.TIERS ? nouveauDossier.beneficiaireNomComplet() : null);
+        }
     }
 
     private Dossier.PeriodicitePaiement mapPeriodicite(TypeAbonnement.Periodicite periodicite) {
@@ -723,6 +732,7 @@ public class DossierRepositoryAdapter implements DossierRepository {
                         h.getStatutAvant() != null ? h.getStatutAvant().getLibelle() : null,
                         h.getStatutApres() != null ? h.getStatutApres().getLibelle() : null,
                         resolveNomAuteur(h),
+                        h.getAgent() != null,
                         h.getDescription()
                 ))
                 .toList();

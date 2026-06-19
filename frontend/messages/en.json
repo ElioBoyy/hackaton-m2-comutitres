@@ -560,5 +560,7 @@
   "sav_faq_section_arrivant": "New arrival in Île-de-France",
   "sav_faq_section_accessibilite": "Accessibility & specific needs",
   "sav_faq_section_proche": "Managing a relative's subscription",
-  "wizard_pour_qui_moi_deja_actif": "You already have an active subscription for yourself."
+  "wizard_pour_qui_moi_deja_actif": "You already have an active subscription for yourself.",
+  "bo_dossier_info_beneficiary": "Subscription holder",
+  "bo_dossier_info_beneficiary_note": "Subscription created for a third party"
 }

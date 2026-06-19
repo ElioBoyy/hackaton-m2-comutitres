@@ -544,5 +544,7 @@
   "sav_faq_section_arrivant": "大巴黎地区新居民",
   "sav_faq_section_accessibilite": "无障碍与特殊需求",
   "sav_faq_section_proche": "管理家人的订阅",
-  "wizard_pour_qui_moi_deja_actif": "您已为自己拥有一个有效订阅。"
+  "wizard_pour_qui_moi_deja_actif": "您已为自己拥有一个有效订阅。",
+  "bo_dossier_info_beneficiary": "订阅持有人",
+  "bo_dossier_info_beneficiary_note": "为第三方创建的订阅"
 }
