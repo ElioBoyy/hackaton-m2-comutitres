@@ -7,7 +7,7 @@
     "dev": "vite dev",
     "build": "vite build && tsc --noEmit",
     "preview": "vite preview",
-    "start": "node node_modules/.bin/srvx --prod ./dist/server/server.js"
+    "start": "node node_modules/.bin/srvx serve --prod --entry dist/server/server.js --static dist/client"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.2.7",
