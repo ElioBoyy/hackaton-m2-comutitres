@@ -206,7 +206,7 @@
   "dossier_ia_checking": "Verificación IA en curso…",
   "dossier_ia_done": "Documentos preverificados — ninguna anomalía detectada.",
   "dossier_pre_verify_ia": "Preverificar con IA",
-  "dossier_submit_min_piece_tooltip": "Añada al menos el documento de identidad para enviar",
+  "dossier_submit_min_piece_tooltip": "Suba todos los documentos obligatorios antes de enviar",
   "dossier_submit_for_review": "Enviar para verificación",
   "dossier_delete_draft_button": "Eliminar este borrador",
   "dossier_pay_and_submit": "Pagar y enviar",
@@ -543,5 +543,6 @@
   "sav_faq_section_paiement": "Pago y renovación",
   "sav_faq_section_arrivant": "Recién llegado a Île-de-France",
   "sav_faq_section_accessibilite": "Accesibilidad y necesidades específicas",
-  "sav_faq_section_proche": "Gestionar el abono de un familiar"
+  "sav_faq_section_proche": "Gestionar el abono de un familiar",
+  "wizard_pour_qui_moi_deja_actif": "Ya tiene un abono activo para usted."
 }

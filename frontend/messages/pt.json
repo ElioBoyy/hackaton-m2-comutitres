@@ -206,7 +206,7 @@
   "dossier_ia_checking": "Verificação IA em curso…",
   "dossier_ia_done": "Documentos pré-verificados — nenhuma anomalia detetada.",
   "dossier_pre_verify_ia": "Pré-verificar com IA",
-  "dossier_submit_min_piece_tooltip": "Adicione pelo menos o documento de identidade para submeter",
+  "dossier_submit_min_piece_tooltip": "Carregue todos os documentos obrigatórios antes de submeter",
   "dossier_submit_for_review": "Submeter para verificação",
   "dossier_delete_draft_button": "Eliminar este rascunho",
   "dossier_pay_and_submit": "Pagar e submeter",
@@ -543,5 +543,6 @@
   "sav_faq_section_paiement": "Pagamento e renovação",
   "sav_faq_section_arrivant": "Recém-chegado à Île-de-France",
   "sav_faq_section_accessibilite": "Acessibilidade e necessidades específicas",
-  "sav_faq_section_proche": "Gerir o passe de um familiar"
+  "sav_faq_section_proche": "Gerir o passe de um familiar",
+  "wizard_pour_qui_moi_deja_actif": "Já tem uma assinatura ativa para si."
 }

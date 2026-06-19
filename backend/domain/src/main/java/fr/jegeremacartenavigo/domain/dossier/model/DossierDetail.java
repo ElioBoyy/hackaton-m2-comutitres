@@ -26,6 +26,10 @@ public record DossierDetail(
         /** Nom complet du beneficiaire quand la demande est pour un TIERS.
          *  Null si demandePour=MOI (le titulaire est alors l'utilisateur connecte). */
         String beneficiaireNomComplet,
+        /** True si le demandeur s'est declare boursier au wizard.
+         *  Sert au front a decider d'exposer la pièce "Notification de bourse"
+         *  uniquement quand elle peut etre utile. */
+        boolean boursier,
         List<PieceJustificativeResume> pieces,
         List<PieceRequiseResume> piecesRequises
 ) {

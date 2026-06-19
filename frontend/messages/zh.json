@@ -206,7 +206,7 @@
   "dossier_ia_checking": "AI 检查中…",
   "dossier_ia_done": "文件已预先检查 — 未发现异常。",
   "dossier_pre_verify_ia": "用 AI 预检查",
-  "dossier_submit_min_piece_tooltip": "请至少添加身份证明文件以提交",
+  "dossier_submit_min_piece_tooltip": "请先上传所有必需文件再提交",
   "dossier_submit_for_review": "提交审核",
   "dossier_delete_draft_button": "删除此草稿",
   "dossier_pay_and_submit": "付款并提交",
@@ -543,5 +543,6 @@
   "sav_faq_section_paiement": "付款与续订",
   "sav_faq_section_arrivant": "大巴黎地区新居民",
   "sav_faq_section_accessibilite": "无障碍与特殊需求",
-  "sav_faq_section_proche": "管理家人的订阅"
+  "sav_faq_section_proche": "管理家人的订阅",
+  "wizard_pour_qui_moi_deja_actif": "您已为自己拥有一个有效订阅。"
 }

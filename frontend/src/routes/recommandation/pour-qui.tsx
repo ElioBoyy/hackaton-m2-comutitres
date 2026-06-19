@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { ChoiceCard } from '~/components/ui/ChoiceCard'
 import { WizardStepLayout } from '~/components/ui/WizardStepLayout'
 import { POUR_QUI } from '~/domain/pourQui'
+import { useAbonnementActifPourMoi } from '~/domain/useAbonnementActifPourMoi'
 import { m } from '~/paraglide/messages'
 import { useAppDispatch, useAppSelector } from '~/store/hooks'
 import { pourQuiDefini } from '~/store/wizardSlice'
@@ -23,6 +24,11 @@ function PourQuiStep() {
   const navigate = useNavigate()
   const dispatch = useAppDispatch()
   const pourQui = useAppSelector((state) => state.wizard.pourQui)
+  // Bloque "Pour moi" si l'utilisateur a deja un abonnement actif pour
+  // lui-meme : le backend refuserait la creation a la fin (cf.
+  // AbonnementActifExistantException). Forcer ce blocage en amont evite
+  // de lui faire remplir tout le tunnel pour rien.
+  const aDejaPourMoi = useAbonnementActifPourMoi()
 
   return (
     <WizardStepLayout
@@ -34,16 +40,21 @@ function PourQuiStep() {
       suivantDesactive={!pourQui}
       layout="grid"
     >
-      {POUR_QUI.map((item) => (
-        <ChoiceCard
-          key={item.value}
-          label={POUR_QUI_LABELS[item.value]?.() ?? item.label}
-          description={POUR_QUI_DESCRIPTIONS[item.value]?.()}
-          icon={item.icon}
-          selected={pourQui === item.value}
-          onSelect={() => dispatch(pourQuiDefini(item.value))}
-        />
-      ))}
+      {POUR_QUI.map((item) => {
+        const desactive = item.value === 'MOI' && aDejaPourMoi === true
+        return (
+          <ChoiceCard
+            key={item.value}
+            label={POUR_QUI_LABELS[item.value]?.() ?? item.label}
+            description={POUR_QUI_DESCRIPTIONS[item.value]?.()}
+            icon={item.icon}
+            selected={pourQui === item.value}
+            onSelect={() => dispatch(pourQuiDefini(item.value))}
+            disabled={desactive}
+            title={desactive ? m.wizard_pour_qui_moi_deja_actif() : undefined}
+          />
+        )
+      })}
     </WizardStepLayout>
   )
 }

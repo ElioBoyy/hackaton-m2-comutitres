@@ -102,7 +102,11 @@ function RecapitulatifStep() {
       if (err instanceof ApiError && err.status === 401) {
         setErreur({ type: 'non-authentifie' })
       } else if (err instanceof ApiError) {
-        setErreur({ type: 'autre', message: err.message })
+        // Extrait le {@code detail} ProblemDetail (RFC 7807) plutot que le
+        // libelle HTTP brut. Couvre notamment le 422 "abonnement actif
+        // existant" et "pieces obligatoires manquantes".
+        const body = err.body as { detail?: string } | undefined
+        setErreur({ type: 'autre', message: body?.detail ?? err.message })
       } else {
         setErreur({ type: 'autre', message: 'Impossible de joindre le serveur. Réessayez.' })
       }
