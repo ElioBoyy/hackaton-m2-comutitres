@@ -1,6 +1,5 @@
 import { useRef, useState } from 'react'
 import { BadgeCheck, Eye, FileText, RefreshCw, ShieldCheck, Sparkles, XCircle } from 'lucide-react'
-import { DocumentPreviewModal } from '~/components/DocumentPreviewModal'
 import { m } from '~/paraglide/messages'
 import type { PieceJustificative } from '~/lib/dossier'
 
@@ -51,15 +50,16 @@ export function TableauPieces({
   pieces,
   canEdit = false,
   onRemplacer,
+  onPreview,
 }: {
   pieces: PieceJustificative[]
   /** Si true, affiche un bouton "Remplacer" sur les pièces non encore validées. */
   canEdit?: boolean
   /** Callback quand l'utilisateur a choisi un nouveau fichier pour cette pièce. */
   onRemplacer?: (piece: PieceJustificative, file: File) => void
+  /** Si fourni, délègue l'aperçu au parent (inline dans le main) au lieu d'une modal plein écran. */
+  onPreview?: (cle: string, titre: string) => void
 }) {
-  // Piece dont l'apercu est ouvert dans la modale (null = modale fermee).
-  const [apercu, setApercu] = useState<{ cle: string; titre: string } | null>(null)
   const [remplacementId, setRemplacementId] = useState<number | null>(null)
 
   if (pieces.length === 0) {
@@ -146,7 +146,7 @@ export function TableauPieces({
                   {p.cheminFichier && (
                     <button
                       type="button"
-                      onClick={() => setApercu({ cle: p.cheminFichier!, titre: p.libelleTypePiece })}
+                      onClick={() => onPreview?.(p.cheminFichier!, p.libelleTypePiece)}
                       className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:border-primary hover:text-primary"
                     >
                       <Eye size={12} aria-hidden />
@@ -160,13 +160,6 @@ export function TableauPieces({
         </tbody>
       </table>
 
-      {apercu && (
-        <DocumentPreviewModal
-          cheminFichier={apercu.cle}
-          titre={apercu.titre}
-          onClose={() => setApercu(null)}
-        />
-      )}
     </div>
   )
 }
