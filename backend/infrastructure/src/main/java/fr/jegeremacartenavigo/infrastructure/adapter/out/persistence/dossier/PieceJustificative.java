@@ -72,6 +72,14 @@ public class PieceJustificative {
     @Column(name = "modifie_par_agent", nullable = false)
     private boolean modifieParAgent = false;
 
+    /**
+     * True quand la piece a ete pre-verifiee par l'IA cote client. Reset a
+     * false a chaque remplacement de fichier (le nouveau contenu n'a pas ete
+     * vu par l'IA). Visible cote agent pour signaler les pieces deja triees.
+     */
+    @Column(name = "verifie_par_ia", nullable = false)
+    private boolean verifieParIA = false;
+
     public enum StatutValidation {
         en_attente, validee, rejetee
     }

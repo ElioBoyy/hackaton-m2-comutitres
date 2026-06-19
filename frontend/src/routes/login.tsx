@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import { ApiError } from '~/lib/api'
-import { login } from '~/lib/auth'
+import { getCurrentTokenType, login, logout } from '~/lib/auth'
 import { parseViolations } from '~/lib/validation'
 import { LoginSchema } from '~/lib/schemas'
 import { AuthLayout } from '~/components/AuthLayout'
@@ -55,6 +55,11 @@ function LoginPage() {
     setPending(true)
     try {
       await login(form.email.trim(), form.password)
+      if (getCurrentTokenType() === 'agent') {
+        logout()
+        setFormError(m.auth_wrong_space_client())
+        return
+      }
       await navigate({ to: '/dashboard' })
     } catch (err) {
       if (err instanceof ApiError) {

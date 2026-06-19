@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import 'leaflet/dist/leaflet.css'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
+import { m } from '~/paraglide/messages'
 import type { Bornes, Coordonnees, PointDeVente, TypePointDeVente } from '~/lib/points-de-vente'
 
 // Import vanilla de Leaflet (charge dynamiquement cote client uniquement, pour
@@ -154,7 +155,7 @@ export function CartePointsDeVente({ points, selectedId, onSelect, userPosition,
     selectionPrecedenteRef.current = selectedId
   }, [selectedId, points])
 
-  return <div ref={conteneurRef} className="h-full w-full" aria-label="Carte des points de vente Navigo" />
+  return <div ref={conteneurRef} className="h-full w-full" aria-label={m.map_aria()} />
 }
 
 function iconePour(L: any, couleur: string, selectionne: boolean) {

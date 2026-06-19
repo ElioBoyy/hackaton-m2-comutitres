@@ -94,4 +94,12 @@ public interface DossierRepository {
      * d'abonnement. Le dossier doit etre en statut VALIDE.
      */
     void activerDossier(Integer idDossier, Integer idAgent, java.time.LocalDate dateDebutDroits);
+
+    /**
+     * Marque un dossier comme pre-verifie par l'IA (action cote client). Le
+     * porteur doit etre l'auteur. Idempotent : si deja a true, no-op.
+     * Le flag est expose dans {@link DossierDetail} pour permettre a l'agent
+     * de voir cette pre-verification dans le backoffice.
+     */
+    void marquerPreVerifieParIA(Integer idDossier, Integer idUtilisateur);
 }

@@ -65,7 +65,7 @@ export function UserSidebar({ isOpen, onClose }: UserSidebarProps) {
             <button
               type="button"
               onClick={onClose}
-              aria-label="Fermer le menu"
+              aria-label={m.common_close_menu()}
               className="flex h-8 w-8 items-center justify-center rounded-full text-gray-700 hover:bg-blue-pale lg:hidden"
             >
               <X size={18} aria-hidden="true" />
@@ -75,7 +75,7 @@ export function UserSidebar({ isOpen, onClose }: UserSidebarProps) {
 
         <nav
           className="flex flex-1 flex-col gap-1"
-          aria-label="Navigation principale"
+          aria-label={m.nav_main_aria()}
         >
           {items.map(({ labelKey, icon: Icon, to }) => {
             const label = (m[labelKey] as () => string)();
@@ -101,13 +101,13 @@ export function UserSidebar({ isOpen, onClose }: UserSidebarProps) {
               to="/login"
               className="rounded-xl border border-gray-200 px-4 py-2.5 text-center text-sm font-medium text-gray-700 transition hover:bg-blue-pale"
             >
-              Connexion
+              {m.auth_sign_in()}
             </Link>
             <Link
               to="/register"
               className="rounded-xl bg-primary px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-focus"
             >
-              Créer un compte
+              {m.home_signup_cta()}
             </Link>
           </div>
         )}

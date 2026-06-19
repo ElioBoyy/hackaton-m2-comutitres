@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { Check, Eye, Plus, RefreshCw, Upload, X } from 'lucide-react'
+import { Check, Eye, Plus, RefreshCw, Sparkles, Upload, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { BackofficeLayout } from '~/components/backoffice/BackofficeLayout'
 import { StatusBadge } from '~/components/backoffice/StatusBadge'
@@ -7,18 +7,19 @@ import { activerDossier, ajouterPiece, ApiError, changerStatutDossier, getDossie
 import { agentMe } from '~/lib/agentAuth'
 import { isAuthenticated, logout } from '~/lib/auth'
 import { recupererContenu } from '~/lib/fichier'
+import { m } from '~/paraglide/messages'
 import type { DossierDetail, HistoriqueEntree, PieceJustificative } from '~/lib/types/dossier'
 
 export const Route = createFileRoute('/backoffice/dossiers/$id')({
   component: DossierDetailPage,
 })
 
-const MOTIFS_REJET = [
-  'Document illisible',
-  'Document expiré',
-  'Mauvais document fourni',
-  'Document tronqué ou incomplet',
-  'Nom ne correspond pas au dossier',
+const motifsRejet = () => [
+  m.bo_dossier_reject_reason_illegible(),
+  m.bo_dossier_reject_reason_expired(),
+  m.bo_dossier_reject_reason_wrong(),
+  m.bo_dossier_reject_reason_truncated(),
+  m.bo_dossier_reject_reason_name_mismatch(),
 ]
 
 /**
@@ -28,23 +29,25 @@ const MOTIFS_REJET = [
  * - icon  : Component lucide affiche au centre du point pour les actions
  *           cles (validation/rejet). null = simple point colore.
  */
-const TYPE_ACTION_LABELS: Record<string, {
+type TypeActionMeta = {
   label: string
   color: string
   dot: string
   icon: typeof Check | null
-}> = {
-  changement_statut:               { label: 'Changement de statut',  color: 'bg-blue-100 text-blue-700',     dot: 'bg-blue-500',   icon: null },
-  depot_piece:                     { label: 'Dépôt de pièce',        color: 'bg-gray-100 text-gray-700',     dot: 'bg-gray-400',   icon: null },
-  validation_piece:                { label: 'Pièce validée',         color: 'bg-green-100 text-green-700',   dot: 'bg-green-500',  icon: Check },
-  rejet_piece:                     { label: 'Pièce rejetée',         color: 'bg-red-100 text-red-700',       dot: 'bg-red-500',    icon: X },
-  paiement_enregistre:             { label: 'Paiement enregistré',   color: 'bg-purple-100 text-purple-700', dot: 'bg-purple-500', icon: null },
-  remboursement_traite:            { label: 'Remboursement traité',  color: 'bg-orange-100 text-orange-700', dot: 'bg-orange-500', icon: null },
-  modification_information:        { label: 'Modification',          color: 'bg-yellow-100 text-yellow-700', dot: 'bg-yellow-500', icon: null },
-  commentaire_ajoute:              { label: 'Commentaire',           color: 'bg-gray-100 text-gray-700',     dot: 'bg-gray-400',   icon: null },
-  action_pour_compte_utilisateur:  { label: 'Action pour compte',    color: 'bg-indigo-100 text-indigo-700', dot: 'bg-indigo-500', icon: null },
-  notification_envoyee:            { label: 'Notification envoyée',  color: 'bg-teal-100 text-teal-700',     dot: 'bg-teal-500',   icon: null },
 }
+
+const typeActionLabels = (): Record<string, TypeActionMeta> => ({
+  changement_statut:               { label: m.bo_dossier_action_status_change(),    color: 'bg-blue-100 text-blue-700',     dot: 'bg-blue-500',   icon: null },
+  depot_piece:                     { label: m.bo_dossier_action_depot_piece(),      color: 'bg-gray-100 text-gray-700',     dot: 'bg-gray-400',   icon: null },
+  validation_piece:                { label: m.bo_dossier_action_piece_validee(),    color: 'bg-green-100 text-green-700',   dot: 'bg-green-500',  icon: Check },
+  rejet_piece:                     { label: m.bo_dossier_action_piece_rejetee(),    color: 'bg-red-100 text-red-700',       dot: 'bg-red-500',    icon: X },
+  paiement_enregistre:             { label: m.bo_dossier_action_paiement(),         color: 'bg-purple-100 text-purple-700', dot: 'bg-purple-500', icon: null },
+  remboursement_traite:            { label: m.bo_dossier_action_remboursement(),    color: 'bg-orange-100 text-orange-700', dot: 'bg-orange-500', icon: null },
+  modification_information:        { label: m.bo_dossier_action_modification(),     color: 'bg-yellow-100 text-yellow-700', dot: 'bg-yellow-500', icon: null },
+  commentaire_ajoute:              { label: m.bo_dossier_action_commentaire(),      color: 'bg-gray-100 text-gray-700',     dot: 'bg-gray-400',   icon: null },
+  action_pour_compte_utilisateur:  { label: m.bo_dossier_action_pour_compte(),      color: 'bg-indigo-100 text-indigo-700', dot: 'bg-indigo-500', icon: null },
+  notification_envoyee:            { label: m.bo_dossier_action_notification(),     color: 'bg-teal-100 text-teal-700',     dot: 'bg-teal-500',   icon: null },
+})
 
 const STATUT_PIECE_STYLES: Record<string, string> = {
   en_attente: 'bg-yellow-100 text-yellow-700',
@@ -52,11 +55,11 @@ const STATUT_PIECE_STYLES: Record<string, string> = {
   rejetee: 'bg-red-100 text-red-700',
 }
 
-const STATUT_PIECE_LABELS: Record<string, string> = {
-  en_attente: 'En attente',
-  validee: 'Validée',
-  rejetee: 'Rejetée',
-}
+const statutPieceLabels = (): Record<string, string> => ({
+  en_attente: m.bo_dossier_piece_status_en_attente(),
+  validee: m.bo_dossier_piece_status_validee(),
+  rejetee: m.bo_dossier_piece_status_rejetee(),
+})
 
 /**
  * Modale plein ecran : visionneuse a gauche, panneau de validation a droite.
@@ -95,7 +98,7 @@ function ModalPieceExamen({
 
   useEffect(() => {
     if (!piece.cheminFichier) {
-      setErreurViewer('Cette pièce ne pointe vers aucun fichier.')
+      setErreurViewer(m.bo_dossier_modal_no_file_path())
       return
     }
     let revokeUrl: string | null = null
@@ -111,7 +114,7 @@ function ModalPieceExamen({
         setContentType(contentType)
       })
       .catch(() => {
-        if (!cancelled) setErreurViewer("Impossible d'ouvrir cette pièce.")
+        if (!cancelled) setErreurViewer(m.bo_dossier_modal_cannot_open())
       })
     return () => {
       cancelled = true
@@ -129,7 +132,7 @@ function ModalPieceExamen({
         <button
           type="button"
           onClick={onClose}
-          aria-label="Fermer la visionneuse"
+          aria-label={m.bo_dossier_modal_close_viewer()}
           className="flex h-9 w-9 items-center justify-center rounded-full text-gray-300 transition hover:bg-gray-700 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/30"
         >
           <X size={18} aria-hidden="true" />
@@ -142,7 +145,7 @@ function ModalPieceExamen({
           {erreurViewer ? (
             <p role="alert" className="text-sm text-red-300">{erreurViewer}</p>
           ) : !blobUrl ? (
-            <p className="text-sm text-gray-300" aria-live="polite">Chargement…</p>
+            <p className="text-sm text-gray-300" aria-live="polite">{m.common_loading_short()}</p>
           ) : estPdf ? (
             <iframe
               src={blobUrl}
@@ -161,7 +164,7 @@ function ModalPieceExamen({
               download
               className="rounded-xl bg-white px-4 py-2 text-sm font-medium text-gray-900 hover:bg-gray-100"
             >
-              Télécharger ({contentType || 'fichier'})
+              {contentType ? m.bo_dossier_modal_download({ type: contentType }) : m.bo_dossier_modal_download_fallback()}
             </a>
           )}
         </div>
@@ -169,16 +172,16 @@ function ModalPieceExamen({
         {/* Panneau d'action */}
         <aside className="flex w-80 shrink-0 flex-col overflow-y-auto border-l border-gray-200 bg-white">
           <div className="border-b border-gray-200 p-4">
-            <p className="mb-2 text-xs uppercase tracking-wide text-gray-500">Statut</p>
+            <p className="mb-2 text-xs uppercase tracking-wide text-gray-500">{m.bo_dossier_modal_status_label()}</p>
             <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUT_PIECE_STYLES[piece.statutValidation]}`}>
-              {STATUT_PIECE_LABELS[piece.statutValidation]}
+              {statutPieceLabels()[piece.statutValidation]}
             </span>
             <p className="mt-3 text-xs text-gray-500">
-              Déposé le {new Date(piece.dateDepot).toLocaleDateString('fr-FR')}
+              {m.bo_dossier_submitted_on()} {new Date(piece.dateDepot).toLocaleDateString('fr-FR')}
             </p>
             {piece.motifRejet && (
               <p className="mt-3 rounded-lg bg-red-50 p-2 text-xs text-red-700">
-                <strong>Motif de rejet :</strong> {piece.motifRejet}
+                <strong>{m.bo_dossier_modal_motif_rejet_label()}</strong> {piece.motifRejet}
               </p>
             )}
           </div>
@@ -186,7 +189,7 @@ function ModalPieceExamen({
           {traitee ? (
             <div className="p-4">
               <p className="text-xs text-gray-500">
-                Cette pièce a déjà été traitée. Aucune action supplémentaire n'est disponible.
+                {m.bo_dossier_modal_already_processed()}
               </p>
             </div>
           ) : etape === 'idle' ? (
@@ -197,7 +200,7 @@ function ModalPieceExamen({
                 disabled={loading}
                 className="rounded-xl bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-40"
               >
-                Valider la pièce
+                {m.bo_dossier_modal_validate_button()}
               </button>
               <button
                 type="button"
@@ -205,24 +208,24 @@ function ModalPieceExamen({
                 disabled={loading}
                 className="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-40"
               >
-                Rejeter la pièce
+                {m.bo_dossier_modal_reject_button()}
               </button>
             </div>
           ) : (
             <div className="flex flex-col gap-3 p-4">
-              <p className="text-xs uppercase tracking-wide text-gray-500">Motif de rejet</p>
+              <p className="text-xs uppercase tracking-wide text-gray-500">{m.bo_dossier_modal_motif_rejet_title()}</p>
               <div className="space-y-2">
-                {MOTIFS_REJET.map((m) => (
-                  <label key={m} className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+                {motifsRejet().map((mot) => (
+                  <label key={mot} className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
                     <input
                       type="radio"
                       name="motif"
-                      value={m}
-                      checked={motif === m}
-                      onChange={() => setMotif(m)}
+                      value={mot}
+                      checked={motif === mot}
+                      onChange={() => setMotif(mot)}
                       className="accent-red-600"
                     />
-                    {m}
+                    {mot}
                   </label>
                 ))}
                 <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
@@ -234,13 +237,13 @@ function ModalPieceExamen({
                     onChange={() => setMotif('autre')}
                     className="accent-red-600"
                   />
-                  Autre
+                  {m.bo_dossier_reject_reason_other()}
                 </label>
               </div>
               {motif === 'autre' && (
                 <textarea
                   className="w-full rounded-lg border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
-                  placeholder="Précisez le motif..."
+                  placeholder={m.bo_dossier_modal_specify_reason_placeholder()}
                   rows={3}
                   value={motifCustom}
                   onChange={(e) => setMotifCustom(e.target.value)}
@@ -253,7 +256,7 @@ function ModalPieceExamen({
                   disabled={loading}
                   className="flex-1 rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40"
                 >
-                  Annuler
+                  {m.common_cancel()}
                 </button>
                 <button
                   type="button"
@@ -261,7 +264,7 @@ function ModalPieceExamen({
                   disabled={!motifFinal || loading}
                   className="flex-1 rounded-xl bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-40"
                 >
-                  Confirmer
+                  {m.common_confirm()}
                 </button>
               </div>
             </div>
@@ -313,7 +316,7 @@ function ModalConfirmation({
             disabled={loading}
             className="flex-1 cursor-pointer rounded-xl border border-gray-300 px-4 py-2 text-sm text-gray-600 transition hover:bg-gray-50 disabled:opacity-40"
           >
-            Annuler
+            {m.common_cancel()}
           </button>
           <button
             type="button"
@@ -380,16 +383,14 @@ function ModalActiverAbonnement({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
         <h2 className="mb-1 font-heading text-lg font-semibold text-gray-900">
-          Activer l'abonnement
+          {m.bo_dossier_modal_activate_title()}
         </h2>
         <p className="mb-5 text-sm text-gray-600">
-          Le dossier passera en statut <strong>Actif</strong>. La date de fin sera
-          calculée automatiquement selon la périodicité de l'abonnement
-          ({dossier.typeAbonnement.libelle}).
+          {m.bo_dossier_modal_activate_description()} ({dossier.typeAbonnement.libelle}).
         </p>
 
         <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-500">
-          Date de début des droits
+          {m.bo_dossier_modal_rights_start_label()}
         </label>
         <input
           type="date"
@@ -405,7 +406,7 @@ function ModalActiverAbonnement({
             disabled={submitting || loading}
             className="flex-1 cursor-pointer rounded-xl border border-gray-300 px-4 py-2 text-sm text-gray-600 transition hover:bg-gray-50 disabled:opacity-40"
           >
-            Annuler
+            {m.common_cancel()}
           </button>
           <button
             type="button"
@@ -413,7 +414,7 @@ function ModalActiverAbonnement({
             disabled={!dateDebut || submitting || loading}
             className="flex-1 cursor-pointer rounded-xl bg-green-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
           >
-            {submitting ? 'Activation…' : 'Activer'}
+            {submitting ? m.bo_dossier_modal_activating() : m.bo_dossier_modal_activate_short()}
           </button>
         </div>
       </div>
@@ -449,7 +450,7 @@ function DecisionsDossierActions({
         disabled={loading}
         className="cursor-pointer rounded-xl bg-green-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
       >
-        Activer l'abonnement
+        {m.bo_dossier_action_activate_subscription()}
       </button>
     )
   }
@@ -461,7 +462,7 @@ function DecisionsDossierActions({
         disabled={loading}
         className="cursor-pointer rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
       >
-        Rejeter le dossier
+        {m.bo_dossier_action_reject_dossier()}
       </button>
     )
   }
@@ -498,11 +499,11 @@ function BoutonRemplacerPiece({
         type="button"
         onClick={() => inputRef.current?.click()}
         disabled={loading}
-        aria-label={`Remplacer ${piece.libelleTypePiece}`}
+        aria-label={m.bo_dossier_replace_aria({ label: piece.libelleTypePiece })}
         className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-xs text-gray-600 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
       >
         <RefreshCw size={14} className={loading ? 'animate-spin' : ''} aria-hidden="true" />
-        {loading ? 'Envoi…' : 'Remplacer'}
+        {loading ? m.common_send() : m.bo_dossier_replace_button()}
       </button>
     </>
   )
@@ -558,41 +559,41 @@ function ModalAjouterPiece({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-        <h2 className="mb-1 font-heading text-lg font-semibold text-gray-900">Ajouter une pièce</h2>
+        <h2 className="mb-1 font-heading text-lg font-semibold text-gray-900">{m.bo_dossier_modal_add_title()}</h2>
         <p className="mb-5 text-sm text-gray-500">
-          Sélectionnez le type de pièce attendu pour cet abonnement puis choisissez le fichier.
+          {m.bo_dossier_modal_add_description()}
         </p>
 
         {optionsDisponibles.length === 0 ? (
           <p className="mb-4 rounded-lg bg-yellow-50 p-3 text-sm text-yellow-800">
-            Toutes les pièces attendues pour cet abonnement sont déjà déposées.
+            {m.bo_dossier_modal_all_uploaded()}
           </p>
         ) : (
           <>
             <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-gray-500">
-              Type de pièce
+              {m.bo_dossier_modal_doc_type_label()}
             </label>
             <select
               value={codeTypePiece}
               onChange={(e) => setCodeTypePiece(e.target.value)}
               className="mb-4 w-full cursor-pointer rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
-              <option value="">— Sélectionner —</option>
+              <option value="">{m.common_select_placeholder()}</option>
               {optionsDisponibles.map((r) => (
                 <option key={r.codeTypePiece} value={r.codeTypePiece}>
                   {r.libelleTypePiece}
-                  {r.obligatoire ? '' : ' (optionnel)'}
+                  {r.obligatoire ? '' : m.dossier_piece_optional_suffix()}
                 </option>
               ))}
             </select>
 
             <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-gray-500">
-              Fichier
+              {m.bo_dossier_modal_add_file_label()}
             </label>
             <label className="mb-5 flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed border-gray-300 p-3 transition hover:border-primary-light">
               <Upload size={18} className="shrink-0 text-primary" aria-hidden="true" />
               <span className="flex-1 truncate text-sm text-gray-700">
-                {file ? file.name : 'Choisir un fichier…'}
+                {file ? file.name : m.common_choose_file()}
               </span>
               <input
                 type="file"
@@ -610,7 +611,7 @@ function ModalAjouterPiece({
             disabled={submitting || loading}
             className="flex-1 cursor-pointer rounded-xl border border-gray-300 px-4 py-2 text-sm text-gray-600 transition hover:bg-gray-50 disabled:opacity-40"
           >
-            Annuler
+            {m.common_cancel()}
           </button>
           <button
             type="button"
@@ -618,7 +619,7 @@ function ModalAjouterPiece({
             disabled={!codeTypePiece || !file || submitting || loading}
             className="flex-1 cursor-pointer rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-focus disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
           >
-            {submitting ? 'Envoi…' : 'Ajouter la pièce'}
+            {submitting ? m.common_send() : m.bo_dossier_modal_add_submit()}
           </button>
         </div>
       </div>
@@ -742,9 +743,9 @@ function DossierDetailPage() {
       return true
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
-        window.alert("Impossible d'activer ce dossier dans son statut actuel.")
+        window.alert(m.bo_dossier_activate_status_error())
       } else {
-        window.alert("Échec de l'activation. Réessayez.")
+        window.alert(m.bo_dossier_activate_failed())
       }
       return false
     } finally {
@@ -769,9 +770,9 @@ function DossierDetailPage() {
         .catch(() => {})
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
-        window.alert('Cette pièce ne peut pas être modifiée (dossier non instructible).')
+        window.alert(m.bo_dossier_piece_not_modifiable())
       } else {
-        window.alert("Échec de l'upload. Réessayez.")
+        window.alert(m.bo_dossier_upload_failed())
       }
     } finally {
       if (reqId === requestIdRef.current) setRemplacementPieceId(null)
@@ -797,9 +798,9 @@ function DossierDetailPage() {
       return true
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
-        window.alert('Une pièce de ce type existe déjà sur ce dossier — utilisez "Remplacer".')
+        window.alert(m.bo_dossier_piece_exists_use_replace())
       } else {
-        window.alert("Échec de l'upload. Réessayez.")
+        window.alert(m.bo_dossier_upload_failed())
       }
       return false
     }
@@ -829,9 +830,9 @@ function DossierDetailPage() {
       <ModalConfirmation
         open={confirmRejet}
         loading={actionLoading}
-        title="Rejeter le dossier ?"
-        message="Le dossier passera en statut « Rejeté ». Cette action est irréversible."
-        confirmLabel="Confirmer le rejet"
+        title={m.bo_dossier_confirm_reject_title()}
+        message={m.bo_dossier_confirm_reject_message()}
+        confirmLabel={m.bo_dossier_confirm_reject_button()}
         kind="danger"
         onConfirm={() => void confirmerRejet()}
         onCancel={() => setConfirmRejet(false)}
@@ -853,7 +854,7 @@ function DossierDetailPage() {
               onClick={() => navigate({ to: '/backoffice/dashboard' })}
               className="text-sm text-gray-400 hover:text-gray-600"
             >
-              ← Retour
+              {m.bo_dossier_back()}
             </button>
             <h1 className="font-heading text-xl font-semibold text-gray-900">
               {dossier ? dossier.numeroDossier : `Dossier #${id}`}
@@ -877,7 +878,7 @@ function DossierDetailPage() {
 
         {loadingDetail && (
           <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-400">
-            Chargement…
+            {m.common_loading_short()}
           </div>
         )}
 
@@ -886,28 +887,28 @@ function DossierDetailPage() {
             {/* Informations dossier */}
             <section className="rounded-2xl border border-gray-200 bg-white p-6">
               <h2 className="mb-4 font-heading text-base font-semibold text-gray-800">
-                Informations du dossier
+                {m.bo_dossier_section_info()}
               </h2>
               <dl className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
                 <div>
-                  <dt className="text-gray-500">Abonnement</dt>
+                  <dt className="text-gray-500">{m.bo_dossier_info_subscription()}</dt>
                   <dd className="font-medium text-gray-900">{dossier.typeAbonnement.libelle}</dd>
                 </div>
                 <div>
-                  <dt className="text-gray-500">Montant</dt>
+                  <dt className="text-gray-500">{m.bo_dossier_info_amount()}</dt>
                   <dd className="font-medium text-gray-900">
                     {dossier.montantTotal.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-gray-500">Date de création</dt>
+                  <dt className="text-gray-500">{m.bo_dossier_info_creation_date()}</dt>
                   <dd className="font-medium text-gray-900">
                     {new Date(dossier.dateCreation).toLocaleDateString('fr-FR')}
                   </dd>
                 </div>
                 {dossier.dateDebutDroits && (
                   <div>
-                    <dt className="text-gray-500">Début des droits</dt>
+                    <dt className="text-gray-500">{m.bo_dossier_info_rights_start()}</dt>
                     <dd className="font-medium text-gray-900">
                       {new Date(dossier.dateDebutDroits).toLocaleDateString('fr-FR')}
                     </dd>
@@ -915,7 +916,7 @@ function DossierDetailPage() {
                 )}
                 {dossier.dateFinDroits && (
                   <div>
-                    <dt className="text-gray-500">Fin des droits</dt>
+                    <dt className="text-gray-500">{m.bo_dossier_info_rights_end()}</dt>
                     <dd className="font-medium text-gray-900">
                       {new Date(dossier.dateFinDroits).toLocaleDateString('fr-FR')}
                     </dd>
@@ -927,20 +928,20 @@ function DossierDetailPage() {
             {/* Porteur + Payeur */}
             <div className="grid grid-cols-2 gap-6">
               {[
-                { label: 'Porteur du dossier', personne: dossier.titulaire },
-                { label: 'Payeur', personne: dossier.payeur },
+                { label: m.bo_dossier_info_holder(), personne: dossier.titulaire },
+                { label: m.bo_dossier_info_payer(), personne: dossier.payeur },
               ].map(({ label, personne }) => (
                 <section key={label} className="rounded-2xl border border-gray-200 bg-white p-6">
                   <h2 className="mb-3 font-heading text-base font-semibold text-gray-800">{label}</h2>
                   <dl className="space-y-2 text-sm">
                     <div>
-                      <dt className="text-gray-500">Nom</dt>
+                      <dt className="text-gray-500">{m.bo_dossier_info_name()}</dt>
                       <dd className="font-medium text-gray-900">
                         {personne.prenom} {personne.nom}
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-gray-500">Email</dt>
+                      <dt className="text-gray-500">{m.bo_dossier_info_email()}</dt>
                       <dd className="font-medium text-gray-900">{personne.email}</dd>
                     </div>
                   </dl>
@@ -952,7 +953,7 @@ function DossierDetailPage() {
             <section className="rounded-2xl border border-gray-200 bg-white p-6">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <h2 className="font-heading text-base font-semibold text-gray-800">
-                  Pièces justificatives
+                  {m.bo_dossier_section_pieces()}
                 </h2>
                 {(dossier.statut.code === 'EN_VERIFICATION' || dossier.statut.code === 'INCOMPLET') && (() => {
                   // Toutes les pieces attendues deja deposees -> rien a ajouter.
@@ -964,17 +965,17 @@ function DossierDetailPage() {
                       type="button"
                       onClick={() => setAjoutOuvert(true)}
                       disabled={actionLoading || toutesDeposees}
-                      title={toutesDeposees ? 'Toutes les pièces attendues sont déjà déposées.' : undefined}
+                      title={toutesDeposees ? m.bo_dossier_all_uploaded_tooltip() : undefined}
                       className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <Plus size={14} aria-hidden="true" />
-                      Ajouter une pièce
+                      {m.bo_dossier_add_piece_button()}
                     </button>
                   )
                 })()}
               </div>
               {dossier.pieces.length === 0 ? (
-                <p className="text-sm text-gray-400">Aucune pièce déposée.</p>
+                <p className="text-sm text-gray-400">{m.bo_dossier_no_pieces()}</p>
               ) : (
                 <ul className="space-y-3">
                   {dossier.pieces.map((piece) => (
@@ -986,15 +987,26 @@ function DossierDetailPage() {
                         <span
                           className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUT_PIECE_STYLES[piece.statutValidation]}`}
                         >
-                          {STATUT_PIECE_LABELS[piece.statutValidation]}
+                          {statutPieceLabels()[piece.statutValidation]}
                         </span>
                         <div>
-                          <p className="text-sm font-medium text-gray-900">{piece.libelleTypePiece}</p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-sm font-medium text-gray-900">{piece.libelleTypePiece}</p>
+                            {piece.verifieParIA && piece.statutValidation !== 'rejetee' && (
+                              <span
+                                title={m.pieces_ia_verified_tooltip()}
+                                className="inline-flex items-center gap-1 rounded-full bg-secondary-light/20 px-2 py-0.5 text-xs font-medium text-secondary"
+                              >
+                                <Sparkles size={12} aria-hidden="true" />
+                                {m.pieces_ia_verified_badge()}
+                              </span>
+                            )}
+                          </div>
                           {piece.motifRejet && (
-                            <p className="text-xs text-red-600">Motif : {piece.motifRejet}</p>
+                            <p className="text-xs text-red-600">{m.bo_dossier_motif_label()} {piece.motifRejet}</p>
                           )}
                           <p className="text-xs text-gray-400">
-                            Déposé le {new Date(piece.dateDepot).toLocaleDateString('fr-FR')}
+                            {m.bo_dossier_submitted_on()} {new Date(piece.dateDepot).toLocaleDateString('fr-FR')}
                           </p>
                         </div>
                       </div>
@@ -1009,11 +1021,11 @@ function DossierDetailPage() {
                         <button
                           type="button"
                           onClick={() => setPieceExamen(piece)}
-                          aria-label={`Examiner ${piece.libelleTypePiece}`}
+                          aria-label={m.bo_dossier_examine_aria({ label: piece.libelleTypePiece })}
                           className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100"
                         >
                           <Eye size={14} aria-hidden="true" />
-                          Examiner
+                          {m.bo_dossier_examine_button()}
                         </button>
                       </div>
                     </li>
@@ -1027,17 +1039,17 @@ function DossierDetailPage() {
 
         {/* Historique */}
         <section className="rounded-2xl border border-gray-200 bg-white p-6">
-          <h2 className="mb-4 font-heading text-base font-semibold text-gray-800">Historique</h2>
+          <h2 className="mb-4 font-heading text-base font-semibold text-gray-800">{m.bo_dossier_section_history()}</h2>
           {loadingHistorique && (
-            <p className="text-sm text-gray-400">Chargement de l'historique…</p>
+            <p className="text-sm text-gray-400">{m.bo_dossier_history_loading()}</p>
           )}
           {!loadingHistorique && historique?.length === 0 && (
-            <p className="text-sm text-gray-400">Aucune entrée dans l'historique.</p>
+            <p className="text-sm text-gray-400">{m.bo_dossier_no_history()}</p>
           )}
           {!loadingHistorique && historique && historique.length > 0 && (
             <ol>
               {historique.map((entree, index, arr) => {
-                const meta = TYPE_ACTION_LABELS[entree.typeAction] ?? {
+                const meta = typeActionLabels()[entree.typeAction] ?? {
                   label: entree.typeAction,
                   color: 'bg-gray-100 text-gray-700',
                   dot: 'bg-gray-400',
