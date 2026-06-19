@@ -4,7 +4,6 @@ import { CalendarClock, Crosshair, LocateFixed, LogOut, MapPin, Menu, Search } f
 import { CartePointsDeVente } from '~/components/CartePointsDeVente'
 import { PriseRdvModal } from '~/components/PriseRdvModal'
 import { UserSidebar } from '~/components/UserSidebar'
-import { LanguageSwitcher } from '~/components/LanguageSwitcher'
 import { isAuthenticated, logout, me, type MeResponse } from '~/lib/auth'
 import { m } from '~/paraglide/messages'
 import {
@@ -128,27 +127,21 @@ function PointsDeVentePage() {
 
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Header app */}
-        <header className="flex h-16 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-3 sm:px-6">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setSidebarOuverte(true)}
-              aria-label={m.common_open_menu()}
-              className="flex h-9 w-9 items-center justify-center rounded-full text-gray-700 transition hover:bg-blue-pale focus:outline-none focus:ring-2 focus:ring-primary/30 lg:hidden"
-            >
-              <Menu size={18} aria-hidden="true" />
-            </button>
-            <h1 className="font-heading text-lg font-semibold text-gray-900">{m.pdv_title()}</h1>
-          </div>
+        <header className="flex h-16 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 lg:justify-end lg:px-6">
+          <button
+            type="button"
+            onClick={() => setSidebarOuverte(true)}
+            aria-label={m.common_open_menu()}
+            className="flex h-9 w-9 items-center justify-center rounded-xl text-gray-700 hover:bg-blue-pale lg:hidden"
+          >
+            <Menu size={20} aria-hidden="true" />
+          </button>
 
-          <div className="flex items-center gap-3">
-            <div className="hidden lg:block">
-              <LanguageSwitcher />
-            </div>
+          <div className="hidden items-center gap-3 lg:flex">
             {authentifie ? (
               <>
                 {prenom && (
-                  <div className="hidden items-center gap-2 lg:flex">
+                  <div className="flex items-center gap-2">
                     <div
                       aria-hidden="true"
                       className="flex h-8 w-8 items-center justify-center rounded-full bg-focus text-sm font-semibold text-white"
@@ -170,12 +163,17 @@ function PointsDeVentePage() {
                 </button>
               </>
             ) : (
-              <Link
-                to="/login"
-                className="rounded-xl bg-focus px-4 py-2 text-sm font-semibold text-white transition hover:bg-focus/90"
-              >
-                {m.pdv_login_cta()}
-              </Link>
+              <>
+                <Link to="/login" className="text-sm font-medium text-gray-600 transition hover:text-primary">
+                  {m.auth_sign_in()}
+                </Link>
+                <Link
+                  to="/register"
+                  className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-focus"
+                >
+                  {m.home_signup_cta()}
+                </Link>
+              </>
             )}
           </div>
         </header>

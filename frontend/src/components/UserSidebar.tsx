@@ -112,11 +112,9 @@ export function UserSidebar({ isOpen, onClose }: UserSidebarProps) {
           </div>
         )}
 
-        {isMobileDrawer && (
-          <div className="mt-4 lg:hidden">
-            <LanguageSwitcher />
-          </div>
-        )}
+        <div className="mt-4">
+          <LanguageSwitcher />
+        </div>
 
         <div className="mt-4 rounded-2xl bg-blue-pale p-4">
           <div className="mb-1 flex items-center gap-2">

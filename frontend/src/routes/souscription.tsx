@@ -2,7 +2,6 @@ import { createFileRoute, Outlet, useNavigate } from '@tanstack/react-router'
 import { LogOut, Menu } from 'lucide-react'
 import * as React from 'react'
 import { UserSidebar } from '~/components/UserSidebar'
-import { LanguageSwitcher } from '~/components/LanguageSwitcher'
 import { isAuthenticated, logout, me, type MeResponse } from '~/lib/auth'
 import { m } from '~/paraglide/messages'
 
@@ -50,7 +49,6 @@ function SouscriptionLayout() {
 
           <div className="flex items-center gap-4">
             <div className="hidden lg:flex lg:items-center lg:gap-4">
-              <LanguageSwitcher />
               {utilisateur && (
                 <div className="flex items-center gap-2">
                   <div
