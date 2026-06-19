@@ -15,10 +15,17 @@ function SouscriptionLayout() {
   const [sidebarOuverte, setSidebarOuverte] = React.useState(false)
 
   React.useEffect(() => {
-    if (isAuthenticated()) {
-      me().then(setUtilisateur).catch(() => {})
+    // Garde d'auth sur tout /souscription/* : sans utilisateur le backend
+    // refuse la creation du dossier (401). Bouclier supplementaire en plus
+    // des checks inline sur les CTA d'entree (home modal / resultat wizard) :
+    // couvre aussi les acces directs par URL ou deep links externes. Le
+    // check ne tourne que cote client (isAuthenticated lit localStorage).
+    if (!isAuthenticated()) {
+      navigate({ to: '/login' })
+      return
     }
-  }, [])
+    me().then(setUtilisateur).catch(() => {})
+  }, [navigate])
 
   function onLogout() {
     logout()

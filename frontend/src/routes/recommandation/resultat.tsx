@@ -12,8 +12,11 @@ import { useAppDispatch, useAppSelector } from '~/store/hooks'
 import { abonnementSauvegarde, abonnementSelectionne, dossierBackendDefini } from '~/store/wizardSlice'
 
 // Erreur d'enregistrement du brouillon : distingue "pas connecte" (lien vers
-// /login) des autres erreurs (message brut de l'API ou reseau).
-type ErreurSauvegarde = { type: 'non-authentifie' } | { type: 'autre'; message: string }
+// /login) des autres erreurs (message brut de l'API ou reseau). Le champ
+// {@code action} sert a choisir un libelle adapte (m'abonner vs sauvegarder).
+type ErreurSauvegarde =
+  | { type: 'non-authentifie'; action: 'subscribe' | 'save' }
+  | { type: 'autre'; message: string }
 
 export const Route = createFileRoute('/recommandation/resultat')({
   component: ResultatStep,
@@ -53,9 +56,21 @@ function ResultatStep() {
     (item) => item.abonnement.id !== selectionne.abonnement.id,
   )
 
+  function onSouscrire() {
+    if (!isAuthenticated()) {
+      // Bloque la suite tant que pas connecte : sans utilisateur le backend
+      // refuserait la creation du dossier (401) et le wizard partirait dans
+      // un etat incoherent. Le wizard Redux survit a la navigation client
+      // donc le retour de /login a /souscription/detail conserve les choix.
+      setErreur({ type: 'non-authentifie', action: 'subscribe' })
+      return
+    }
+    navigate({ to: '/souscription/detail' })
+  }
+
   async function sauvegarderEtQuitter() {
     if (!isAuthenticated()) {
-      setErreur({ type: 'non-authentifie' })
+      setErreur({ type: 'non-authentifie', action: 'save' })
       return
     }
     setErreur(null)
@@ -73,7 +88,7 @@ function ResultatStep() {
       navigate({ to: '/dashboard' })
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
-        setErreur({ type: 'non-authentifie' })
+        setErreur({ type: 'non-authentifie', action: 'save' })
       } else if (err instanceof ApiError) {
         setErreur({ type: 'autre', message: err.message })
       } else {
@@ -160,7 +175,7 @@ function ResultatStep() {
         <div className="rounded-lg bg-danger-light/15 border border-danger-light/40 px-3 py-2 text-sm text-danger">
           {erreur.type === 'non-authentifie' ? (
             <>
-              {m.wizard_not_connected_save()}{' '}
+              {erreur.action === 'subscribe' ? m.wizard_not_connected_pay() : m.wizard_not_connected_save()}{' '}
               <Link to="/login" className="font-medium underline">
                 {m.wizard_not_connected_login()}
               </Link>
@@ -172,7 +187,7 @@ function ResultatStep() {
       ) : null}
 
       <div className="flex flex-col gap-3">
-        <Button onClick={() => navigate({ to: '/souscription/detail' })}>
+        <Button onClick={onSouscrire}>
           {m.wizard_resultat_subscribe()}
         </Button>
         <Button variant="ghost" onClick={sauvegarderEtQuitter} disabled={envoiEnCours}>

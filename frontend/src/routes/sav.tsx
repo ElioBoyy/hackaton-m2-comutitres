@@ -565,6 +565,11 @@ function SectionFaqCard({ section }: { section: SectionFaq }) {
 
 function SavPage() {
   const [authentifie, setAuthentifie] = useState(false)
+  // authResolu : passe a true des qu'on sait si l'utilisateur est connecte ou
+  // non (et, si connecte, des que me() a repondu). Permet de couper le
+  // skeleton de la sidebar pour les visiteurs non connectes — sinon il
+  // resterait actif a vie puisque me() ne tournerait jamais.
+  const [authResolu, setAuthResolu] = useState(false)
   const [userName, setUserName] = useState('')
   const [activeTab, setActiveTab] = useState<'faq' | 'demandes'>('faq')
 
@@ -586,6 +591,9 @@ function SavPage() {
       me()
         .then((u) => setUserName(`${u.prenom} ${u.nom}`))
         .catch(() => {})
+        .finally(() => setAuthResolu(true))
+    } else {
+      setAuthResolu(true)
     }
   }, [])
 
@@ -675,7 +683,7 @@ function SavPage() {
   ).length
 
   return (
-    <DashboardLayout title={m.sav_page_title()} userName={userName} alertes={[]} loading={!userName}>
+    <DashboardLayout title={m.sav_page_title()} userName={userName} alertes={[]} loading={!authResolu}>
       <div className="mx-auto flex max-w-4xl flex-col gap-6">
 
         {/* Bandeau numéro de téléphone */}

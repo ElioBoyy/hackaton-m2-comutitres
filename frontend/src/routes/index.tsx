@@ -102,8 +102,15 @@ function AbonnementModal({ abo, categoryHex, modalColor, onClose }: { abo: TypeA
   const bg = cardBgFor(abo.code, categoryHex)
   const badgeText = badgeTextFor(bg)
   const titleColor = modalColor ?? bg
+  // Bloque le clic "Demande" si pas connecte : sinon le user entre dans le
+  // tunnel /souscription et le creerDossier final pete sur un 401.
+  const [nonAuthentifie, setNonAuthentifie] = useState(false)
 
   function handleDemande() {
+    if (!isAuthenticated()) {
+      setNonAuthentifie(true)
+      return
+    }
     onClose()
     void navigate({ to: '/souscription/detail', search: { code: abo.code } })
   }
@@ -155,7 +162,15 @@ function AbonnementModal({ abo, categoryHex, modalColor, onClose }: { abo: TypeA
               {(() => { const { value, suffix } = formatPrixParts(abo); return <><span className="font-heading text-2xl font-bold" style={{ color: titleColor }}>{value}</span>{suffix && <span className="text-base font-semibold text-dark">{suffix}</span>}</> })()}
             </div>
           </div>
-          <div className="mt-4">
+          <div className="mt-4 flex flex-col gap-3">
+            {nonAuthentifie && (
+              <div className="rounded-lg bg-danger-light/15 border border-danger-light/40 px-3 py-2 text-sm text-danger">
+                {m.wizard_not_connected_pay()}{' '}
+                <Link to="/login" className="font-medium underline">
+                  {m.wizard_not_connected_login()}
+                </Link>
+              </div>
+            )}
             <button
               type="button"
               onClick={handleDemande}
