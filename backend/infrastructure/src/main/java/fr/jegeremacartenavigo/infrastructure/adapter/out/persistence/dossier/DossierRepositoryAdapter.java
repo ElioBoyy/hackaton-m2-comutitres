@@ -445,7 +445,8 @@ public class DossierRepositoryAdapter implements DossierRepository {
                 .filter(p -> p.getDossier().getIdDossier().equals(idDossier))
                 .orElseThrow(() -> new PieceIntrouvableException(idPiece));
 
-        // Reset complet : la piece redevient un nouveau depot a examiner.
+        // Reset complet : la piece redevient un nouveau depot a examiner. Le
+        // flag IA est aussi reset : le nouveau contenu n'a pas ete vu par l'IA.
         piece.setCheminFichier(cheminFichier);
         piece.setDateDepot(LocalDateTime.now());
         piece.setStatutValidation(PieceJustificative.StatutValidation.en_attente);
@@ -453,6 +454,7 @@ public class DossierRepositoryAdapter implements DossierRepository {
         piece.setDateValidation(null);
         piece.setMotifRejet(null);
         piece.setModifieParAgent(parAgent);
+        piece.setVerifieParIA(false);
         pieceJpa.save(piece);
 
         enregistrerHistoriqueDepot(dossier, idAuteur, parAgent,
@@ -527,6 +529,26 @@ public class DossierRepositoryAdapter implements DossierRepository {
                         + (dateFinDroits != null ? " au " + dateFinDroits : " (sans terme)") + ".");
     }
 
+    @Override
+    @Transactional
+    public void marquerPreVerifieParIA(Integer idDossier, Integer idUtilisateur) {
+        Dossier dossier = dossierJpa.findById(idDossier)
+                .orElseThrow(() -> new DossierIntrouvableException(idDossier));
+        if (!dossier.getUtilisateurPorteur().getIdUtilisateur().equals(idUtilisateur)) {
+            throw new IllegalStateException("Seul le porteur du dossier peut lancer la pre-verification IA.");
+        }
+        // Marque toutes les pieces non rejetees comme pre-verifiees. Les pieces
+        // rejetees gardent leur flag intact (et ne sont pas re-verifiees tant
+        // qu'elles n'ont pas ete remplacees).
+        List<PieceJustificative> pieces = pieceJpa.findByDossier_IdDossierOrderByDateDepotDesc(idDossier);
+        for (PieceJustificative piece : pieces) {
+            if (piece.getStatutValidation() == PieceJustificative.StatutValidation.rejetee) continue;
+            if (piece.isVerifieParIA()) continue;
+            piece.setVerifieParIA(true);
+            pieceJpa.save(piece);
+        }
+    }
+
     private static LocalDate calculerDateFinDroits(TypeAbonnement.Periodicite periodicite, LocalDate debut) {
         if (periodicite == null) return null;
         return switch (periodicite) {
@@ -564,7 +586,8 @@ public class DossierRepositoryAdapter implements DossierRepository {
                 p.getStatutValidation().name(),
                 p.getDateDepot(),
                 p.getMotifRejet(),
-                p.isModifieParAgent()
+                p.isModifieParAgent(),
+                p.isVerifieParIA()
         );
     }
 

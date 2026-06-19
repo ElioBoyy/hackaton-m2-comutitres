@@ -57,6 +57,8 @@ export interface PieceJustificative {
   cheminFichier: string | null
   /** True si un agent a depose ou remplace ce fichier depuis le backoffice. */
   modifieParAgent: boolean
+  /** True si la piece a ete pre-verifiee par l'IA (reset au remplacement). */
+  verifieParIA: boolean
 }
 
 export interface PieceRequise {
@@ -95,6 +97,10 @@ export function fetchDossierDetail(id: number): Promise<DossierDetail> {
 
 export function resilierDossier(id: number): Promise<StatutMisAJour> {
   return apiFetch<StatutMisAJour>(`/dossiers/${id}/resilier`, { method: 'POST' })
+}
+
+export function lancerPreVerificationIA(id: number): Promise<DossierDetail> {
+  return apiFetch<DossierDetail>(`/dossiers/${id}/pre-verification-ia`, { method: 'POST' })
 }
 
 export function soumettreEnVerification(id: number, pieces: PieceADeposer[]): Promise<StatutMisAJour> {

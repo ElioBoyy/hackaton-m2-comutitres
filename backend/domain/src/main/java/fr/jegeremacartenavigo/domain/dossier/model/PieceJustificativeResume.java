@@ -21,6 +21,7 @@ public record PieceJustificativeResume(
         String statutValidation,
         LocalDateTime dateDepot,
         String motifRejet,
-        boolean modifieParAgent
+        boolean modifieParAgent,
+        boolean verifieParIA
 ) {
 }

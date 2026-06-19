@@ -19,6 +19,8 @@ export interface PieceJustificative {
   motifRejet: string | null
   /** True si un agent a depose ou remplace ce fichier depuis le backoffice. */
   modifieParAgent: boolean
+  /** True si la piece a ete pre-verifiee par l'IA (reset au remplacement). */
+  verifieParIA: boolean
 }
 
 export interface PieceRequise {
