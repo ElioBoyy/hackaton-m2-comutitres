@@ -1,24 +1,21 @@
 import { useState, type ReactNode } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { Bell, LogOut, Menu } from 'lucide-react'
+import { LogOut, Menu } from 'lucide-react'
 import { logout } from '~/lib/auth'
 import { UserSidebar } from '~/components/UserSidebar'
 import { LanguageSwitcher } from '~/components/LanguageSwitcher'
 import { m } from '~/paraglide/messages'
-import type { AlerteDashboard } from '~/lib/dashboard'
-
 interface DashboardLayoutProps {
   title: string
   userName: string
-  alertes: AlerteDashboard[]
+  alertes?: unknown[]
   children: ReactNode
 }
 
-export function DashboardLayout({ title, userName, alertes, children }: DashboardLayoutProps) {
+export function DashboardLayout({ title, userName, children }: DashboardLayoutProps) {
   const navigate = useNavigate()
   const [sidebarOuverte, setSidebarOuverte] = useState(false)
   const initiale = userName.charAt(0).toUpperCase()
-  const hasAlertes = alertes.length > 0
   const prenom = userName.split(' ')[0]
 
   function onLogout() {
@@ -59,21 +56,6 @@ export function DashboardLayout({ title, userName, alertes, children }: Dashboar
                 </span>
               </div>
             </div>
-
-            <button
-              type="button"
-              aria-label={
-                hasAlertes
-                  ? `${m.dashboard_notifications()} (${alertes.length})`
-                  : m.dashboard_notifications()
-              }
-              className="relative flex h-9 w-9 items-center justify-center rounded-full text-gray-700 transition hover:bg-blue-pale focus:outline-none focus:ring-2 focus:ring-primary/30"
-            >
-              <Bell size={18} aria-hidden="true" />
-              {hasAlertes && (
-                <span className="absolute right-1 top-1 flex h-2 w-2 rounded-full bg-danger" aria-hidden="true" />
-              )}
-            </button>
 
             <button
               type="button"
