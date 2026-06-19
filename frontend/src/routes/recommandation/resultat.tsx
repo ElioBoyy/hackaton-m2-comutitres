@@ -160,7 +160,7 @@ function ResultatStep() {
         <div className="flex items-start gap-3 border-2 border-dashed border-success p-4 text-sm">
           <PiggyBank className="h-6 w-6 shrink-0 text-success" strokeWidth={1.75} />
           <div>
-            <p className="font-mono font-semibold text-success">
+            <p className="font-semibold text-success">
               {m.wizard_resultat_savings({ amount: economieAnnuelleEuros.toFixed(0) })}
             </p>
             <p className="text-gray-700">{m.wizard_resultat_savings_vs()}</p>
