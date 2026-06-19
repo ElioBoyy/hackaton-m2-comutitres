@@ -13,6 +13,14 @@ import type {
   HistoriqueEntree,
   PieceJustificative,
 } from '~/lib/types/dossier'
+import type {
+  GroupeStatutReclamation,
+  ReclamationCounts,
+  ReclamationDetailDto,
+  ReclamationListDto,
+  ReclamationResumeDto,
+} from '~/lib/types/reclamation'
+import type { CategorieReclamation, Reclamation, StatutReclamation } from '~/lib/sav'
 
 const API_URL: string = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
 
@@ -329,5 +337,134 @@ export interface TypeAbonnement {
 
 export function getAbonnements(): Promise<TypeAbonnement[]> {
   return apiFetch('/referentiel/abonnements')
+}
+
+// ─── Reclamations (SAV) ───────────────────────────────────────────────────
+
+// Le statut fin du backend (7 valeurs) est regroupe cote API en 4 groupes ;
+// la vue client n'expose que ces 4 etats.
+const STATUT_CLIENT_PAR_GROUPE: Record<GroupeStatutReclamation, StatutReclamation> = {
+  ouvert: 'OUVERT',
+  en_cours: 'EN_COURS',
+  resolu: 'RESOLU',
+  ferme: 'FERME',
+}
+
+function reclamationDepuisResume(dto: ReclamationResumeDto): Reclamation {
+  return {
+    id: String(dto.id),
+    reference: dto.reference,
+    categorie: dto.codeCategorie as CategorieReclamation,
+    objet: dto.objet,
+    dateCreation: dto.dateCreation,
+    dateMiseAJour: dto.dateMiseAJour,
+    statut: STATUT_CLIENT_PAR_GROUPE[dto.groupeStatut],
+    messages: [],
+  }
+}
+
+function reclamationDepuisDetail(dto: ReclamationDetailDto): Reclamation {
+  return {
+    ...reclamationDepuisResume(dto),
+    messages: dto.messages.map((msg, i) => ({
+      id: `${dto.id}-${i}`,
+      auteur: msg.auteur,
+      contenu: msg.contenu,
+      date: msg.date,
+    })),
+  }
+}
+
+/** Suivi client : reclamations de l'utilisateur connecte (sans le fil de messages). */
+export async function getMesReclamations(): Promise<Reclamation[]> {
+  const data = await apiFetch<ReclamationListDto>('/reclamations/mes')
+  return data.reclamations.map(reclamationDepuisResume)
+}
+
+/** Detail client (avec le fil de messages), restreint au proprietaire cote backend. */
+export async function getReclamation(id: number | string): Promise<Reclamation> {
+  const dto = await apiFetch<ReclamationDetailDto>(`/reclamations/${id}`)
+  return reclamationDepuisDetail(dto)
+}
+
+export async function creerReclamation(input: {
+  codeCategorie: string
+  objet: string
+  description: string
+}): Promise<Reclamation> {
+  const dto = await apiFetch<ReclamationDetailDto>('/reclamations', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+  return reclamationDepuisDetail(dto)
+}
+
+export async function repondreReclamation(id: number | string, contenu: string): Promise<Reclamation> {
+  const dto = await apiFetch<ReclamationDetailDto>(`/reclamations/${id}/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ contenu }),
+  })
+  return reclamationDepuisDetail(dto)
+}
+
+// — Backoffice (agents) : DTO bruts, statut fin conserve —
+
+export interface GetReclamationsParams {
+  statut?: GroupeStatutReclamation
+  nomClient?: string
+  reference?: string
+  page?: number
+  pageSize?: number
+}
+
+export function getReclamations(params: GetReclamationsParams = {}): Promise<ReclamationListDto> {
+  const query = new URLSearchParams()
+  if (params.statut) query.set('statut', params.statut)
+  if (params.nomClient) query.set('nomClient', params.nomClient)
+  if (params.reference) query.set('reference', params.reference)
+  if (params.page !== undefined) query.set('page', String(params.page))
+  if (params.pageSize !== undefined) query.set('pageSize', String(params.pageSize))
+  const qs = query.toString()
+  return apiFetch(`/reclamations${qs ? `?${qs}` : ''}`)
+}
+
+export function getReclamationCounts(
+  params: { nomClient?: string; reference?: string } = {},
+): Promise<ReclamationCounts> {
+  const query = new URLSearchParams()
+  if (params.nomClient) query.set('nomClient', params.nomClient)
+  if (params.reference) query.set('reference', params.reference)
+  const qs = query.toString()
+  return apiFetch(`/reclamations/counts${qs ? `?${qs}` : ''}`)
+}
+
+export function getReclamationDetail(id: number | string): Promise<ReclamationDetailDto> {
+  return apiFetch(`/reclamations/${id}`)
+}
+
+export function repondreReclamationAgent(
+  id: number | string,
+  contenu: string,
+): Promise<ReclamationDetailDto> {
+  return apiFetch(`/reclamations/${id}/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ contenu }),
+  })
+}
+
+/** Change le statut (valeur fine : ouvert, en_cours, en_attente_*, resolu, ferme, reouvert). */
+export function changerStatutReclamation(
+  id: number | string,
+  statut: string,
+): Promise<ReclamationDetailDto> {
+  return apiFetch(`/reclamations/${id}/statut`, {
+    method: 'PATCH',
+    body: JSON.stringify({ statut }),
+  })
+}
+
+/** Assigne la reclamation a l'agent connecte. */
+export function assignerReclamation(id: number | string): Promise<ReclamationDetailDto> {
+  return apiFetch(`/reclamations/${id}/assigner`, { method: 'POST' })
 }
 
