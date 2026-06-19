@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import {
   Baby,
@@ -53,6 +53,8 @@ interface SectionFaq {
   icon: typeof Train
   couleurBg: string
   couleurIcone: string
+  couleurCercleHex?: string
+  imageUrl?: string
   questions: SousQuestion[]
 }
 
@@ -63,8 +65,9 @@ function buildFaqSections(): SectionFaq[] { return [
     id: 'trouver',
     titre: m.sav_faq_section_trouver(),
     icon: Train,
-    couleurBg: 'bg-[#f5f8fe]',
+    couleurBg: 'bg-faq-trouver',
     couleurIcone: 'text-primary',
+    imageUrl: '/train-banner.png',
     questions: [
       {
         question: 'Je ne sais pas quel abonnement choisir',
@@ -145,8 +148,9 @@ function buildFaqSections(): SectionFaq[] { return [
     id: 'justificatifs',
     titre: m.sav_faq_section_justificatifs(),
     icon: FileCheck,
-    couleurBg: 'bg-[#f2faf5]',
+    couleurBg: 'bg-faq-justificatif',
     couleurIcone: 'text-success',
+    imageUrl: '/justificatif-banner.png',
     questions: [
       {
         question: 'Pourquoi dois-je fournir un justificatif ?',
@@ -214,8 +218,9 @@ function buildFaqSections(): SectionFaq[] { return [
     id: 'paiement',
     titre: m.sav_faq_section_paiement(),
     icon: Wallet,
-    couleurBg: 'bg-[#f8f7fe]',
+    couleurBg: 'bg-faq-paiement',
     couleurIcone: 'text-purple-600',
+    imageUrl: '/paiement-banner.png',
     questions: [
       {
         question: 'Quand mon abonnement arrive-t-il à échéance ?',
@@ -271,8 +276,9 @@ function buildFaqSections(): SectionFaq[] { return [
     id: 'arrivant',
     titre: m.sav_faq_section_arrivant(),
     icon: Globe,
-    couleurBg: 'bg-[#fcfaef]',
+    couleurBg: 'bg-faq-arrivant',
     couleurIcone: 'text-amber-600',
+    imageUrl: '/arrivant-banner.png',
     questions: [
       {
         question: "Je viens d'arriver en Île-de-France, par où commencer ?",
@@ -330,8 +336,9 @@ function buildFaqSections(): SectionFaq[] { return [
     id: 'accessibilite',
     titre: m.sav_faq_section_accessibilite(),
     icon: Heart,
-    couleurBg: 'bg-[#fdf6f6]',
+    couleurBg: 'bg-faq-accessibilite',
     couleurIcone: 'text-orange-600',
+    imageUrl: '/accessibilite-banner.png',
     questions: [
       {
         question: 'Existe-t-il des aides pour les personnes en situation de handicap ?',
@@ -392,8 +399,9 @@ function buildFaqSections(): SectionFaq[] { return [
     id: 'proche',
     titre: m.sav_faq_section_proche(),
     icon: Users,
-    couleurBg: 'bg-[#f5f8fe]',
+    couleurBg: 'bg-faq-trouver',
     couleurIcone: 'text-primary',
+    imageUrl: '/proche-banner.png',
     questions: [
       {
         question: 'Puis-je souscrire un abonnement pour mon enfant ?',
@@ -503,18 +511,25 @@ function SectionFaqCard({ section }: { section: SectionFaq }) {
       <button
         type="button"
         onClick={() => setOuvert((v) => !v)}
-        className="flex w-full items-center justify-between gap-4 p-5 text-left transition-colors hover:brightness-95"
+        className="relative flex w-full items-center justify-between gap-4 overflow-hidden p-5 text-left"
         aria-expanded={ouvert}
       >
+        {section.imageUrl && (
+          <img
+            src={section.imageUrl}
+            alt=""
+            className="pointer-events-none absolute right-14 top-0 hidden h-full w-56 object-cover object-center sm:block"
+          />
+        )}
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/60">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white shadow-sm">
             <Icon size={20} className={section.couleurIcone} aria-hidden="true" />
           </div>
           <span className="font-heading text-base font-semibold text-dark">{section.titre}</span>
         </div>
         <ChevronDown
           size={18}
-          className={`shrink-0 text-gray-400 transition-transform duration-200 ${ouvert ? 'rotate-180' : ''}`}
+          className={`relative shrink-0 text-gray-400 transition-transform duration-200 ${ouvert ? 'rotate-180' : ''}`}
           aria-hidden="true"
         />
       </button>
@@ -549,7 +564,7 @@ function SectionFaqCard({ section }: { section: SectionFaq }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 function SavPage() {
-  const navigate = useNavigate()
+  const [authentifie, setAuthentifie] = useState(false)
   const [userName, setUserName] = useState('')
   const [activeTab, setActiveTab] = useState<'faq' | 'demandes'>('faq')
 
@@ -566,14 +581,13 @@ function SavPage() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!isAuthenticated()) {
-      navigate({ to: '/login' })
-      return
+    if (isAuthenticated()) {
+      setAuthentifie(true)
+      me()
+        .then((u) => setUserName(`${u.prenom} ${u.nom}`))
+        .catch(() => {})
     }
-    me()
-      .then((u) => setUserName(`${u.prenom} ${u.nom}`))
-      .catch(() => {})
-  }, [navigate])
+  }, [])
 
   function handleToggleForm() {
     if (showForm) {
@@ -667,8 +681,8 @@ function SavPage() {
         {/* Bandeau numéro de téléphone */}
         <ContactBanner />
 
-        {/* Onglets */}
-        <div
+        {/* Onglets — uniquement si connecté */}
+        {authentifie && <div
           role="tablist"
           aria-label={m.sav_tabs_aria()}
           className="flex gap-1 rounded-2xl border border-gray-200 bg-white p-1"
@@ -689,34 +703,36 @@ function SavPage() {
             <HelpCircle size={15} aria-hidden="true" />
             {m.sav_tab_faq()}
           </button>
-          <button
-            role="tab"
-            aria-selected={activeTab === 'demandes'}
-            aria-controls="tab-panel-demandes"
-            id="tab-demandes"
-            type="button"
-            onClick={() => setActiveTab('demandes')}
-            className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-primary/30 ${
-              activeTab === 'demandes'
-                ? 'bg-primary text-white shadow-sm'
-                : 'text-gray-700 hover:bg-blue-pale'
-            }`}
-          >
-            <MessageSquare size={15} aria-hidden="true" />
-            {m.sav_tab_demandes()}
-            {openTickets > 0 && (
-              <span
-                className={`rounded-full px-1.5 py-0.5 text-xs font-semibold ${
-                  activeTab === 'demandes'
-                    ? 'bg-white/20 text-white'
-                    : 'bg-primary/10 text-primary'
-                }`}
-              >
-                {openTickets}
-              </span>
-            )}
-          </button>
-        </div>
+          {authentifie && (
+            <button
+              role="tab"
+              aria-selected={activeTab === 'demandes'}
+              aria-controls="tab-panel-demandes"
+              id="tab-demandes"
+              type="button"
+              onClick={() => setActiveTab('demandes')}
+              className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-primary/30 ${
+                activeTab === 'demandes'
+                  ? 'bg-primary text-white shadow-sm'
+                  : 'text-gray-700 hover:bg-blue-pale'
+              }`}
+            >
+              <MessageSquare size={15} aria-hidden="true" />
+              {m.sav_tab_demandes()}
+              {openTickets > 0 && (
+                <span
+                  className={`rounded-full px-1.5 py-0.5 text-xs font-semibold ${
+                    activeTab === 'demandes'
+                      ? 'bg-white/20 text-white'
+                      : 'bg-primary/10 text-primary'
+                  }`}
+                >
+                  {openTickets}
+                </span>
+              )}
+            </button>
+          )}
+        </div>}
 
         {/* Panneau FAQ */}
         {activeTab === 'faq' && (

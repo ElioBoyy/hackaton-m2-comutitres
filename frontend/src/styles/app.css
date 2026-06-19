@@ -24,8 +24,10 @@
   --color-focus: #0050aa; /* Bleu focus */
   --color-dark: #25303b; /* Anthracite */
   --color-blue-pale: #f5f9ff; /* Bleu clair */
+  --color-faq-trouver: #f5f8fe;
   --color-faq-justificatif: #e8f7f2;
   --color-faq-paiement: #efebfc;
+  --color-faq-arrivant: #fcfaef;
   --color-faq-accessibilite: #faefed;
   --color-blue-soft: #deeeff; /* Bleu moyen */
 
