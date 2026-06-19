@@ -9,6 +9,12 @@ interface DocumentPreviewModalProps {
   /** Titre affiche dans l'en-tete de la modale (ex: libelle du type de piece). */
   titre: string
   onClose: () => void
+  /**
+   * Si true, la visionneuse est positionnee en absolute dans son conteneur
+   * (le <main> de DashboardLayout) plutot qu'en fixed sur tout l'ecran.
+   * Le conteneur doit avoir position: relative.
+   */
+  inline?: boolean
 }
 
 /**
@@ -21,7 +27,7 @@ interface DocumentPreviewModalProps {
  * les autres types. Le blob URL est revoque au demontage pour eviter les
  * fuites memoire.
  */
-export function DocumentPreviewModal({ cheminFichier, titre, onClose }: DocumentPreviewModalProps) {
+export function DocumentPreviewModal({ cheminFichier, titre, onClose, inline }: DocumentPreviewModalProps) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null)
   const [contentType, setContentType] = useState<string>('')
   const [erreur, setErreur] = useState<string | null>(null)
@@ -66,7 +72,7 @@ export function DocumentPreviewModal({ cheminFichier, titre, onClose }: Document
 
   return (
     <div
-      className="fixed inset-0 z-[1100] flex flex-col bg-black/80"
+      className={`${inline ? 'absolute inset-0 z-10' : 'fixed inset-0 z-[1100]'} flex flex-col bg-black/80`}
       role="dialog"
       aria-modal="true"
       aria-label={titre}
