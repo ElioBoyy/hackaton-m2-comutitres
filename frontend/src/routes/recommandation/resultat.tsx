@@ -7,6 +7,7 @@ import { ApiError } from '~/lib/api'
 import { isAuthenticated } from '~/lib/auth'
 import { construirePayloadDossier, creerDossier } from '~/lib/dossier'
 import { calculerRecommandation, selectionnerAbonnement } from '~/domain/recommendation'
+import { useCatalogueAbonnements } from '~/domain/useCatalogueAbonnements'
 import { m } from '~/paraglide/messages'
 import { useAppDispatch, useAppSelector } from '~/store/hooks'
 import { abonnementSauvegarde, abonnementSelectionne, dossierBackendDefini } from '~/store/wizardSlice'
@@ -29,21 +30,39 @@ function ResultatStep() {
   const [envoiEnCours, setEnvoiEnCours] = React.useState(false)
   const [erreur, setErreur] = React.useState<ErreurSauvegarde | null>(null)
 
+  // Catalogue reel charge depuis /referentiel/abonnements. null tant que le
+  // fetch n'a pas resolu : on attend avant de calculer pour eviter d'afficher
+  // les prix du catalogue statique puis de les voir changer.
+  const catalogue = useCatalogueAbonnements()
+
   const resultat = React.useMemo(() => {
     if (!wizard.situation || !wizard.frequenceDeplacement) return null
-    return calculerRecommandation({
-      situation: wizard.situation,
-      frequenceDeplacement: wizard.frequenceDeplacement,
-      residence: wizard.residence,
-    })
-  }, [wizard])
+    if (!catalogue) return null
+    return calculerRecommandation(
+      {
+        situation: wizard.situation,
+        frequenceDeplacement: wizard.frequenceDeplacement,
+        residence: wizard.residence,
+      },
+      catalogue,
+    )
+  }, [wizard, catalogue])
 
+  // Distinguer "wizard incomplet" (besoin de reprendre les questions) du
+  // simple "catalogue encore en train de charger" : sans ca, l'utilisateur
+  // verrait brievement le CTA "reprendre le questionnaire" pendant le
+  // fetch reseau.
   if (!resultat) {
+    const wizardIncomplet = !wizard.situation || !wizard.frequenceDeplacement
     return (
       <main className="mx-auto flex max-w-2xl flex-col gap-4 py-12 text-center">
-        <Button onClick={() => navigate({ to: '/recommandation/pour-qui' })}>
-          {m.wizard_resume_questionnaire()}
-        </Button>
+        {wizardIncomplet ? (
+          <Button onClick={() => navigate({ to: '/recommandation/pour-qui' })}>
+            {m.wizard_resume_questionnaire()}
+          </Button>
+        ) : (
+          <p className="text-sm text-gray-500" aria-live="polite">{m.common_loading_short()}</p>
+        )}
       </main>
     )
   }
