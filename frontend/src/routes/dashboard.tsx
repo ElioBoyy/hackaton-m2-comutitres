@@ -6,24 +6,60 @@ import { fetchDashboard, FiltreDossiers, type DashboardResponse } from '~/lib/da
 import { DashboardLayout } from '~/components/DashboardLayout'
 import { DossierCard } from '~/components/DossierCard'
 import { DossierCardSkeleton } from '~/components/DossierCardSkeleton'
+import { Pagination } from '~/components/backoffice/Pagination'
 import { m } from '~/paraglide/messages'
+
+const PAGE_SIZE = 10
 
 export const Route = createFileRoute('/dashboard')({
   component: DashboardPage,
 })
 
-const TABS: { label: string; filtre: FiltreDossiers; empty: string }[] = [
-  { label: 'Actifs',   filtre: FiltreDossiers.ACTIVE,   empty: "Aucun abonnement n'est actuellement actif." },
-  { label: 'En cours', filtre: FiltreDossiers.EN_COURS, empty: 'Aucune demande en cours de traitement.' },
-  { label: 'Fermés',   filtre: FiltreDossiers.FERME,    empty: "Aucun abonnement n'a été résilié ou refusé." },
-]
+type TabFiltre = 'ACTIVE' | 'EN_COURS' | 'FERME' | 'TOUS'
+type AllData = Record<TabFiltre, DashboardResponse>
+
+type Tab = { label: () => string; filtre: TabFiltre; empty: () => string }
+
+function buildTabs(): Tab[] {
+  return [
+    { label: m.dashboard_filter_active,   filtre: 'ACTIVE',   empty: m.dashboard_no_active },
+    { label: m.dashboard_filter_en_cours, filtre: 'EN_COURS', empty: m.dashboard_no_en_cours },
+    { label: m.dashboard_filter_ferme,    filtre: 'FERME',    empty: m.dashboard_no_ferme },
+    { label: m.dashboard_filter_all,      filtre: 'TOUS',     empty: m.dashboard_no_tous },
+  ]
+}
+
+const TABS = buildTabs()
+
+const VALID_TABS = new Set<string>(TABS.map((t) => t.filtre))
+const STORAGE_KEY = 'dashboard_tab'
+
+function savedTab(): TabFiltre {
+  try {
+    const v = sessionStorage.getItem(STORAGE_KEY)
+    return v && VALID_TABS.has(v) ? (v as TabFiltre) : 'ACTIVE'
+  } catch {
+    return 'ACTIVE'
+  }
+}
+
+function saveTab(tab: TabFiltre) {
+  try { sessionStorage.setItem(STORAGE_KEY, tab) } catch { /* ignore */ }
+}
 
 function DashboardPage() {
   const navigate = useNavigate()
-  const [data, setData] = useState<DashboardResponse | null>(null)
+  const [allData, setAllData] = useState<AllData | null>(null)
+  const [filtre, setFiltre] = useState<TabFiltre>(savedTab())
+  const [page, setPage] = useState(1)
   const [error, setError] = useState<string | null>(null)
-  const [filtre, setFiltre] = useState<FiltreDossiers>(FiltreDossiers.ACTIVE)
   const [loading, setLoading] = useState(true)
+
+  function changeFiltre(next: TabFiltre) {
+    setFiltre(next)
+    setPage(1)
+    saveTab(next)
+  }
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -32,8 +68,37 @@ function DashboardPage() {
     }
     let cancelled = false
     setLoading(true)
-    fetchDashboard(filtre)
-      .then((d) => { if (!cancelled) { setData(d); setError(null) } })
+    Promise.all([
+      fetchDashboard(FiltreDossiers.ACTIVE),
+      fetchDashboard(FiltreDossiers.EN_COURS),
+      fetchDashboard(FiltreDossiers.FERME),
+      fetchDashboard(FiltreDossiers.ALL),
+    ])
+      .then(([active, enCours, ferme, tous]) => {
+        if (cancelled) return
+        // Trier TOUS par date de création décroissante
+        tous.dossiers.sort(
+          (a, b) => new Date(b.dateCreation).getTime() - new Date(a.dateCreation).getTime()
+        )
+        const results: AllData = {
+          ACTIVE: active,
+          EN_COURS: enCours,
+          FERME: ferme,
+          TOUS: tous,
+        }
+        setAllData(results)
+        setError(null)
+        // Garder le tab sauvegardé s'il a des données ; sinon aller sur le premier non vide
+        const current = savedTab()
+        if (results[current].dossiers.length > 0) {
+          setFiltre(current)
+        } else {
+          const firstNonEmpty = TABS.find((t) => results[t.filtre].dossiers.length > 0)
+          const next = firstNonEmpty ? firstNonEmpty.filtre : 'ACTIVE'
+          setFiltre(next)
+          saveTab(next)
+        }
+      })
       .catch((err) => {
         if (cancelled) return
         if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
@@ -49,25 +114,7 @@ function DashboardPage() {
       })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
-  }, [navigate, filtre])
-
-  /* Premier chargement : on n'a pas encore de données ni de layout → skeleton pleine page */
-  if (!data && loading) {
-    return (
-      <div className="flex min-h-screen bg-gray-100">
-        {/* sidebar placeholder */}
-        <div className="hidden w-64 shrink-0 md:block" />
-        <div className="flex flex-1 flex-col">
-          <div className="h-16 border-b border-gray-200 bg-white" />
-          <main className="flex-1 p-6">
-            <div className="mx-auto flex max-w-4xl flex-col gap-5" aria-busy="true" aria-label={m.dashboard_loading()}>
-              {[1, 2].map((i) => <DossierCardSkeleton key={i} />)}
-            </div>
-          </main>
-        </div>
-      </div>
-    )
-  }
+  }, [navigate])
 
   if (error) {
     return (
@@ -77,33 +124,46 @@ function DashboardPage() {
     )
   }
 
-  if (!data) return null
-
-  const { prenom, nom } = data.utilisateur
-  const userName = `${prenom} ${nom}`
+  const currentData = allData?.[filtre]
+  const userName = currentData ? `${currentData.utilisateur.prenom} ${currentData.utilisateur.nom}` : ''
   const activeTab = TABS.find((t) => t.filtre === filtre)!
+  const allDossiers = currentData?.dossiers ?? []
+  const totalDossiers = allDossiers.length
+  const pageDossiers = allDossiers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   return (
-    <DashboardLayout title={m.dashboard_title()} userName={userName} alertes={data.alertes}>
+    <DashboardLayout
+      title={m.dashboard_title()}
+      userName={userName}
+      alertes={currentData?.alertes ?? []}
+      loading={loading}
+    >
       <div className="mx-auto flex max-w-4xl flex-col">
 
-        {/* Tabs — toujours visibles */}
-        <div className="flex border-b border-gray-200" role="tablist" aria-label={m.dashboard_title()}>
+        {/* Tabs — toujours visibles, meme en loading (pas de "empty" state
+            tant qu'on ne connait pas les counts). */}
+        <div className="flex flex-wrap border-b border-gray-200" role="tablist" aria-label={m.dashboard_title()}>
           {TABS.map((tab) => {
             const active = filtre === tab.filtre
+            const empty = !loading && allData ? allData[tab.filtre].dossiers.length === 0 : false
             return (
               <button
                 key={tab.filtre}
                 type="button"
                 role="tab"
                 aria-selected={active}
-                onClick={() => setFiltre(tab.filtre)}
-                className={`relative px-6 py-3 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-primary/30 ${
-                  active ? 'text-primary' : 'text-gray-500 hover:text-gray-700'
+                disabled={empty}
+                onClick={() => !empty && changeFiltre(tab.filtre)}
+                className={`relative px-5 py-3 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
+                  empty
+                    ? 'cursor-not-allowed text-gray-300'
+                    : active
+                      ? 'text-primary'
+                      : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                {tab.label}
-                {active && (
+                {tab.label()}
+                {active && !empty && (
                   <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-primary" />
                 )}
               </button>
@@ -111,16 +171,31 @@ function DashboardPage() {
           })}
         </div>
 
-        <div className="mt-5 flex flex-col gap-5" role="tabpanel" aria-label={activeTab.label}>
-          {loading && [1, 2].map((i) => <DossierCardSkeleton key={i} />)}
-
-          {!loading && data.dossiers.length === 0 && (
-            <p className="text-sm text-gray-500">{activeTab.empty}</p>
+        <div
+          className="mt-5 flex flex-col gap-5"
+          role="tabpanel"
+          aria-label={activeTab.label()}
+          aria-busy={loading || undefined}
+        >
+          {loading ? (
+            [1, 2].map((i) => <DossierCardSkeleton key={i} />)
+          ) : totalDossiers === 0 ? (
+            <p className="text-sm text-gray-500">{activeTab.empty()}</p>
+          ) : (
+            <>
+              {pageDossiers.map((d) => (
+                <DossierCard key={d.idDossier} dossier={d} />
+              ))}
+              {totalDossiers > PAGE_SIZE && (
+                <Pagination
+                  page={page}
+                  pageSize={PAGE_SIZE}
+                  total={totalDossiers}
+                  onPageChange={setPage}
+                />
+              )}
+            </>
           )}
-
-          {!loading && data.dossiers.map((d) => (
-            <DossierCard key={d.idDossier} dossier={d} />
-          ))}
         </div>
       </div>
     </DashboardLayout>

@@ -82,6 +82,17 @@
             <version>8.5.17</version>
         </dependency>
 
+        <!--
+          SDK Resend pour l'envoi de notifications email (changement de statut
+          dossier). API HTTP wrappee, signe d'auth Bearer via la cle API.
+          Cf. ResendNotificateurDossierAdapter.
+        -->
+        <dependency>
+            <groupId>com.resend</groupId>
+            <artifactId>resend-java</artifactId>
+            <version>4.13.0</version>
+        </dependency>
+
         <!-- Reduit le boilerplate getters/setters des entites JPA (anemiques par nature). -->
         <dependency>
             <groupId>org.projectlombok</groupId>

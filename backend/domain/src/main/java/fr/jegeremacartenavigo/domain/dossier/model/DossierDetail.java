@@ -23,6 +23,10 @@ public record DossierDetail(
         LocalDate dateDebutDroits,
         LocalDate dateFinDroits,
         BigDecimal montantTotal,
-        List<PieceJustificativeResume> pieces
+        /** Nom complet du beneficiaire quand la demande est pour un TIERS.
+         *  Null si demandePour=MOI (le titulaire est alors l'utilisateur connecte). */
+        String beneficiaireNomComplet,
+        List<PieceJustificativeResume> pieces,
+        List<PieceRequiseResume> piecesRequises
 ) {
 }

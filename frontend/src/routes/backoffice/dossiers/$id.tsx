@@ -1,24 +1,25 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { Check, Eye, X } from 'lucide-react'
+import { Check, Eye, Plus, RefreshCw, Sparkles, Upload, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { BackofficeLayout } from '~/components/backoffice/BackofficeLayout'
 import { StatusBadge } from '~/components/backoffice/StatusBadge'
-import { ApiError, changerStatutDossier, getDossierDetail, getDossierHistorique, validerPiece } from '~/lib/api'
+import { activerDossier, ajouterPiece, ApiError, changerStatutDossier, getDossierDetail, getDossierHistorique, remplacerFichierPiece, validerPiece } from '~/lib/api'
 import { agentMe } from '~/lib/agentAuth'
 import { isAuthenticated, logout } from '~/lib/auth'
 import { recupererContenu } from '~/lib/fichier'
+import { m } from '~/paraglide/messages'
 import type { DossierDetail, HistoriqueEntree, PieceJustificative } from '~/lib/types/dossier'
 
 export const Route = createFileRoute('/backoffice/dossiers/$id')({
   component: DossierDetailPage,
 })
 
-const MOTIFS_REJET = [
-  'Document illisible',
-  'Document expiré',
-  'Mauvais document fourni',
-  'Document tronqué ou incomplet',
-  'Nom ne correspond pas au dossier',
+const motifsRejet = () => [
+  m.bo_dossier_reject_reason_illegible(),
+  m.bo_dossier_reject_reason_expired(),
+  m.bo_dossier_reject_reason_wrong(),
+  m.bo_dossier_reject_reason_truncated(),
+  m.bo_dossier_reject_reason_name_mismatch(),
 ]
 
 /**
@@ -28,23 +29,25 @@ const MOTIFS_REJET = [
  * - icon  : Component lucide affiche au centre du point pour les actions
  *           cles (validation/rejet). null = simple point colore.
  */
-const TYPE_ACTION_LABELS: Record<string, {
+type TypeActionMeta = {
   label: string
   color: string
   dot: string
   icon: typeof Check | null
-}> = {
-  changement_statut:               { label: 'Changement de statut',  color: 'bg-blue-100 text-blue-700',     dot: 'bg-blue-500',   icon: null },
-  depot_piece:                     { label: 'Dépôt de pièce',        color: 'bg-gray-100 text-gray-700',     dot: 'bg-gray-400',   icon: null },
-  validation_piece:                { label: 'Pièce validée',         color: 'bg-green-100 text-green-700',   dot: 'bg-green-500',  icon: Check },
-  rejet_piece:                     { label: 'Pièce rejetée',         color: 'bg-red-100 text-red-700',       dot: 'bg-red-500',    icon: X },
-  paiement_enregistre:             { label: 'Paiement enregistré',   color: 'bg-purple-100 text-purple-700', dot: 'bg-purple-500', icon: null },
-  remboursement_traite:            { label: 'Remboursement traité',  color: 'bg-orange-100 text-orange-700', dot: 'bg-orange-500', icon: null },
-  modification_information:        { label: 'Modification',          color: 'bg-yellow-100 text-yellow-700', dot: 'bg-yellow-500', icon: null },
-  commentaire_ajoute:              { label: 'Commentaire',           color: 'bg-gray-100 text-gray-700',     dot: 'bg-gray-400',   icon: null },
-  action_pour_compte_utilisateur:  { label: 'Action pour compte',    color: 'bg-indigo-100 text-indigo-700', dot: 'bg-indigo-500', icon: null },
-  notification_envoyee:            { label: 'Notification envoyée',  color: 'bg-teal-100 text-teal-700',     dot: 'bg-teal-500',   icon: null },
 }
+
+const typeActionLabels = (): Record<string, TypeActionMeta> => ({
+  changement_statut:               { label: m.bo_dossier_action_status_change(),    color: 'bg-blue-100 text-blue-700',     dot: 'bg-blue-500',   icon: null },
+  depot_piece:                     { label: m.bo_dossier_action_depot_piece(),      color: 'bg-gray-100 text-gray-700',     dot: 'bg-gray-400',   icon: null },
+  validation_piece:                { label: m.bo_dossier_action_piece_validee(),    color: 'bg-green-100 text-green-700',   dot: 'bg-green-500',  icon: Check },
+  rejet_piece:                     { label: m.bo_dossier_action_piece_rejetee(),    color: 'bg-red-100 text-red-700',       dot: 'bg-red-500',    icon: X },
+  paiement_enregistre:             { label: m.bo_dossier_action_paiement(),         color: 'bg-purple-100 text-purple-700', dot: 'bg-purple-500', icon: null },
+  remboursement_traite:            { label: m.bo_dossier_action_remboursement(),    color: 'bg-orange-100 text-orange-700', dot: 'bg-orange-500', icon: null },
+  modification_information:        { label: m.bo_dossier_action_modification(),     color: 'bg-yellow-100 text-yellow-700', dot: 'bg-yellow-500', icon: null },
+  commentaire_ajoute:              { label: m.bo_dossier_action_commentaire(),      color: 'bg-gray-100 text-gray-700',     dot: 'bg-gray-400',   icon: null },
+  action_pour_compte_utilisateur:  { label: m.bo_dossier_action_pour_compte(),      color: 'bg-indigo-100 text-indigo-700', dot: 'bg-indigo-500', icon: null },
+  notification_envoyee:            { label: m.bo_dossier_action_notification(),     color: 'bg-teal-100 text-teal-700',     dot: 'bg-teal-500',   icon: null },
+})
 
 const STATUT_PIECE_STYLES: Record<string, string> = {
   en_attente: 'bg-yellow-100 text-yellow-700',
@@ -52,11 +55,11 @@ const STATUT_PIECE_STYLES: Record<string, string> = {
   rejetee: 'bg-red-100 text-red-700',
 }
 
-const STATUT_PIECE_LABELS: Record<string, string> = {
-  en_attente: 'En attente',
-  validee: 'Validée',
-  rejetee: 'Rejetée',
-}
+const statutPieceLabels = (): Record<string, string> => ({
+  en_attente: m.bo_dossier_piece_status_en_attente(),
+  validee: m.bo_dossier_piece_status_validee(),
+  rejetee: m.bo_dossier_piece_status_rejetee(),
+})
 
 /**
  * Modale plein ecran : visionneuse a gauche, panneau de validation a droite.
@@ -95,7 +98,7 @@ function ModalPieceExamen({
 
   useEffect(() => {
     if (!piece.cheminFichier) {
-      setErreurViewer('Cette pièce ne pointe vers aucun fichier.')
+      setErreurViewer(m.bo_dossier_modal_no_file_path())
       return
     }
     let revokeUrl: string | null = null
@@ -111,7 +114,7 @@ function ModalPieceExamen({
         setContentType(contentType)
       })
       .catch(() => {
-        if (!cancelled) setErreurViewer("Impossible d'ouvrir cette pièce.")
+        if (!cancelled) setErreurViewer(m.bo_dossier_modal_cannot_open())
       })
     return () => {
       cancelled = true
@@ -129,7 +132,7 @@ function ModalPieceExamen({
         <button
           type="button"
           onClick={onClose}
-          aria-label="Fermer la visionneuse"
+          aria-label={m.bo_dossier_modal_close_viewer()}
           className="flex h-9 w-9 items-center justify-center rounded-full text-gray-300 transition hover:bg-gray-700 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/30"
         >
           <X size={18} aria-hidden="true" />
@@ -142,7 +145,7 @@ function ModalPieceExamen({
           {erreurViewer ? (
             <p role="alert" className="text-sm text-red-300">{erreurViewer}</p>
           ) : !blobUrl ? (
-            <p className="text-sm text-gray-300" aria-live="polite">Chargement…</p>
+            <p className="text-sm text-gray-300" aria-live="polite">{m.common_loading_short()}</p>
           ) : estPdf ? (
             <iframe
               src={blobUrl}
@@ -161,7 +164,7 @@ function ModalPieceExamen({
               download
               className="rounded-xl bg-white px-4 py-2 text-sm font-medium text-gray-900 hover:bg-gray-100"
             >
-              Télécharger ({contentType || 'fichier'})
+              {contentType ? m.bo_dossier_modal_download({ type: contentType }) : m.bo_dossier_modal_download_fallback()}
             </a>
           )}
         </div>
@@ -169,16 +172,16 @@ function ModalPieceExamen({
         {/* Panneau d'action */}
         <aside className="flex w-80 shrink-0 flex-col overflow-y-auto border-l border-gray-200 bg-white">
           <div className="border-b border-gray-200 p-4">
-            <p className="mb-2 text-xs uppercase tracking-wide text-gray-500">Statut</p>
+            <p className="mb-2 text-xs uppercase tracking-wide text-gray-500">{m.bo_dossier_modal_status_label()}</p>
             <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUT_PIECE_STYLES[piece.statutValidation]}`}>
-              {STATUT_PIECE_LABELS[piece.statutValidation]}
+              {statutPieceLabels()[piece.statutValidation]}
             </span>
             <p className="mt-3 text-xs text-gray-500">
-              Déposé le {new Date(piece.dateDepot).toLocaleDateString('fr-FR')}
+              {m.bo_dossier_submitted_on()} {new Date(piece.dateDepot).toLocaleDateString('fr-FR')}
             </p>
             {piece.motifRejet && (
               <p className="mt-3 rounded-lg bg-red-50 p-2 text-xs text-red-700">
-                <strong>Motif de rejet :</strong> {piece.motifRejet}
+                <strong>{m.bo_dossier_modal_motif_rejet_label()}</strong> {piece.motifRejet}
               </p>
             )}
           </div>
@@ -186,7 +189,7 @@ function ModalPieceExamen({
           {traitee ? (
             <div className="p-4">
               <p className="text-xs text-gray-500">
-                Cette pièce a déjà été traitée. Aucune action supplémentaire n'est disponible.
+                {m.bo_dossier_modal_already_processed()}
               </p>
             </div>
           ) : etape === 'idle' ? (
@@ -197,7 +200,7 @@ function ModalPieceExamen({
                 disabled={loading}
                 className="rounded-xl bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-40"
               >
-                Valider la pièce
+                {m.bo_dossier_modal_validate_button()}
               </button>
               <button
                 type="button"
@@ -205,24 +208,24 @@ function ModalPieceExamen({
                 disabled={loading}
                 className="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-40"
               >
-                Rejeter la pièce
+                {m.bo_dossier_modal_reject_button()}
               </button>
             </div>
           ) : (
             <div className="flex flex-col gap-3 p-4">
-              <p className="text-xs uppercase tracking-wide text-gray-500">Motif de rejet</p>
+              <p className="text-xs uppercase tracking-wide text-gray-500">{m.bo_dossier_modal_motif_rejet_title()}</p>
               <div className="space-y-2">
-                {MOTIFS_REJET.map((m) => (
-                  <label key={m} className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+                {motifsRejet().map((mot) => (
+                  <label key={mot} className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
                     <input
                       type="radio"
                       name="motif"
-                      value={m}
-                      checked={motif === m}
-                      onChange={() => setMotif(m)}
+                      value={mot}
+                      checked={motif === mot}
+                      onChange={() => setMotif(mot)}
                       className="accent-red-600"
                     />
-                    {m}
+                    {mot}
                   </label>
                 ))}
                 <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
@@ -234,13 +237,13 @@ function ModalPieceExamen({
                     onChange={() => setMotif('autre')}
                     className="accent-red-600"
                   />
-                  Autre
+                  {m.bo_dossier_reject_reason_other()}
                 </label>
               </div>
               {motif === 'autre' && (
                 <textarea
                   className="w-full rounded-lg border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
-                  placeholder="Précisez le motif..."
+                  placeholder={m.bo_dossier_modal_specify_reason_placeholder()}
                   rows={3}
                   value={motifCustom}
                   onChange={(e) => setMotifCustom(e.target.value)}
@@ -253,7 +256,7 @@ function ModalPieceExamen({
                   disabled={loading}
                   className="flex-1 rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40"
                 >
-                  Annuler
+                  {m.common_cancel()}
                 </button>
                 <button
                   type="button"
@@ -261,7 +264,7 @@ function ModalPieceExamen({
                   disabled={!motifFinal || loading}
                   className="flex-1 rounded-xl bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-40"
                 >
-                  Confirmer
+                  {m.common_confirm()}
                 </button>
               </div>
             </div>
@@ -313,7 +316,7 @@ function ModalConfirmation({
             disabled={loading}
             className="flex-1 cursor-pointer rounded-xl border border-gray-300 px-4 py-2 text-sm text-gray-600 transition hover:bg-gray-50 disabled:opacity-40"
           >
-            Annuler
+            {m.common_cancel()}
           </button>
           <button
             type="button"
@@ -334,34 +337,292 @@ function ModalConfirmation({
  * que toutes les pieces ne sont pas validees ; la modale de confirmation qui
  * suit le clic explique l'effet, donc pas de tooltip ici (cf. discussion).
  */
+/**
+ * Modale d'activation d'un dossier VALIDE. L'agent choisit la date de debut
+ * des droits (defaut = aujourd'hui). La date de fin est calculee cote backend
+ * selon la periodicite du type d'abonnement et n'apparait que pour info.
+ */
+function ModalActiverAbonnement({
+  open,
+  dossier,
+  loading,
+  onClose,
+  onSubmit,
+}: {
+  open: boolean
+  dossier: DossierDetail | null
+  loading: boolean
+  onClose: () => void
+  onSubmit: (dateDebutDroits: string) => Promise<boolean>
+}) {
+  const aujourdHui = new Date().toISOString().slice(0, 10)
+  const [dateDebut, setDateDebut] = useState(aujourdHui)
+  const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (!open) {
+      setDateDebut(aujourdHui)
+      setSubmitting(false)
+    }
+    // aujourdHui change a chaque render mais on n'en a pas besoin comme dep -
+    // on veut juste reset a chaque ouverture/fermeture de la modale.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
+
+  if (!open || !dossier) return null
+
+  async function handleSubmit() {
+    if (!dateDebut) return
+    setSubmitting(true)
+    const ok = await onSubmit(dateDebut)
+    setSubmitting(false)
+    if (ok) onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+        <h2 className="mb-1 font-heading text-lg font-semibold text-gray-900">
+          {m.bo_dossier_modal_activate_title()}
+        </h2>
+        <p className="mb-5 text-sm text-gray-600">
+          {m.bo_dossier_modal_activate_description()} ({dossier.typeAbonnement.libelle}).
+        </p>
+
+        <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+          {m.bo_dossier_modal_rights_start_label()}
+        </label>
+        <input
+          type="date"
+          value={dateDebut}
+          onChange={(e) => setDateDebut(e.target.value)}
+          className="mb-5 w-full cursor-pointer rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+        />
+
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting || loading}
+            className="flex-1 cursor-pointer rounded-xl border border-gray-300 px-4 py-2 text-sm text-gray-600 transition hover:bg-gray-50 disabled:opacity-40"
+          >
+            {m.common_cancel()}
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleSubmit()}
+            disabled={!dateDebut || submitting || loading}
+            className="flex-1 cursor-pointer rounded-xl bg-green-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
+          >
+            {submitting ? m.bo_dossier_modal_activating() : m.bo_dossier_modal_activate_short()}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Boutons globaux du header. Le set change selon le statut du dossier :
+ *  - EN_VERIFICATION / INCOMPLET → "Rejeter le dossier"
+ *    (la validation se fait pièce par pièce ; le dossier auto-passe à VALIDE
+ *     quand toutes les pièces sont validées).
+ *  - VALIDE → "Activer l'abonnement" (ouvre la modale date).
+ *  - autres statuts → rien (lecture seule).
+ */
 function DecisionsDossierActions({
   dossier,
   loading,
-  onAction,
+  onRejeter,
+  onActiver,
 }: {
   dossier: DossierDetail
   loading: boolean
-  onAction: (codeStatut: 'VALIDE' | 'REJETE') => void
+  onRejeter: () => void
+  onActiver: () => void
 }) {
-  const validationBloquee = dossier.pieces.some((p) => p.statutValidation !== 'validee')
-  return (
-    <div className="flex gap-2">
+  const codeStatut = dossier.statut.code
+  if (codeStatut === 'VALIDE') {
+    return (
       <button
         type="button"
-        onClick={() => onAction('REJETE')}
+        onClick={onActiver}
+        disabled={loading}
+        className="cursor-pointer rounded-xl bg-green-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
+      >
+        {m.bo_dossier_action_activate_subscription()}
+      </button>
+    )
+  }
+  if (codeStatut === 'EN_VERIFICATION' || codeStatut === 'INCOMPLET') {
+    return (
+      <button
+        type="button"
+        onClick={onRejeter}
         disabled={loading}
         className="cursor-pointer rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
       >
-        Rejeter le dossier
+        {m.bo_dossier_action_reject_dossier()}
       </button>
+    )
+  }
+  return null
+}
+
+/**
+ * Bouton "Remplacer" pour une pièce. Cache un input[type=file] et le declenche
+ * au clic sur le bouton visible. Au choix d'un fichier, appelle onUpload.
+ */
+function BoutonRemplacerPiece({
+  piece,
+  loading,
+  onUpload,
+}: {
+  piece: PieceJustificative
+  loading: boolean
+  onUpload: (file: File) => void
+}) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  return (
+    <>
+      <input
+        ref={inputRef}
+        type="file"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          if (file) onUpload(file)
+          if (inputRef.current) inputRef.current.value = '' // reset pour re-uploader le meme fichier
+        }}
+      />
       <button
         type="button"
-        onClick={() => onAction('VALIDE')}
-        disabled={loading || validationBloquee}
-        className="cursor-pointer rounded-xl bg-green-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
+        onClick={() => inputRef.current?.click()}
+        disabled={loading}
+        aria-label={m.bo_dossier_replace_aria({ label: piece.libelleTypePiece })}
+        className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-xs text-gray-600 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
       >
-        Valider le dossier
+        <RefreshCw size={14} className={loading ? 'animate-spin' : ''} aria-hidden="true" />
+        {loading ? m.common_send() : m.bo_dossier_replace_button()}
       </button>
+    </>
+  )
+}
+
+/**
+ * Modale d'ajout d'une pièce sur un dossier. Le sélecteur de types est filtré
+ * aux types attendus pour le type d'abonnement du dossier (cf. piecesRequises),
+ * en excluant ceux deja deposes pour eviter le 409 cote backend.
+ */
+function ModalAjouterPiece({
+  open,
+  dossier,
+  loading,
+  onClose,
+  onSubmit,
+}: {
+  open: boolean
+  dossier: DossierDetail | null
+  loading: boolean
+  onClose: () => void
+  onSubmit: (codeTypePiece: string, file: File) => Promise<boolean>
+}) {
+  const [codeTypePiece, setCodeTypePiece] = useState('')
+  const [file, setFile] = useState<File | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (!open) {
+      setCodeTypePiece('')
+      setFile(null)
+      setSubmitting(false)
+    }
+  }, [open])
+
+  if (!open || !dossier) return null
+
+  // Types deposes : on mappe par libelle (le DTO PieceJustificative n'expose
+  // pas le code), donc on exclut les requises dont le libelle match une piece.
+  const libellesDeposes = new Set(dossier.pieces.map((p) => p.libelleTypePiece))
+  const optionsDisponibles = dossier.piecesRequises.filter(
+    (r) => !libellesDeposes.has(r.libelleTypePiece),
+  )
+
+  async function handleSubmit() {
+    if (!codeTypePiece || !file) return
+    setSubmitting(true)
+    const ok = await onSubmit(codeTypePiece, file)
+    setSubmitting(false)
+    if (ok) onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+        <h2 className="mb-1 font-heading text-lg font-semibold text-gray-900">{m.bo_dossier_modal_add_title()}</h2>
+        <p className="mb-5 text-sm text-gray-500">
+          {m.bo_dossier_modal_add_description()}
+        </p>
+
+        {optionsDisponibles.length === 0 ? (
+          <p className="mb-4 rounded-lg bg-yellow-50 p-3 text-sm text-yellow-800">
+            {m.bo_dossier_modal_all_uploaded()}
+          </p>
+        ) : (
+          <>
+            <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-gray-500">
+              {m.bo_dossier_modal_doc_type_label()}
+            </label>
+            <select
+              value={codeTypePiece}
+              onChange={(e) => setCodeTypePiece(e.target.value)}
+              className="mb-4 w-full cursor-pointer rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            >
+              <option value="">{m.common_select_placeholder()}</option>
+              {optionsDisponibles.map((r) => (
+                <option key={r.codeTypePiece} value={r.codeTypePiece}>
+                  {r.libelleTypePiece}
+                  {r.obligatoire ? '' : m.dossier_piece_optional_suffix()}
+                </option>
+              ))}
+            </select>
+
+            <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-gray-500">
+              {m.bo_dossier_modal_add_file_label()}
+            </label>
+            <label className="mb-5 flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed border-gray-300 p-3 transition hover:border-primary-light">
+              <Upload size={18} className="shrink-0 text-primary" aria-hidden="true" />
+              <span className="flex-1 truncate text-sm text-gray-700">
+                {file ? file.name : m.common_choose_file()}
+              </span>
+              <input
+                type="file"
+                className="hidden"
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              />
+            </label>
+          </>
+        )}
+
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting || loading}
+            className="flex-1 cursor-pointer rounded-xl border border-gray-300 px-4 py-2 text-sm text-gray-600 transition hover:bg-gray-50 disabled:opacity-40"
+          >
+            {m.common_cancel()}
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleSubmit()}
+            disabled={!codeTypePiece || !file || submitting || loading}
+            className="flex-1 cursor-pointer rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-focus disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
+          >
+            {submitting ? m.common_send() : m.bo_dossier_modal_add_submit()}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -377,9 +638,15 @@ function DossierDetailPage() {
   const [loadingHistorique, setLoadingHistorique] = useState(true)
   const [pieceExamen, setPieceExamen] = useState<PieceJustificative | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
-  // Statut cible quand l'agent vient de cliquer "Valider/Rejeter le dossier" :
-  // ouvre la modale de confirmation. null = pas de demande en cours.
-  const [confirmStatut, setConfirmStatut] = useState<'VALIDE' | 'REJETE' | null>(null)
+  // Id de la piece en cours de remplacement (pour disabled + spinner sur ce
+  // seul bouton "Remplacer"). null = pas d'upload en cours.
+  const [remplacementPieceId, setRemplacementPieceId] = useState<number | null>(null)
+  // true = modale d'ajout de piece ouverte.
+  const [ajoutOuvert, setAjoutOuvert] = useState(false)
+  // true = modale "Confirmer le rejet" ouverte.
+  const [confirmRejet, setConfirmRejet] = useState(false)
+  // true = modale "Activer l'abonnement" ouverte (date picker).
+  const [activationOuverte, setActivationOuverte] = useState(false)
   // Compteur monotone pour invalider les setState issus de fetchs obsoletes.
   // Toute reponse arrivant avec un id != currentRef.current est ignoree.
   const requestIdRef = useRef(0)
@@ -427,13 +694,11 @@ function DossierDetailPage() {
           ? { ...prev, pieces: prev.pieces.map((p) => (p.id === updated.id ? updated : p)) }
           : prev,
       )
-      // Un rejet de piece peut auto-transitionner le dossier vers INCOMPLET
-      // cote backend : on rafraichit le detail pour reprendre le statut a jour.
-      if (!valider) {
-        getDossierDetail(id)
-          .then((detail) => { if (reqId === requestIdRef.current) setDossier(detail) })
-          .catch(() => {})
-      }
+      // Auto-transition cote backend possible : INCOMPLET (rejet) ou VALIDE (toutes
+      // pieces validees). On refetch systematiquement le detail pour synchroniser.
+      getDossierDetail(id)
+        .then((detail) => { if (reqId === requestIdRef.current) setDossier(detail) })
+        .catch(() => {})
       getDossierHistorique(id)
         .then((res) => { if (reqId === requestIdRef.current) setHistorique(res.historique) })
         .catch(() => {})
@@ -445,19 +710,12 @@ function DossierDetailPage() {
     }
   }
 
-  /** Ouvre la modale de confirmation. La requete HTTP n'est lancee qu'au confirm. */
-  function demanderChangementStatutDossier(codeStatut: 'VALIDE' | 'REJETE') {
+  async function confirmerRejet() {
     if (agentId === null) return
-    setConfirmStatut(codeStatut)
-  }
-
-  async function confirmerChangementStatutDossier() {
-    if (!confirmStatut || agentId === null) return
     const reqId = ++requestIdRef.current
-    const cible = confirmStatut
     setActionLoading(true)
     try {
-      const updated = await changerStatutDossier(id, cible)
+      const updated = await changerStatutDossier(id, 'REJETE')
       if (reqId !== requestIdRef.current) return
       setDossier(updated)
       getDossierHistorique(id)
@@ -466,8 +724,85 @@ function DossierDetailPage() {
     } finally {
       if (reqId === requestIdRef.current) {
         setActionLoading(false)
-        setConfirmStatut(null)
+        setConfirmRejet(false)
       }
+    }
+  }
+
+  async function confirmerActivation(dateDebutDroits: string): Promise<boolean> {
+    if (agentId === null) return false
+    const reqId = ++requestIdRef.current
+    setActionLoading(true)
+    try {
+      const updated = await activerDossier(id, dateDebutDroits)
+      if (reqId !== requestIdRef.current) return true
+      setDossier(updated)
+      getDossierHistorique(id)
+        .then((res) => { if (reqId === requestIdRef.current) setHistorique(res.historique) })
+        .catch(() => {})
+      return true
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        window.alert(m.bo_dossier_activate_status_error())
+      } else {
+        window.alert(m.bo_dossier_activate_failed())
+      }
+      return false
+    } finally {
+      if (reqId === requestIdRef.current) setActionLoading(false)
+    }
+  }
+
+  async function handleRemplacementFichier(piece: PieceJustificative, file: File) {
+    if (agentId === null) return
+    const reqId = ++requestIdRef.current
+    setRemplacementPieceId(piece.id)
+    try {
+      const updated = await remplacerFichierPiece(id, piece.id, file)
+      if (reqId !== requestIdRef.current) return
+      setDossier((prev) =>
+        prev
+          ? { ...prev, pieces: prev.pieces.map((p) => (p.id === updated.id ? updated : p)) }
+          : prev,
+      )
+      getDossierHistorique(id)
+        .then((res) => { if (reqId === requestIdRef.current) setHistorique(res.historique) })
+        .catch(() => {})
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        window.alert(m.bo_dossier_piece_not_modifiable())
+      } else {
+        window.alert(m.bo_dossier_upload_failed())
+      }
+    } finally {
+      if (reqId === requestIdRef.current) setRemplacementPieceId(null)
+    }
+  }
+
+  async function handleAjouterPiece(codeTypePiece: string, file: File): Promise<boolean> {
+    if (agentId === null) return false
+    const reqId = ++requestIdRef.current
+    try {
+      const piece = await ajouterPiece(id, file, codeTypePiece)
+      if (reqId !== requestIdRef.current) return false
+      // Refetch full detail : ajout d'une piece peut faire varier piecesRequises
+      // restantes (et avoir cree un nouvel objet à afficher en haut de la liste).
+      getDossierDetail(id)
+        .then((detail) => { if (reqId === requestIdRef.current) setDossier(detail) })
+        .catch(() => {})
+      getDossierHistorique(id)
+        .then((res) => { if (reqId === requestIdRef.current) setHistorique(res.historique) })
+        .catch(() => {})
+      // Patch optimiste en attendant le refetch.
+      setDossier((prev) => prev ? { ...prev, pieces: [piece, ...prev.pieces] } : prev)
+      return true
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        window.alert(m.bo_dossier_piece_exists_use_replace())
+      } else {
+        window.alert(m.bo_dossier_upload_failed())
+      }
+      return false
     }
   }
 
@@ -484,17 +819,31 @@ function DossierDetailPage() {
         />
       )}
 
-      <ModalConfirmation
-        open={confirmStatut !== null}
+      <ModalAjouterPiece
+        open={ajoutOuvert}
+        dossier={dossier}
         loading={actionLoading}
-        title={confirmStatut === 'VALIDE' ? 'Valider le dossier ?' : 'Rejeter le dossier ?'}
-        message={confirmStatut === 'VALIDE'
-          ? 'Le dossier passera en statut « Validé ».'
-          : 'Le dossier passera en statut « Rejeté ». Cette action est irréversible.'}
-        confirmLabel={confirmStatut === 'VALIDE' ? 'Confirmer la validation' : 'Confirmer le rejet'}
-        kind={confirmStatut === 'VALIDE' ? 'primary' : 'danger'}
-        onConfirm={() => void confirmerChangementStatutDossier()}
-        onCancel={() => setConfirmStatut(null)}
+        onClose={() => setAjoutOuvert(false)}
+        onSubmit={handleAjouterPiece}
+      />
+
+      <ModalConfirmation
+        open={confirmRejet}
+        loading={actionLoading}
+        title={m.bo_dossier_confirm_reject_title()}
+        message={m.bo_dossier_confirm_reject_message()}
+        confirmLabel={m.bo_dossier_confirm_reject_button()}
+        kind="danger"
+        onConfirm={() => void confirmerRejet()}
+        onCancel={() => setConfirmRejet(false)}
+      />
+
+      <ModalActiverAbonnement
+        open={activationOuverte}
+        dossier={dossier}
+        loading={actionLoading}
+        onClose={() => setActivationOuverte(false)}
+        onSubmit={confirmerActivation}
       />
 
       <div className="mx-auto max-w-4xl space-y-6 pb-12">
@@ -505,7 +854,7 @@ function DossierDetailPage() {
               onClick={() => navigate({ to: '/backoffice/dashboard' })}
               className="text-sm text-gray-400 hover:text-gray-600"
             >
-              ← Retour
+              {m.bo_dossier_back()}
             </button>
             <h1 className="font-heading text-xl font-semibold text-gray-900">
               {dossier ? dossier.numeroDossier : `Dossier #${id}`}
@@ -515,23 +864,21 @@ function DossierDetailPage() {
             )}
           </div>
 
-          {/* Actions globales sur le dossier (haut a droite). Visibles tant que
-              le dossier est instructible (EN_VERIFICATION / INCOMPLET) et qu'il
-              y a au moins une piece. */}
-          {dossier
-            && (dossier.statut.code === 'EN_VERIFICATION' || dossier.statut.code === 'INCOMPLET')
-            && dossier.pieces.length > 0 && (
-              <DecisionsDossierActions
-                dossier={dossier}
-                loading={actionLoading}
-                onAction={demanderChangementStatutDossier}
-              />
-            )}
+          {/* Actions globales sur le dossier (haut a droite). Le composant
+              decide quel(s) bouton(s) afficher selon le statut. */}
+          {dossier && (
+            <DecisionsDossierActions
+              dossier={dossier}
+              loading={actionLoading}
+              onRejeter={() => setConfirmRejet(true)}
+              onActiver={() => setActivationOuverte(true)}
+            />
+          )}
         </div>
 
         {loadingDetail && (
           <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-400">
-            Chargement…
+            {m.common_loading_short()}
           </div>
         )}
 
@@ -540,28 +887,28 @@ function DossierDetailPage() {
             {/* Informations dossier */}
             <section className="rounded-2xl border border-gray-200 bg-white p-6">
               <h2 className="mb-4 font-heading text-base font-semibold text-gray-800">
-                Informations du dossier
+                {m.bo_dossier_section_info()}
               </h2>
               <dl className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
                 <div>
-                  <dt className="text-gray-500">Abonnement</dt>
+                  <dt className="text-gray-500">{m.bo_dossier_info_subscription()}</dt>
                   <dd className="font-medium text-gray-900">{dossier.typeAbonnement.libelle}</dd>
                 </div>
                 <div>
-                  <dt className="text-gray-500">Montant</dt>
+                  <dt className="text-gray-500">{m.bo_dossier_info_amount()}</dt>
                   <dd className="font-medium text-gray-900">
                     {dossier.montantTotal.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-gray-500">Date de création</dt>
+                  <dt className="text-gray-500">{m.bo_dossier_info_creation_date()}</dt>
                   <dd className="font-medium text-gray-900">
                     {new Date(dossier.dateCreation).toLocaleDateString('fr-FR')}
                   </dd>
                 </div>
                 {dossier.dateDebutDroits && (
                   <div>
-                    <dt className="text-gray-500">Début des droits</dt>
+                    <dt className="text-gray-500">{m.bo_dossier_info_rights_start()}</dt>
                     <dd className="font-medium text-gray-900">
                       {new Date(dossier.dateDebutDroits).toLocaleDateString('fr-FR')}
                     </dd>
@@ -569,7 +916,7 @@ function DossierDetailPage() {
                 )}
                 {dossier.dateFinDroits && (
                   <div>
-                    <dt className="text-gray-500">Fin des droits</dt>
+                    <dt className="text-gray-500">{m.bo_dossier_info_rights_end()}</dt>
                     <dd className="font-medium text-gray-900">
                       {new Date(dossier.dateFinDroits).toLocaleDateString('fr-FR')}
                     </dd>
@@ -581,20 +928,20 @@ function DossierDetailPage() {
             {/* Porteur + Payeur */}
             <div className="grid grid-cols-2 gap-6">
               {[
-                { label: 'Porteur du dossier', personne: dossier.titulaire },
-                { label: 'Payeur', personne: dossier.payeur },
+                { label: m.bo_dossier_info_holder(), personne: dossier.titulaire },
+                { label: m.bo_dossier_info_payer(), personne: dossier.payeur },
               ].map(({ label, personne }) => (
                 <section key={label} className="rounded-2xl border border-gray-200 bg-white p-6">
                   <h2 className="mb-3 font-heading text-base font-semibold text-gray-800">{label}</h2>
                   <dl className="space-y-2 text-sm">
                     <div>
-                      <dt className="text-gray-500">Nom</dt>
+                      <dt className="text-gray-500">{m.bo_dossier_info_name()}</dt>
                       <dd className="font-medium text-gray-900">
                         {personne.prenom} {personne.nom}
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-gray-500">Email</dt>
+                      <dt className="text-gray-500">{m.bo_dossier_info_email()}</dt>
                       <dd className="font-medium text-gray-900">{personne.email}</dd>
                     </div>
                   </dl>
@@ -604,11 +951,31 @@ function DossierDetailPage() {
 
             {/* Pièces justificatives */}
             <section className="rounded-2xl border border-gray-200 bg-white p-6">
-              <h2 className="mb-4 font-heading text-base font-semibold text-gray-800">
-                Pièces justificatives
-              </h2>
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h2 className="font-heading text-base font-semibold text-gray-800">
+                  {m.bo_dossier_section_pieces()}
+                </h2>
+                {(dossier.statut.code === 'EN_VERIFICATION' || dossier.statut.code === 'INCOMPLET') && (() => {
+                  // Toutes les pieces attendues deja deposees -> rien a ajouter.
+                  const libellesDeposes = new Set(dossier.pieces.map((p) => p.libelleTypePiece))
+                  const toutesDeposees = dossier.piecesRequises.length > 0
+                    && dossier.piecesRequises.every((r) => libellesDeposes.has(r.libelleTypePiece))
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => setAjoutOuvert(true)}
+                      disabled={actionLoading || toutesDeposees}
+                      title={toutesDeposees ? m.bo_dossier_all_uploaded_tooltip() : undefined}
+                      className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <Plus size={14} aria-hidden="true" />
+                      {m.bo_dossier_add_piece_button()}
+                    </button>
+                  )
+                })()}
+              </div>
               {dossier.pieces.length === 0 ? (
-                <p className="text-sm text-gray-400">Aucune pièce déposée.</p>
+                <p className="text-sm text-gray-400">{m.bo_dossier_no_pieces()}</p>
               ) : (
                 <ul className="space-y-3">
                   {dossier.pieces.map((piece) => (
@@ -620,27 +987,47 @@ function DossierDetailPage() {
                         <span
                           className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUT_PIECE_STYLES[piece.statutValidation]}`}
                         >
-                          {STATUT_PIECE_LABELS[piece.statutValidation]}
+                          {statutPieceLabels()[piece.statutValidation]}
                         </span>
                         <div>
-                          <p className="text-sm font-medium text-gray-900">{piece.libelleTypePiece}</p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-sm font-medium text-gray-900">{piece.libelleTypePiece}</p>
+                            {piece.verifieParIA && piece.statutValidation !== 'rejetee' && (
+                              <span
+                                title={m.pieces_ia_verified_tooltip()}
+                                className="inline-flex items-center gap-1 rounded-full bg-secondary-light/20 px-2 py-0.5 text-xs font-medium text-secondary"
+                              >
+                                <Sparkles size={12} aria-hidden="true" />
+                                {m.pieces_ia_verified_badge()}
+                              </span>
+                            )}
+                          </div>
                           {piece.motifRejet && (
-                            <p className="text-xs text-red-600">Motif : {piece.motifRejet}</p>
+                            <p className="text-xs text-red-600">{m.bo_dossier_motif_label()} {piece.motifRejet}</p>
                           )}
                           <p className="text-xs text-gray-400">
-                            Déposé le {new Date(piece.dateDepot).toLocaleDateString('fr-FR')}
+                            {m.bo_dossier_submitted_on()} {new Date(piece.dateDepot).toLocaleDateString('fr-FR')}
                           </p>
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setPieceExamen(piece)}
-                        aria-label={`Examiner ${piece.libelleTypePiece}`}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100"
-                      >
-                        <Eye size={14} aria-hidden="true" />
-                        Examiner
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {(dossier.statut.code === 'EN_VERIFICATION' || dossier.statut.code === 'INCOMPLET') && (
+                          <BoutonRemplacerPiece
+                            piece={piece}
+                            loading={remplacementPieceId === piece.id}
+                            onUpload={(file) => void handleRemplacementFichier(piece, file)}
+                          />
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setPieceExamen(piece)}
+                          aria-label={m.bo_dossier_examine_aria({ label: piece.libelleTypePiece })}
+                          className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100"
+                        >
+                          <Eye size={14} aria-hidden="true" />
+                          {m.bo_dossier_examine_button()}
+                        </button>
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -652,17 +1039,17 @@ function DossierDetailPage() {
 
         {/* Historique */}
         <section className="rounded-2xl border border-gray-200 bg-white p-6">
-          <h2 className="mb-4 font-heading text-base font-semibold text-gray-800">Historique</h2>
+          <h2 className="mb-4 font-heading text-base font-semibold text-gray-800">{m.bo_dossier_section_history()}</h2>
           {loadingHistorique && (
-            <p className="text-sm text-gray-400">Chargement de l'historique…</p>
+            <p className="text-sm text-gray-400">{m.bo_dossier_history_loading()}</p>
           )}
           {!loadingHistorique && historique?.length === 0 && (
-            <p className="text-sm text-gray-400">Aucune entrée dans l'historique.</p>
+            <p className="text-sm text-gray-400">{m.bo_dossier_no_history()}</p>
           )}
           {!loadingHistorique && historique && historique.length > 0 && (
             <ol>
               {historique.map((entree, index, arr) => {
-                const meta = TYPE_ACTION_LABELS[entree.typeAction] ?? {
+                const meta = typeActionLabels()[entree.typeAction] ?? {
                   label: entree.typeAction,
                   color: 'bg-gray-100 text-gray-700',
                   dot: 'bg-gray-400',

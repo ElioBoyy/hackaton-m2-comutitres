@@ -1,12 +1,15 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
-import { ArrowRight, ChevronLeft, ChevronRight, Info, Menu, Sparkles, X } from 'lucide-react'
+import { ArrowRight, ChevronLeft, ChevronRight, Info, LogOut, Menu, Sparkles, X } from 'lucide-react'
 import { UserSidebar } from '~/components/UserSidebar'
 import { NavigoIllustration } from '~/components/illustrations/NavigoIllustration'
 import { ImagineRIllustration } from '~/components/illustrations/ImagineRIllustration'
 import { AmethysteIllustration } from '~/components/illustrations/AmethysteIllustration'
 import { TransportScolaireIllustration } from '~/components/illustrations/TransportScolaireIllustration'
 import { getAbonnements, type TypeAbonnement } from '~/lib/api'
+import { TransportBadges, ZoneBadges } from '~/components/TransportZoneBadges'
+import { isAuthenticated, logout, me, type MeResponse } from '~/lib/auth'
+import { m } from '~/paraglide/messages'
 import type { ComponentType } from 'react'
 
 
@@ -17,9 +20,9 @@ export const Route = createFileRoute('/')({
 
 /* ─── Category config ────────────────────────────────────────────────── */
 
-const CATEGORY_CONFIG: Record<string, { bg: string; text: string }> = {
+const CATEGORY_CONFIG: Record<string, { bg: string; text: string; modalText?: string }> = {
   'Navigo standard':           { bg: '#9185be', text: '#9185be' },
-  'Forfait scolaire-etudiant': { bg: '#deeeff', text: '#4a90d9' },
+  'Forfait scolaire-etudiant': { bg: '#deeeff', text: '#0050aa', modalText: '#64b5f6' },
   'Forfait senior':            { bg: '#ffa3a3', text: '#ffa3a3' },
   'Tarification solidaire':    { bg: '#e72f69', text: '#e72f69' },
 }
@@ -52,12 +55,12 @@ function badgeTextFor(bg: string): string {
   const g = parseInt(hex.slice(2, 4), 16)
   const b = parseInt(hex.slice(4, 6), 16)
   const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
-  return luminance > 0.85 ? '#1972d2' : '#ffffff'
+  return luminance > 0.85 ? '#0050aa' : '#ffffff'
 }
 
 function formatPrix(abo: TypeAbonnement): string {
-  if (abo.tarifPlein === null) return 'Tarif social'
-  if (abo.tarifPlein === 0) return 'Gratuit'
+  if (abo.tarifPlein === null) return m.abo_price_social()
+  if (abo.tarifPlein === 0) return m.abo_price_free()
   const n = Number(abo.tarifPlein)
   const formatted = new Intl.NumberFormat('fr-FR', {
     style: 'currency',
@@ -66,76 +69,102 @@ function formatPrix(abo: TypeAbonnement): string {
     maximumFractionDigits: 2,
   }).format(n)
   switch (abo.periodicite) {
-    case 'annuelle':     return `${formatted} / an`
-    case 'mensuelle':    return `${formatted} / mois`
-    case 'hebdomadaire': return `${formatted} / sem.`
+    case 'annuelle':     return m.abo_price_per_year({ price: formatted })
+    case 'mensuelle':    return m.abo_price_per_month({ price: formatted })
+    case 'hebdomadaire': return m.abo_price_per_week({ price: formatted })
     default:             return formatted
+  }
+}
+
+function formatPrixParts(abo: TypeAbonnement): { value: string; suffix: string } {
+  if (abo.tarifPlein === null) return { value: 'Tarif social', suffix: '' }
+  if (abo.tarifPlein === 0) return { value: 'Gratuit', suffix: '' }
+  const n = Number(abo.tarifPlein)
+  const value = new Intl.NumberFormat('fr-FR', {
+    style: 'currency',
+    currency: 'EUR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(n)
+  switch (abo.periodicite) {
+    case 'annuelle':     return { value, suffix: '/ an' }
+    case 'mensuelle':    return { value, suffix: '/ mois' }
+    case 'hebdomadaire': return { value, suffix: '/ sem.' }
+    default:             return { value, suffix: '' }
   }
 }
 
 /* ─── Modal détail abonnement ────────────────────────────────────────── */
 
-function AbonnementModal({ abo, categoryHex, onClose }: { abo: TypeAbonnement; categoryHex: string; onClose: () => void }) {
+function AbonnementModal({ abo, categoryHex, modalColor, onClose }: { abo: TypeAbonnement; categoryHex: string; modalColor?: string; onClose: () => void }) {
+  const navigate = useNavigate()
   const Illustration = illustrationFor(abo.code)
   const bg = cardBgFor(abo.code, categoryHex)
   const badgeText = badgeTextFor(bg)
+  const titleColor = modalColor ?? bg
+
+  function handleDemande() {
+    onClose()
+    void navigate({ to: '/souscription/detail', search: { code: abo.code } })
+  }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40" />
       <div
-        className="relative w-full max-w-sm overflow-hidden rounded-2xl bg-white shadow-xl"
+        className="relative flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl sm:flex-row"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header coloré */}
-        <div className="relative flex items-center justify-center py-8" style={{ backgroundColor: bg }}>
-          <Illustration className="h-32 w-full" />
-          <button
-            type="button"
-            onClick={onClose}
-            className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-black/20 text-white hover:bg-black/30"
-          >
-            <X size={14} />
-          </button>
+        {/* Bouton fermer (mobile : positionné en absolu en haut à droite) */}
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/80 text-gray-500 shadow hover:bg-gray-100 sm:hidden"
+        >
+          <X size={18} />
+        </button>
+
+        {/* Colonne image */}
+        <div className="flex shrink-0 items-center justify-center p-6 sm:w-52 sm:p-8">
+          <img src="/navigo-card-transparent.png" alt={abo.libelle} className="h-32 w-auto object-contain -rotate-6 drop-shadow-md sm:h-auto sm:w-full" />
         </div>
 
-        {/* Contenu */}
-        <div className="flex flex-col gap-4 p-5">
-          <div className="flex items-start justify-between gap-3">
-            <h2 className="font-heading text-base font-bold text-gray-900">{abo.libelle}</h2>
-            <span
-              className="shrink-0 rounded-full px-2.5 py-1 text-xs font-bold"
-              style={{ backgroundColor: bg, color: badgeText }}
+        {/* Colonne contenu */}
+        <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-5">
+          <div className="flex items-start justify-between gap-2">
+            <h2 className="font-heading text-base font-bold" style={{ color: titleColor }}>{abo.libelle}</h2>
+            <button
+              type="button"
+              onClick={onClose}
+              className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 sm:flex"
             >
-              {formatPrix(abo)}
-            </span>
+              <X size={18} />
+            </button>
           </div>
 
           {abo.description && (
             <p className="text-sm text-gray-600 leading-relaxed">{abo.description}</p>
           )}
 
-          {abo.transports.length > 0 && (
-            <div>
-              <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">Transports</p>
-              <div className="flex flex-wrap gap-1.5">
-                {abo.transports.map((t) => (
-                  <span key={t} className="rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700">{t}</span>
-                ))}
-              </div>
-            </div>
-          )}
+          <TransportBadges transports={abo.transports} />
+          <ZoneBadges zones={abo.zones} />
 
-          {abo.zones.length > 0 && (
-            <div>
-              <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">Zones</p>
-              <div className="flex flex-wrap gap-1.5">
-                {abo.zones.map((z) => (
-                  <span key={z} className="rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700">{z}</span>
-                ))}
-              </div>
+          {/* Prix + CTA */}
+          <div className="mt-auto flex flex-col gap-1.5 border-t border-gray-100 pt-3">
+            <div className="flex items-baseline gap-1.5">
+              {(() => { const { value, suffix } = formatPrixParts(abo); return <><span className="font-heading text-2xl font-bold" style={{ color: titleColor }}>{value}</span>{suffix && <span className="text-base font-semibold text-dark">{suffix}</span>}</> })()}
             </div>
-          )}
+          </div>
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={handleDemande}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-focus"
+            >
+              {m.abo_modal_request_cta()}
+              <ArrowRight size={14} />
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -144,20 +173,23 @@ function AbonnementModal({ abo, categoryHex, onClose }: { abo: TypeAbonnement; c
 
 /* ─── Abonnement card ────────────────────────────────────────────────── */
 
-function AbonnementCard({ abo, categoryHex }: { abo: TypeAbonnement; categoryHex: string }) {
+const ILLUSTRATIONS = ['/navigo-illustration.svg', '/navigo-illustration-2.svg']
+
+function AbonnementCard({ abo, categoryHex, categoryModalText }: { abo: TypeAbonnement; categoryHex: string; categoryModalText?: string }) {
   const [open, setOpen] = useState(false)
   const Illustration = illustrationFor(abo.code)
   const bg = cardBgFor(abo.code, categoryHex)
   const badgeText = badgeTextFor(bg)
+  const illustration = (abo.code.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 7 === 0) ? ILLUSTRATIONS[1] : ILLUSTRATIONS[0]
 
   return (
     <>
-      <article className="flex h-72 flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition hover:shadow-md">
-        <div className="relative shrink-0 overflow-hidden" style={{ backgroundColor: bg, height: '9rem' }}>
-          <Illustration className="absolute inset-0 h-full w-full" />
+      <article className="flex h-64 flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition hover:shadow-md">
+        <div className="relative shrink-0 overflow-hidden bg-blue-pale" style={{ height: '7rem' }}>
+          <img src={illustration} alt="" className="absolute inset-0 h-full w-full object-cover" />
         </div>
         <div className="flex flex-1 flex-col gap-3 p-4">
-          <h3 className="font-heading text-sm font-bold text-gray-900">{abo.libelle}</h3>
+          <h3 className="font-heading text-sm font-bold" style={{ color: badgeText === '#ffffff' ? bg : badgeText }}>{abo.libelle}</h3>
           {abo.description && (
             <p className="text-xs text-gray-500 leading-snug">{abo.description}</p>
           )}
@@ -174,12 +206,12 @@ function AbonnementCard({ abo, categoryHex }: { abo: TypeAbonnement; categoryHex
               className="flex items-center gap-1 rounded-lg bg-primary px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-focus"
             >
               <Info size={11} />
-              + d'infos
+              {m.abo_more_info()}
             </button>
           </div>
         </div>
       </article>
-      {open && <AbonnementModal abo={abo} categoryHex={categoryHex} onClose={() => setOpen(false)} />}
+      {open && <AbonnementModal abo={abo} categoryHex={categoryHex} modalColor={categoryModalText} onClose={() => setOpen(false)} />}
     </>
   )
 }
@@ -187,6 +219,7 @@ function AbonnementCard({ abo, categoryHex }: { abo: TypeAbonnement; categoryHex
 /* ─── Carousel ───────────────────────────────────────────────────────── */
 
 const CARD_W = 200 // approximate card width + gap for scroll step
+
 
 function Carousel({ categorie, items }: { categorie: string; items: TypeAbonnement[] }) {
   const cfg = CATEGORY_CONFIG[categorie] ?? { bg: '#9185be', text: '#9185be' }
@@ -226,7 +259,7 @@ function Carousel({ categorie, items }: { categorie: string; items: TypeAbonneme
       <button
         type="button"
         onClick={() => scroll('left')}
-        aria-label="Précédent"
+        aria-label={m.common_previous()}
         className={`absolute left-0 top-1/2 z-10 -translate-y-1/2 -translate-x-3 hidden h-8 w-8 items-center justify-center rounded-full bg-white shadow-md border border-gray-200 text-gray-600 transition hover:bg-gray-50 lg:flex ${canLeft ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
       >
         <ChevronLeft size={16} />
@@ -235,11 +268,11 @@ function Carousel({ categorie, items }: { categorie: string; items: TypeAbonneme
       {/* Scrollable track */}
       <div
         ref={trackRef}
-        className="flex gap-3 overflow-x-auto scroll-smooth px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex gap-5 overflow-x-auto scroll-smooth px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        {items.map((abo) => (
+        {items.map((abo, idx) => (
           <div key={abo.code} className="shrink-0 w-64">
-            <AbonnementCard abo={abo} categoryHex={cfg.bg} />
+            <AbonnementCard abo={abo} categoryHex={cfg.bg} categoryModalText={cfg.modalText} />
           </div>
         ))}
       </div>
@@ -248,7 +281,7 @@ function Carousel({ categorie, items }: { categorie: string; items: TypeAbonneme
       <button
         type="button"
         onClick={() => scroll('right')}
-        aria-label="Suivant"
+        aria-label={m.common_next()}
         className={`absolute right-0 top-1/2 z-10 -translate-y-1/2 translate-x-3 hidden h-8 w-8 items-center justify-center rounded-full bg-white shadow-md border border-gray-200 text-gray-600 transition hover:bg-gray-50 lg:flex ${canRight ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
       >
         <ChevronRight size={16} />
@@ -262,13 +295,37 @@ function Carousel({ categorie, items }: { categorie: string; items: TypeAbonneme
 
 function CarouselSkeleton() {
   return (
-    <div className="flex gap-3 px-1">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="shrink-0 rounded-2xl">
-          <div className="h-24 animate-pulse rounded-t-2xl bg-gray-200" />
-          <div className="h-20 animate-pulse rounded-b-2xl bg-gray-100 mt-0.5" />
-        </div>
-      ))}
+    <div className="flex flex-col gap-3" aria-hidden="true">
+      {/* Titre catégorie placeholder */}
+      <div className="flex items-center gap-3">
+        <div className="h-3 w-32 animate-pulse rounded bg-gray-200" />
+        <div className="h-px flex-1 bg-gray-100" />
+      </div>
+
+      {/* Cards placeholder (4) — meme h-64 et w-64 que les vraies AbonnementCard */}
+      <div className="flex gap-3 overflow-hidden px-1">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <article
+            key={i}
+            className="flex h-64 w-64 shrink-0 flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm"
+            style={{ animationDelay: `${i * 80}ms` }}
+          >
+            {/* Bandeau image */}
+            <div className="h-28 animate-pulse bg-gray-200" />
+
+            {/* Corps */}
+            <div className="flex flex-1 flex-col gap-3 p-4">
+              <div className="h-4 w-3/4 animate-pulse rounded bg-gray-200" />
+              <div className="h-3 w-full animate-pulse rounded bg-gray-100" />
+              <div className="h-3 w-5/6 animate-pulse rounded bg-gray-100" />
+              <div className="mt-auto flex items-center justify-between gap-2">
+                <div className="h-6 w-20 animate-pulse rounded-full bg-gray-200" />
+                <div className="h-7 w-16 animate-pulse rounded-lg bg-gray-200" />
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
     </div>
   )
 }
@@ -276,15 +333,44 @@ function CarouselSkeleton() {
 /* ─── Page ───────────────────────────────────────────────────────────── */
 
 function HomePage() {
+  const navigate = useNavigate()
   const [abonnements, setAbonnements] = useState<TypeAbonnement[]>([])
   const [loading, setLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  // null = etat inconnu (SSR + 1er render client avant useEffect). On rend
+  // un skeleton pendant ce temps : ni "Se connecter" ni "Bonjour X" ne sont
+  // affiches a la place de l'autre, donc pas de flash de texte au refresh.
+  // authResolu reste false tant que (a) le 1er useEffect n'a pas tourne ET,
+  // si l'user est connecte, (b) me() n'a pas fini : evite le micro-flash
+  // entre "logout seul" et "avatar + Bonjour X".
+  const [authentifie, setAuthentifie] = useState<boolean | null>(null)
+  const [authResolu, setAuthResolu] = useState(false)
+  const [utilisateur, setUtilisateur] = useState<MeResponse | null>(null)
 
   useEffect(() => {
+    const co = isAuthenticated()
+    setAuthentifie(co)
+    if (co) {
+      me()
+        .then(setUtilisateur)
+        .catch(() => {})
+        .finally(() => setAuthResolu(true))
+    } else {
+      setAuthResolu(true)
+    }
     getAbonnements()
       .then(setAbonnements)
       .finally(() => setLoading(false))
   }, [])
+
+  function onLogout() {
+    logout()
+    setAuthentifie(false)
+    setUtilisateur(null)
+    navigate({ to: '/login' })
+  }
+
+  const prenom = utilisateur?.prenom ?? ''
 
   const grouped = CATEGORY_ORDER.map((cat) => ({
     categorie: cat,
@@ -305,62 +391,98 @@ function HomePage() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-100">
-      <UserSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <UserSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} loading={!authResolu} />
 
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Top bar */}
-        <header className="flex h-16 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 lg:justify-end lg:px-6">
+        <header className="flex h-16 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 lg:justify-end lg:pl-6 lg:pr-10">
           {/* Hamburger — mobile only */}
           <button
             type="button"
             onClick={() => setSidebarOpen(true)}
-            aria-label="Ouvrir le menu"
+            aria-label={m.common_open_menu()}
             className="flex h-9 w-9 items-center justify-center rounded-xl text-gray-700 hover:bg-blue-pale lg:hidden"
           >
             <Menu size={20} />
           </button>
 
-          {/* Auth links — desktop only */}
+          {/* Auth zone — desktop only. Tant que authentifie === null (SSR +
+              avant useEffect), on rend un skeleton de meme hauteur pour
+              eviter le flash de texte entre etat suppose et etat reel. */}
           <div className="hidden items-center gap-3 lg:flex">
-            <Link to="/login" className="text-sm font-medium text-gray-600 transition hover:text-primary">
-              Connexion
-            </Link>
-            <Link
-              to="/register"
-              className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-focus"
-            >
-              Créer un compte
-            </Link>
+            {!authResolu ? (
+              <div className="flex items-center gap-2" aria-hidden="true">
+                <div className="h-8 w-8 animate-pulse rounded-full bg-gray-100" />
+                <div className="h-4 w-28 animate-pulse rounded-md bg-gray-100" />
+                <div className="h-9 w-9 animate-pulse rounded-full bg-gray-100" />
+              </div>
+            ) : authentifie ? (
+              <>
+                {prenom && (
+                  <div className="flex items-center gap-2">
+                    <div
+                      aria-hidden="true"
+                      className="flex h-8 w-8 items-center justify-center rounded-full bg-focus text-sm font-semibold text-white"
+                    >
+                      {prenom.charAt(0).toUpperCase()}
+                    </div>
+                    <span className="text-sm font-medium text-gray-900">
+                      {m.dashboard_hello()} {prenom}
+                    </span>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={onLogout}
+                  aria-label={m.me_sign_out()}
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-gray-700 transition hover:bg-blue-pale focus:outline-none focus:ring-2 focus:ring-primary/30"
+                >
+                  <LogOut size={18} aria-hidden="true" />
+                </button>
+              </>
+            ) : (
+              <>
+                <Link to="/login" className="text-sm font-medium text-gray-600 transition hover:text-primary">
+                  {m.auth_sign_in()}
+                </Link>
+                <Link
+                  to="/register"
+                  className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-focus"
+                >
+                  {m.home_signup_cta()}
+                </Link>
+              </>
+            )}
           </div>
         </header>
 
         <main className="flex-1 overflow-y-auto px-6 py-5">
           {/* CTA banner */}
-          <div
-            className="mb-5 flex flex-col gap-4 rounded-2xl p-4 sm:flex-row sm:items-center sm:justify-between"
-            style={{ background: 'linear-gradient(to right, #1972d2, #0050aa)' }}
-          >
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/20">
-                <Sparkles size={18} className="text-white" />
-              </div>
+          <Link to="/recommandation" className="relative mb-5 block overflow-hidden rounded-2xl cursor-pointer" style={{ minHeight: '13rem' }}>
+            <img
+              src="/train-banner.png"
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: '50% 60%' }}
+            />
+            <div
+              className="absolute inset-0"
+              style={{ background: 'linear-gradient(to right, rgba(0,50,120,0.82) 40%, rgba(0,50,120,0.3))' }}
+            />
+            <div className="relative flex h-full flex-col justify-center gap-3 p-5 sm:flex-row sm:items-center sm:justify-between" style={{ minHeight: '13rem' }}>
               <div>
-                <p className="font-heading text-sm font-semibold text-white">
-                  Vous ne savez pas quel abonnement choisir ?
+                <p className="font-heading text-xl font-bold text-white leading-snug">
+                  {m.home_recommend_title()}
                 </p>
-                <p className="text-xs text-white/70">
-                  Répondez à quelques questions, notre copilot vous guide.
+                <p className="mt-1 text-sm text-white/80">
+                  {m.home_recommend_subtitle()}
                 </p>
               </div>
+              <span className="flex w-full items-center justify-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-primary transition hover:bg-blue-pale sm:w-auto sm:shrink-0">
+                Je trouve mon abonnement
+                <ArrowRight size={14} />
+              </span>
             </div>
-            <Link
-              to="/recommandation"
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-primary transition hover:bg-blue-pale sm:w-auto sm:shrink-0"
-            >
-              Trouver mon abonnement
-              <ArrowRight size={14} />
-            </Link>
-          </div>
+          </Link>
 
           {/* Carousels */}
           <div className="flex flex-col gap-10">
@@ -375,8 +497,8 @@ function HomePage() {
           <footer className="mt-6 flex items-center justify-between text-xs text-gray-400">
             <p>© 2026 Comutitres — Île-de-France Mobilités</p>
             <div className="flex gap-4">
-              <Link to="/aide" className="hover:text-gray-600 transition-colors">Aide</Link>
-              <Link to="/aide" hash="contact" className="hover:text-gray-600 transition-colors">Contact</Link>
+              <Link to="/sav" className="hover:text-gray-600 transition-colors">Aide</Link>
+              <Link to="/sav" hash="contact" className="hover:text-gray-600 transition-colors">Contact</Link>
             </div>
           </footer>
         </main>

@@ -6,7 +6,7 @@ import { login } from '~/lib/auth'
 import { LoginSchema } from '~/lib/schemas'
 import { parseViolations } from '~/lib/validation'
 import { Field } from '~/components/Field'
-import { adresseComplete, libelleJours, type PointDeVente } from '~/lib/points-de-vente'
+import { adresseComplete, confirmerRdv, libelleJours, type PointDeVente } from '~/lib/points-de-vente'
 import { m } from '~/paraglide/messages'
 
 // Modale de prise de RDV. Si l'utilisateur n'est pas connecte, elle affiche
@@ -76,7 +76,7 @@ export function PriseRdvModal({ point, connecte: dejaConnecte, onConnecte, onClo
         {/* En-tete */}
         <div className="flex items-start justify-between gap-3 border-b border-gray-200 p-5">
           <div>
-            <h2 className="font-heading text-lg font-bold text-dark">Prendre rendez-vous</h2>
+            <h2 className="font-heading text-lg font-bold text-dark">{m.rdv_modal_title()}</h2>
             <p className="mt-0.5 flex items-center gap-1.5 text-sm text-gray-700">
               <MapPin size={14} className="shrink-0 text-primary" aria-hidden="true" />
               {point.name}
@@ -85,7 +85,7 @@ export function PriseRdvModal({ point, connecte: dejaConnecte, onConnecte, onClo
           <button
             type="button"
             onClick={onClose}
-            aria-label="Fermer"
+            aria-label={m.common_close()}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-gray-500 transition hover:bg-gray-100"
           >
             <X size={18} aria-hidden="true" />
@@ -165,9 +165,9 @@ function EtapeConnexion({ onConnecte }: { onConnecte: () => void }) {
       <div className="flex items-start gap-3 rounded-xl bg-blue-pale p-3">
         <LogIn size={18} className="mt-0.5 shrink-0 text-primary" aria-hidden="true" />
         <div>
-          <p className="text-sm font-semibold text-dark">Connectez-vous pour réserver</p>
+          <p className="text-sm font-semibold text-dark">{m.rdv_login_required_title()}</p>
           <p className="mt-0.5 text-xs text-gray-700">
-            Un compte est nécessaire pour prendre rendez-vous en point de vente.
+            {m.rdv_login_required_subtitle()}
           </p>
         </div>
       </div>
@@ -236,14 +236,11 @@ function EtapeRdv({ point, onClose }: { point: PointDeVente; onClose: () => void
         <div className="flex h-14 w-14 items-center justify-center rounded-full bg-success/10">
           <Check size={28} className="text-success" aria-hidden="true" />
         </div>
-        <h3 className="font-heading text-lg font-semibold text-dark">Rendez-vous confirmé</h3>
+        <h3 className="font-heading text-lg font-semibold text-dark">{m.rdv_confirmed()}</h3>
         <p className="text-sm text-gray-700">
           {jour.labelJour} {jour.labelDate} à <strong>{creneau}</strong>
           <br />
           {point.name} — {adresseComplete(point)}
-        </p>
-        <p className="mt-1 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning">
-          Confirmation de démonstration — aucun rendez-vous réel n’a été enregistré.
         </p>
         <button
           type="button"
@@ -307,14 +304,21 @@ function EtapeRdv({ point, onClose }: { point: PointDeVente; onClose: () => void
         ))}
       </div>
 
-      <p className="mt-4 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning">
-        Créneaux de démonstration — la réservation n’est pas connectée à un système réel.
-      </p>
-
       <button
         type="button"
         disabled={!creneau}
-        onClick={() => setConfirme(true)}
+        onClick={() => {
+          if (!creneau) return
+          // Envoi email best-effort : la confirmation UX passe meme si l'API
+          // est indisponible (RDV reste mocke cote front).
+          const isoCreneau = `${jour.cle}T${creneau}:00`
+          confirmerRdv({
+            nomPointDeVente: point.name,
+            adressePointDeVente: adresseComplete(point),
+            creneau: isoCreneau,
+          }).catch(() => {})
+          setConfirme(true)
+        }}
         className="mt-4 w-full rounded-xl bg-focus px-4 py-3 font-semibold text-white transition hover:bg-focus/90 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {creneau ? `Confirmer le rendez-vous à ${creneau}` : 'Choisissez un créneau'}

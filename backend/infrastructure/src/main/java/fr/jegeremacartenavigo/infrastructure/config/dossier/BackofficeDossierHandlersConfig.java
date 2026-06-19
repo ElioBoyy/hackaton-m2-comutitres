@@ -1,11 +1,18 @@
 package fr.jegeremacartenavigo.infrastructure.config.dossier;
 
+import fr.jegeremacartenavigo.application.dossier.ActiverDossierHandler;
+import fr.jegeremacartenavigo.application.dossier.AjouterPieceHandler;
 import fr.jegeremacartenavigo.application.dossier.ChangerStatutDossierHandler;
+import fr.jegeremacartenavigo.application.dossier.RemplacerFichierPieceHandler;
 import fr.jegeremacartenavigo.application.dossier.GetDossierCountsHandler;
 import fr.jegeremacartenavigo.application.dossier.GetDossierDetailHandler;
 import fr.jegeremacartenavigo.application.dossier.GetDossierHistoriqueHandler;
 import fr.jegeremacartenavigo.application.dossier.GetDossiersHandler;
 import fr.jegeremacartenavigo.application.dossier.ValiderPieceHandler;
+import fr.jegeremacartenavigo.application.dossier.EnregistrerPiecesHandler;
+import fr.jegeremacartenavigo.application.dossier.ResilierDossierHandler;
+import fr.jegeremacartenavigo.application.dossier.SoumettreEnVerificationHandler;
+import fr.jegeremacartenavigo.application.dossier.SupprimerBrouillonHandler;
 import fr.jegeremacartenavigo.domain.dossier.port.DossierRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -39,7 +46,42 @@ public class BackofficeDossierHandlersConfig {
     }
 
     @Bean
+    ResilierDossierHandler resilierDossierHandler(DossierRepository repository) {
+        return new ResilierDossierHandler(repository);
+    }
+
+    @Bean
+    SoumettreEnVerificationHandler soumettreEnVerificationHandler(DossierRepository repository) {
+        return new SoumettreEnVerificationHandler(repository);
+    }
+
+    @Bean
+    EnregistrerPiecesHandler enregistrerPiecesHandler(DossierRepository repository) {
+        return new EnregistrerPiecesHandler(repository);
+    }
+
+    @Bean
+    SupprimerBrouillonHandler supprimerBrouillonHandler(DossierRepository repository) {
+        return new SupprimerBrouillonHandler(repository);
+    }
+
+    @Bean
     ChangerStatutDossierHandler changerStatutDossierHandler(DossierRepository repository) {
         return new ChangerStatutDossierHandler(repository);
+    }
+
+    @Bean
+    AjouterPieceHandler ajouterPieceHandler(DossierRepository repository) {
+        return new AjouterPieceHandler(repository);
+    }
+
+    @Bean
+    RemplacerFichierPieceHandler remplacerFichierPieceHandler(DossierRepository repository) {
+        return new RemplacerFichierPieceHandler(repository);
+    }
+
+    @Bean
+    ActiverDossierHandler activerDossierHandler(DossierRepository repository) {
+        return new ActiverDossierHandler(repository);
     }
 }

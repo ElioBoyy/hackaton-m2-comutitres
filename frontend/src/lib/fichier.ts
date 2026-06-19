@@ -16,7 +16,18 @@ const API_URL: string = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
  * backend (codes du referentiel TypePieceJustificative). null = upload
  * generique, l'objet est range sans semantique sous {@code users/{id}/}.
  */
-export type TypePiece = 'PIECE_IDENTITE' | 'CERTIFICAT_SCOLARITE' | 'NOTIFICATION_BOURSE'
+export type TypePiece =
+  | 'PIECE_IDENTITE'
+  | 'PHOTO_IDENTITE'
+  | 'JUSTIFICATIF_DOMICILE'
+  | 'CERTIFICAT_SCOLARITE'
+  | 'CARTE_ETUDIANT'
+  | 'CONTRAT_APPRENTISSAGE'
+  | 'ATTESTATION_POLE_EMPLOI'
+  | 'NOTIFICATION_CAF'
+  | 'AVIS_IMPOSITION'
+  | 'CARTE_INVALIDITE_RQTH'
+  | 'RIB'
 
 export interface FichierDeposeResponse {
   cle: string

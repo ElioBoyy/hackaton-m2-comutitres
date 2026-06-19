@@ -14,6 +14,7 @@ export function LanguageSwitcher() {
   const current = getLocale()
   const currentMeta = LOCALE_META[current]
   const [open, setOpen] = useState(false)
+  const [openUp, setOpenUp] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -26,6 +27,15 @@ export function LanguageSwitcher() {
     return () => document.removeEventListener('mousedown', onDocClick)
   }, [])
 
+  function toggleOpen() {
+    if (!open && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect()
+      const spaceBelow = window.innerHeight - rect.bottom
+      setOpenUp(spaceBelow < 220)
+    }
+    setOpen((v) => !v)
+  }
+
   function switchTo(locale: Locale) {
     setOpen(false)
     if (locale === current) return
@@ -33,19 +43,21 @@ export function LanguageSwitcher() {
   }
 
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef} className="relative w-full">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={toggleOpen}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={m.language_switch_label()}
-        className="inline-flex items-center gap-2 rounded-full bg-white/90 backdrop-blur px-3 py-1.5 shadow-sm border border-gray-200 text-sm font-medium text-dark hover:bg-white transition cursor-pointer"
+        className="inline-flex w-full items-center justify-between gap-2 rounded-full bg-white/90 backdrop-blur px-3 py-1.5 shadow-sm border border-gray-200 text-sm font-medium text-dark hover:bg-white transition cursor-pointer"
       >
-        <span aria-hidden className="text-base leading-none">
-          {currentMeta.flag}
+        <span className="flex items-center gap-2">
+          <span aria-hidden className="text-base leading-none">
+            {currentMeta.flag}
+          </span>
+          <span>{currentMeta.name}</span>
         </span>
-        <span>{currentMeta.name}</span>
         <svg
           aria-hidden
           width="12"
@@ -67,7 +79,7 @@ export function LanguageSwitcher() {
         <ul
           role="listbox"
           aria-label={m.language_switch_label()}
-          className="absolute bottom-full left-0 z-10 mb-1 min-w-[10rem] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg lg:bottom-auto lg:left-auto lg:right-0 lg:top-full lg:mb-0 lg:mt-1"
+          className={`absolute left-0 right-0 z-[1100] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg ${openUp ? 'bottom-full mb-1' : 'top-full mt-1'}`}
         >
           {locales.map((locale) => {
             const meta = LOCALE_META[locale]

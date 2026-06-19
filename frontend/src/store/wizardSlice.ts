@@ -3,6 +3,7 @@ import { RESIDENCE_DEFAULT, type Residence } from '~/domain/residence'
 import type { FrequenceDeplacement } from '~/domain/frequenceDeplacement'
 import type { PourQui } from '~/domain/pourQui'
 import type { Situation } from '~/domain/situation'
+import type { TypeAbonnement } from '~/lib/api'
 
 // Infos du tiers beneficiaire, collectees sur l'ecran infos-tiers quand
 // PourQui = 'TIERS' (cf. CONTEXT.md).
@@ -27,6 +28,10 @@ export interface WizardState {
   // Abonnement choisi par l'usager sur l'ecran resultat. null = on suit la
   // recommandation principale calculee par calculerRecommandation.
   abonnementSelectionneId: string | null
+  // Abonnement choisi directement depuis la page d'accueil (modal "+ d'infos")
+  // sans passer par le questionnaire. Quand defini, souscription/detail
+  // l'affiche directement sans passer par calculerRecommandation.
+  typeAbonnementDirecte: TypeAbonnement | null
   // PreVerificationIA (cf. CONTEXT.md) : pieces deposees a l'etape /pieces et
   // statut de la verification. L'upload reel passe par POST /fichiers (bucket
   // MinIO prive) : on stocke le nom d'origine pour l'affichage ET la cle
@@ -64,6 +69,7 @@ const initialState: WizardState = {
   frequenceDeplacement: null,
   residence: RESIDENCE_DEFAULT,
   abonnementSelectionneId: null,
+  typeAbonnementDirecte: null,
   pieceIdentiteNomFichier: null,
   pieceIdentiteCleObjet: null,
   justificatifEtudiantNomFichier: null,
@@ -104,6 +110,9 @@ const wizardSlice = createSlice({
     abonnementSelectionne(state, action: PayloadAction<string>) {
       state.abonnementSelectionneId = action.payload
     },
+    typeAbonnementDirecteDefini(state, action: PayloadAction<TypeAbonnement>) {
+      state.typeAbonnementDirecte = action.payload
+    },
     pieceIdentiteDeposee(state, action: PayloadAction<{ nomFichier: string; cleObjet: string }>) {
       state.pieceIdentiteNomFichier = action.payload.nomFichier
       state.pieceIdentiteCleObjet = action.payload.cleObjet
@@ -142,6 +151,7 @@ export const {
   frequenceDeplacementDefinie,
   residenceDefinie,
   abonnementSelectionne,
+  typeAbonnementDirecteDefini,
   pieceIdentiteDeposee,
   justificatifEtudiantDepose,
   notificationBourseDeposee,

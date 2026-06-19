@@ -8,6 +8,7 @@ export default defineConfig({
   server: {
     // Doit correspondre a l'origine autorisee par le CORS du backend Spring.
     port: 3000,
+    host: true, // ecoute sur toutes les interfaces reseau (acces depuis telephone)
   },
   resolve: {
     tsconfigPaths: true,

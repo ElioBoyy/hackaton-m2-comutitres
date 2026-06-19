@@ -1,7 +1,9 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { BadgeCheck, GraduationCap, IdCard, Loader2, Receipt, Sparkles } from 'lucide-react'
+import { ArrowLeft, BadgeCheck, GraduationCap, IdCard, Loader2, Receipt, Sparkles } from 'lucide-react'
 import * as React from 'react'
+import { z } from 'zod'
 import { Button } from '~/components/Button'
+import { ProgressBar } from '~/components/ui/ProgressBar'
 import { piecesSontCompletes } from '~/domain/pieces'
 import { deposerFichier, type TypePiece } from '~/lib/fichier'
 import { m } from '~/paraglide/messages'
@@ -13,12 +15,11 @@ import {
   verificationIAEffectuee,
 } from '~/store/wizardSlice'
 
-export const Route = createFileRoute('/recommandation/pieces')({
+export const Route = createFileRoute('/souscription/pieces')({
+  validateSearch: z.object({ code: z.string().optional() }),
   component: PiecesStep,
 })
 
-// Duree simulee de la PreVerificationIA (cf. CONTEXT.md) : pas de vrai appel
-// reseau, juste un mock de chargement pour donner du feedback a l'usager.
 const DUREE_PRE_VERIFICATION_IA_MS = 2000
 
 function PiecesStep() {
@@ -28,12 +29,11 @@ function PiecesStep() {
   const [enPreVerification, setEnPreVerification] = React.useState(false)
   const [preVerifie, setPreVerifie] = React.useState(false)
 
+  const { code } = Route.useSearch()
   const pourQui = wizard.pourQui
   const justificatifRequis = wizard.situation === 'ETUDIANT'
   const bourseRequise = wizard.situation === 'ETUDIANT' && wizard.boursier
   const piecesCompletes = piecesSontCompletes(wizard)
-  // La pre-verification IA n'a besoin que d'au moins un document a
-  // analyser (CNI, certificat de scolarite ou notification de bourse).
   const auMoinsUnePieceDeposee = Boolean(
     wizard.pieceIdentiteNomFichier ||
       wizard.justificatifEtudiantNomFichier ||
@@ -50,7 +50,7 @@ function PiecesStep() {
   }
 
   function continuerSansPreVerification() {
-    navigate({ to: '/recommandation/recapitulatif' })
+    navigate({ to: '/souscription/recapitulatif', search: code ? { code } : {} })
   }
 
   if (enPreVerification) {
@@ -73,7 +73,7 @@ function PiecesStep() {
         <p className="text-sm text-gray-700">
           {pourQui === 'TIERS' ? m.wizard_pieces_verified_other() : m.wizard_pieces_verified_self()}
         </p>
-        <Button onClick={() => navigate({ to: '/recommandation/recapitulatif' })}>
+        <Button onClick={() => navigate({ to: '/souscription/recapitulatif' })}>
           {m.wizard_pieces_verified_continue()}
         </Button>
       </main>
@@ -82,6 +82,18 @@ function PiecesStep() {
 
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-6 py-8">
+      <button
+        type="button"
+        onClick={() => navigate({
+          to: pourQui === 'TIERS' ? '/souscription/infos-tiers' : '/souscription/detail',
+          search: code ? { code } : {},
+        })}
+        className="flex items-center gap-1.5 self-start text-sm font-medium text-primary hover:underline"
+      >
+        <ArrowLeft size={15} />
+        {m.common_back()}
+      </button>
+      <ProgressBar etapeCourante={pourQui === 'TIERS' ? 3 : 2} totalEtapes={pourQui === 'TIERS' ? 5 : 4} />
       <h1 className="font-heading text-2xl font-bold tracking-tight text-dark">
         {pourQui === 'TIERS' ? m.wizard_pieces_title_other() : m.wizard_pieces_title_self()}
       </h1>
@@ -111,7 +123,7 @@ function PiecesStep() {
         <ChampFichier
           icon={Receipt}
           label={m.wizard_pieces_scholarship_notif()}
-          type="NOTIFICATION_BOURSE"
+          type="AVIS_IMPOSITION"
           nomFichier={wizard.notificationBourseNomFichier}
           onDepose={(payload) => dispatch(notificationBourseDeposee(payload))}
         />

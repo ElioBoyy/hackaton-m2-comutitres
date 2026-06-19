@@ -1,4 +1,5 @@
 import { Phone } from 'lucide-react'
+import { m } from '~/paraglide/messages'
 
 // Numero du conseiller vocal Retell (agent "Camille"). Public (non secret) :
 // valeur par defaut en dur pour marcher partout, surchargeable via VITE_RETELL_PHONE.
@@ -18,13 +19,13 @@ export function ContactBanner() {
           <Phone size={18} className="text-white" aria-hidden="true" />
         </div>
         <div>
-          <p className="font-heading text-sm font-semibold text-dark">Service client Navigo</p>
-          <p className="text-xs text-gray-700">24h/24 · 7j/7 · Appel non surtaxé</p>
+          <p className="font-heading text-sm font-semibold text-dark">{m.contact_banner_title()}</p>
+          <p className="text-xs text-gray-700">{m.contact_banner_subtitle()}</p>
         </div>
       </div>
       <a
         href={`tel:${TEL}`}
-        aria-label={`Appeler le ${NUMERO}`}
+        aria-label={m.contact_banner_call_aria({ number: NUMERO })}
         className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-focus focus:outline-none focus:ring-2 focus:ring-primary/30"
       >
         <Phone size={15} aria-hidden="true" />

@@ -8,6 +8,7 @@ import fr.jegeremacartenavigo.domain.auth.port.CompteAuthRepository;
 import fr.jegeremacartenavigo.domain.auth.port.PasswordHasher;
 import fr.jegeremacartenavigo.domain.auth.port.TokenIssuer;
 import fr.jegeremacartenavigo.domain.auth.port.UtilisateurAuthRepository;
+import fr.jegeremacartenavigo.domain.dossier.port.NotificateurDossier;
 import fr.jegeremacartenavigo.domain.identite.port.ServiceOtp;
 import fr.jegeremacartenavigo.domain.identite.port.VerificationTelephoneRepository;
 import org.springframework.context.annotation.Bean;
@@ -23,8 +24,9 @@ public class AuthHandlersConfig {
     @Bean
     RegisterHandler registerHandler(UtilisateurAuthRepository repository,
                                     PasswordHasher passwordHasher,
-                                    TokenIssuer tokenIssuer) {
-        return new RegisterHandler(repository, passwordHasher, tokenIssuer);
+                                    TokenIssuer tokenIssuer,
+                                    NotificateurDossier notificateur) {
+        return new RegisterHandler(repository, passwordHasher, tokenIssuer, notificateur);
     }
 
     @Bean

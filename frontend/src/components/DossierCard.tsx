@@ -1,4 +1,5 @@
 import React from 'react'
+import { Link } from '@tanstack/react-router'
 import { CalendarDays, Clock, Wallet, ArrowRight } from 'lucide-react'
 import { StatusBadge } from '~/components/backoffice/StatusBadge'
 import { m } from '~/paraglide/messages'
@@ -103,50 +104,63 @@ const ZONE_LABEL: Record<ZoneNavigo, string> = { Z1: '1', Z2: '2', Z3: '3', Z4: 
 /* ─── Navigo card visual ──────────────────────────────────────────────── */
 
 function NavigoCardVisual({ libelle }: { libelle: string }) {
-  const sub = libelle.toLowerCase().includes('imagine') ? 'imagine R'
-    : libelle.toLowerCase().includes('mensuel') ? 'mois'
-    : libelle.toLowerCase().includes('annuel') ? 'annuel'
-    : 'navigo'
-
   return (
-    <div
-      className="flex h-36 w-24 shrink-0 flex-col justify-between rounded-xl p-3 text-white"
-      style={{ background: 'linear-gradient(145deg, #6b35b8 0%, #3d1e82 45%, #1a0a5c 100%)' }}
-      aria-hidden="true"
-    >
-      <div>
-        <p className="text-[11px] font-bold leading-tight">navigo</p>
-        <p className="text-[9px] leading-tight text-white/70">{sub}</p>
-      </div>
-      <div className="flex items-end justify-between">
-        <p className="text-[7px] leading-tight text-white/50">Île‑de‑France<br />Mobilités</p>
-        <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="white" strokeOpacity="0.5" strokeWidth="1.5">
-          <circle cx="10" cy="10" r="8"/>
-          <circle cx="10" cy="10" r="3" fill="white" fillOpacity="0.5" stroke="none"/>
-        </svg>
-      </div>
-    </div>
+    <img
+      src="/navigo-card-transparent.png"
+      alt={`Carte Navigo — ${libelle}`}
+      className="h-36 w-24 shrink-0 rounded-xl object-contain"
+    />
   )
 }
 
 /* ─── Main component ──────────────────────────────────────────────────── */
 
+function isFutureDate(iso: string | null): boolean {
+  if (!iso) return false
+  const target = new Date(iso)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return target.getTime() > today.getTime()
+}
+
+const STATUT_I18N: Record<string, () => string> = {
+  BROUILLON:           m.dashboard_statut_brouillon,
+  EN_VERIFICATION:     m.dashboard_statut_en_verification,
+  INCOMPLET:           m.dashboard_statut_incomplet,
+  EN_ATTENTE_PAIEMENT: m.dashboard_statut_en_attente_paiement,
+  ACTIF:               m.dashboard_statut_actif,
+  VALIDE:              m.dashboard_statut_actif,
+  EXPIRE:              m.dashboard_statut_expire,
+  REJETE:              m.dashboard_statut_rejete,
+  RESILIE:             m.dashboard_statut_resilie,
+}
+
 export function DossierCard({ dossier }: { dossier: DossierDashboard }) {
   const showRenewal = dossier.dateRenouvellement !== null
     && dossier.statut.categorie === 'en_cours'
     && isWithin90Days(dossier.dateFinDroits)
+  const estActifOuValide = dossier.statut.code === 'ACTIF' || dossier.statut.code === 'VALIDE'
+  const aDesDroitsConnus = estActifOuValide
+    && (dossier.dateDebutDroits !== null || dossier.dateFinDroits !== null)
+  const actifFutur = dossier.statut.code === 'ACTIF' && isFutureDate(dossier.dateDebutDroits)
+  const libelleStatut = actifFutur
+    ? m.dossier_card_active_from({ date: formatDate(dossier.dateDebutDroits) })
+    : (STATUT_I18N[dossier.statut.code]?.() ?? dossier.statut.libelle)
 
   return (
     <article
       className="overflow-hidden rounded-2xl border border-primary/40 bg-white shadow-sm"
-      aria-label={`${dossier.typeAbonnementLibelle} — ${dossier.statut.libelle}`}
+      aria-label={`${dossier.typeAbonnementLibelle} — ${libelleStatut}`}
     >
       {/* ── Header ── */}
       <div
         className="flex items-center justify-between border-b border-blue-100 px-5 py-3"
         style={{ background: 'linear-gradient(to right, #f0f4ff, #eef2fb)' }}
       >
-        <StatusBadge libelle={dossier.statut.libelle} categorie={dossier.statut.categorie as any} />
+        <StatusBadge
+          libelle={libelleStatut}
+          categorie={dossier.statut.code === 'INCOMPLET' ? 'rejete' : dossier.statut.categorie as any}
+        />
         <span className="text-xs text-gray-500 sm:text-sm">
           N°&nbsp;<span className="font-mono font-semibold text-gray-700">{dossier.numeroDossier}</span>
         </span>
@@ -165,7 +179,9 @@ export function DossierCard({ dossier }: { dossier: DossierDashboard }) {
             <p className="mt-1 text-sm text-gray-500">
               {m.dashboard_for_holder()}{' '}
               <span className="font-semibold text-gray-700">
-                {dossier.porteurIdentite.prenom} {dossier.porteurIdentite.nom}
+                {dossier.beneficiaireNomComplet
+                  ? dossier.beneficiaireNomComplet
+                  : `${dossier.porteurIdentite.prenom} ${dossier.porteurIdentite.nom}`}
               </span>
             </p>
             <p className="text-sm text-gray-500">
@@ -178,7 +194,7 @@ export function DossierCard({ dossier }: { dossier: DossierDashboard }) {
 
           {dossier.transports.length > 0 && (
             <div>
-              <p className="mb-2.5 text-xs font-semibold text-gray-600">Transports inclus</p>
+              <p className="mb-2.5 text-xs font-semibold text-gray-600">{m.dossier_card_transports_included()}</p>
               <div className="flex flex-wrap gap-4">
                 {dossier.transports.map((t) => {
                   const Icon = TRANSPORT_ICON[t]
@@ -195,18 +211,18 @@ export function DossierCard({ dossier }: { dossier: DossierDashboard }) {
 
           {dossier.zones.length > 0 && (
             <div>
-              <p className="mb-2 text-xs font-semibold text-gray-600">Zones couvertes</p>
+              <p className="mb-2 text-xs font-semibold text-gray-600">{m.dossier_card_zones_covered()}</p>
               <div className="flex items-center gap-1.5">
                 {dossier.zones.map((z) => (
                   <span
                     key={z}
                     className={`flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold text-white ${ZONE_COLORS[z]}`}
-                    aria-label={`Zone ${ZONE_LABEL[z]}`}
+                    aria-label={m.dossier_card_zone_aria({ zone: ZONE_LABEL[z] })}
                   >
                     {ZONE_LABEL[z]}
                   </span>
                 ))}
-                <span className="ml-1.5 text-xs text-gray-500">Île-de-France</span>
+                <span className="ml-1.5 text-xs text-gray-500">{m.dossier_card_region_idf()}</span>
               </div>
             </div>
           )}
@@ -214,19 +230,25 @@ export function DossierCard({ dossier }: { dossier: DossierDashboard }) {
 
         {/* Right */}
         <div className="flex shrink-0 flex-col gap-3 sm:w-56 sm:gap-4">
-          <div className="flex items-start gap-2.5">
-            <CalendarDays size={16} className="mt-0.5 shrink-0 text-gray-400" aria-hidden />
-            <div>
-              <p className="text-xs font-semibold text-gray-700">Période de validité</p>
-              <p className="mt-0.5 text-sm text-gray-600">Du {formatDate(dossier.dateDebutDroits)} au {formatDate(dossier.dateFinDroits)}</p>
+          {aDesDroitsConnus && (
+            <div className="flex items-start gap-2.5">
+              <CalendarDays size={16} className="mt-0.5 shrink-0 text-gray-400" aria-hidden />
+              <div>
+                <p className="text-xs font-semibold text-gray-700">{m.dossier_card_validity_period()}</p>
+                <p className="mt-0.5 text-sm text-gray-600">
+                  {dossier.dateFinDroits
+                    ? m.dossier_card_period_range({ start: formatDate(dossier.dateDebutDroits), end: formatDate(dossier.dateFinDroits) })
+                    : m.dossier_card_period_open({ start: formatDate(dossier.dateDebutDroits) })}
+                </p>
+              </div>
             </div>
-          </div>
+          )}
 
           {dossier.dateRenouvellement && dossier.statut.categorie === 'en_cours' && (
             <div className="flex items-start gap-2.5">
               <Clock size={16} className="mt-0.5 shrink-0 text-gray-400" aria-hidden />
               <div>
-                <p className="text-xs font-semibold text-gray-700">Prochain renouvellement</p>
+                <p className="text-xs font-semibold text-gray-700">{m.dossier_card_next_renewal()}</p>
                 <p className="mt-0.5 text-sm text-gray-600">{formatDate(dossier.dateRenouvellement)}</p>
               </div>
             </div>
@@ -235,19 +257,20 @@ export function DossierCard({ dossier }: { dossier: DossierDashboard }) {
           <div className="flex items-start gap-2.5">
             <Wallet size={16} className="mt-0.5 shrink-0 text-gray-400" aria-hidden />
             <div>
-              <p className="text-xs font-semibold text-gray-700">Prix</p>
+              <p className="text-xs font-semibold text-gray-700">{m.dossier_card_price()}</p>
               <p className="mt-0.5 text-sm text-gray-600">{formatMontant(dossier.montantTotal)}</p>
             </div>
           </div>
 
-          <a
-            href={`/dossier/${dossier.idDossier}`}
+          <Link
+            to="/dossier/$id"
+            params={{ id: String(dossier.idDossier) }}
             aria-label={m.dashboard_see_link_aria({ name: dossier.typeAbonnementLibelle })}
             className="mt-auto flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-focus focus:outline-none focus:ring-2 focus:ring-primary/40"
           >
-            Gérer mon abonnement
+            {m.dossier_card_manage_cta()}
             <ArrowRight size={15} aria-hidden />
-          </a>
+          </Link>
         </div>
       </div>
 
@@ -264,9 +287,9 @@ export function DossierCard({ dossier }: { dossier: DossierDashboard }) {
               <circle cx="10" cy="6.5" r="1.2" fill="white"/>
             </svg>
             <p className="text-sm text-gray-700">
-              Pensez à renouveler votre abonnement avant le{' '}
+              {m.dossier_card_renew_reminder_before()}{' '}
               <span className="font-medium">{formatDate(dossier.dateRenouvellement)}</span>{' '}
-              pour éviter toute interruption.
+              {m.dossier_card_renew_reminder_after()}
             </p>
           </>
         )}

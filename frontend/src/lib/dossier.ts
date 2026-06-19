@@ -40,6 +40,88 @@ export interface DossierResponse {
   dateCreation: string
 }
 
+export interface PersonneDetail {
+  idUtilisateur: number
+  nom: string
+  prenom: string
+  email: string
+}
+
+export interface PieceJustificative {
+  id: number
+  codeTypePiece: string
+  libelleTypePiece: string
+  statutValidation: 'en_attente' | 'valide' | 'rejete' | string
+  dateDepot: string
+  motifRejet: string | null
+  cheminFichier: string | null
+  /** True si un agent a depose ou remplace ce fichier depuis le backoffice. */
+  modifieParAgent: boolean
+  /** True si la piece a ete pre-verifiee par l'IA (reset au remplacement). */
+  verifieParIA: boolean
+}
+
+export interface PieceRequise {
+  codeTypePiece: string
+  libelleTypePiece: string
+  obligatoire: boolean
+}
+
+export interface DossierDetail {
+  idDossier: number
+  titulaire: PersonneDetail
+  payeur: PersonneDetail
+  typeAbonnement: { code: string; libelle: string }
+  statut: { code: string; libelle: string; categorie: string }
+  dateCreation: string
+  dateDebutDroits: string | null
+  dateFinDroits: string | null
+  montantTotal: number
+  beneficiaireNomComplet: string | null
+  pieces: PieceJustificative[]
+  piecesRequises: PieceRequise[]
+}
+
+export interface StatutMisAJour {
+  idDossier: number
+  codeStatut: string
+}
+
+export interface PieceADeposer {
+  codeTypePiece: string
+  cheminFichier: string
+}
+
+export function fetchDossierDetail(id: number): Promise<DossierDetail> {
+  return apiFetch<DossierDetail>(`/dossiers/${id}`)
+}
+
+export function resilierDossier(id: number): Promise<StatutMisAJour> {
+  return apiFetch<StatutMisAJour>(`/dossiers/${id}/resilier`, { method: 'POST' })
+}
+
+export function lancerPreVerificationIA(id: number): Promise<DossierDetail> {
+  return apiFetch<DossierDetail>(`/dossiers/${id}/pre-verification-ia`, { method: 'POST' })
+}
+
+export function soumettreEnVerification(id: number, pieces: PieceADeposer[]): Promise<StatutMisAJour> {
+  return apiFetch<StatutMisAJour>(`/dossiers/${id}/soumettre`, {
+    method: 'POST',
+    body: JSON.stringify({ pieces }),
+  })
+}
+
+export function enregistrerPieces(id: number, pieces: PieceADeposer[]): Promise<StatutMisAJour> {
+  return apiFetch<StatutMisAJour>(`/dossiers/${id}/pieces`, {
+    method: 'POST',
+    body: JSON.stringify({ pieces }),
+  })
+}
+
+export function supprimerDossier(id: number): Promise<StatutMisAJour> {
+  return apiFetch<StatutMisAJour>(`/dossiers/${id}`, { method: 'DELETE' })
+}
+
 export function creerDossier(payload: CreerDossierPayload): Promise<DossierResponse> {
   return apiFetch<DossierResponse>('/dossiers', {
     method: 'POST',

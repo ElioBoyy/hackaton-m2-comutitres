@@ -24,6 +24,11 @@
   --color-focus: #0050aa; /* Bleu focus */
   --color-dark: #25303b; /* Anthracite */
   --color-blue-pale: #f5f9ff; /* Bleu clair */
+  --color-faq-trouver: #f5f8fe;
+  --color-faq-justificatif: #e8f7f2;
+  --color-faq-paiement: #efebfc;
+  --color-faq-arrivant: #fcfaef;
+  --color-faq-accessibilite: #faefed;
   --color-blue-soft: #deeeff; /* Bleu moyen */
 
   /* Couleurs secondaires -> roles semantiques */
@@ -74,6 +79,32 @@ code {
   background: color-mix(in srgb, currentColor 12%, transparent);
   padding: 0.1em 0.35em;
   border-radius: 4px;
+}
+
+/* Cursor par defaut pour tout ce qui est cliquable (boutons, liens, role=button,
+   summary, controles input cliquables). Tailwind v4 retire le cursor:pointer
+   par defaut des boutons, ce qui casse l'affordance visuelle ; on le reposante
+   ici globalement. Les variantes desactivees recoivent not-allowed. */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+a[href],
+summary,
+label[for],
+select:not(:disabled),
+input[type="checkbox"]:not(:disabled),
+input[type="radio"]:not(:disabled),
+input[type="file"]:not(:disabled),
+input[type="submit"]:not(:disabled),
+input[type="reset"]:not(:disabled),
+input[type="button"]:not(:disabled) {
+  cursor: pointer;
+}
+
+button:disabled,
+[role="button"][aria-disabled="true"],
+input:disabled,
+select:disabled {
+  cursor: not-allowed;
 }
 
 /* --- Effet "ticket de transport" --- */

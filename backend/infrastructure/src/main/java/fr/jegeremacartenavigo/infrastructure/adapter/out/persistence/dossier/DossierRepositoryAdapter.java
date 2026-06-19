@@ -13,9 +13,11 @@ import fr.jegeremacartenavigo.domain.dossier.model.DossierResume;
 import fr.jegeremacartenavigo.domain.dossier.model.HistoriqueEntree;
 import fr.jegeremacartenavigo.domain.dossier.model.ModePaiementDossier;
 import fr.jegeremacartenavigo.domain.dossier.model.NouveauDossier;
+import fr.jegeremacartenavigo.domain.dossier.model.PieceADeposer;
 import fr.jegeremacartenavigo.domain.dossier.model.PageResult;
 import fr.jegeremacartenavigo.domain.dossier.model.Personne;
 import fr.jegeremacartenavigo.domain.dossier.model.PieceJustificativeResume;
+import fr.jegeremacartenavigo.domain.dossier.model.PieceRequiseResume;
 import fr.jegeremacartenavigo.domain.dossier.model.ValidationPiece;
 import fr.jegeremacartenavigo.domain.dossier.port.DossierRepository;
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.backoffice.Agent;
@@ -30,8 +32,11 @@ import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.referentiel
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.referentiel.StatutDossierJpaRepository;
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.referentiel.TypeAbonnement;
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.referentiel.TypeAbonnementJpaRepository;
+import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.referentiel.PieceRequise;
+import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.referentiel.PieceRequiseJpaRepository;
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.referentiel.TypePieceJustificative;
 import fr.jegeremacartenavigo.infrastructure.adapter.out.persistence.referentiel.TypePieceJustificativeJpaRepository;
+import jakarta.persistence.EntityManager;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -68,6 +73,9 @@ public class DossierRepositoryAdapter implements DossierRepository {
     private final HistoriqueDossierJpaRepository historiqueJpa;
     private final AgentJpaRepository agentJpaRepository;
     private final SequenceAnnuelleDossierJpaRepository sequenceJpa;
+    private final PieceRequiseJpaRepository pieceRequiseJpa;
+    private final EntityManager em;
+    private final fr.jegeremacartenavigo.domain.dossier.port.NotificateurDossier notificateur;
 
     public DossierRepositoryAdapter(
             DossierJpaRepository dossierJpa,
@@ -79,7 +87,10 @@ public class DossierRepositoryAdapter implements DossierRepository {
             PaiementJpaRepository paiementJpaRepository,
             HistoriqueDossierJpaRepository historiqueJpa,
             AgentJpaRepository agentJpaRepository,
-            SequenceAnnuelleDossierJpaRepository sequenceJpa) {
+            SequenceAnnuelleDossierJpaRepository sequenceJpa,
+            PieceRequiseJpaRepository pieceRequiseJpa,
+            EntityManager em,
+            fr.jegeremacartenavigo.domain.dossier.port.NotificateurDossier notificateur) {
         this.dossierJpa = dossierJpa;
         this.pieceJpa = pieceJpa;
         this.utilisateurJpaRepository = utilisateurJpaRepository;
@@ -90,6 +101,9 @@ public class DossierRepositoryAdapter implements DossierRepository {
         this.historiqueJpa = historiqueJpa;
         this.agentJpaRepository = agentJpaRepository;
         this.sequenceJpa = sequenceJpa;
+        this.pieceRequiseJpa = pieceRequiseJpa;
+        this.em = em;
+        this.notificateur = notificateur;
     }
 
     @Override
@@ -131,6 +145,12 @@ public class DossierRepositoryAdapter implements DossierRepository {
 
     @Override
     @Transactional(readOnly = true)
+    public Map<String, Long> countByCategorie() {
+        return countByCategorie(null, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Map<String, Long> countByCategorie(String nomClient, String numeroDossier) {
         List<Object[]> rows;
         if (nomClient != null && !nomClient.isBlank()) {
@@ -167,9 +187,11 @@ public class DossierRepositoryAdapter implements DossierRepository {
                         "Type d'abonnement introuvable ou inactif : " + nouveauDossier.codeTypeAbonnement()));
 
         boolean paiementFourni = nouveauDossier.modePaiement() != null;
-        String codeStatut = paiementFourni ? STATUT_EN_VERIFICATION
-                : Boolean.TRUE.equals(nouveauDossier.enAttentePaiement()) ? STATUT_EN_ATTENTE_PAIEMENT
-                : STATUT_BROUILLON;
+        // Plus de distinction BROUILLON / EN_ATTENTE_PAIEMENT : tous les
+        // dossiers non payes sont BROUILLON. Le statut EN_ATTENTE_PAIEMENT
+        // reste defini en BDD pour les dossiers legacy (V1) mais n'est plus
+        // jamais cree par ce flux. Le flag enAttentePaiement est ignore.
+        String codeStatut = paiementFourni ? STATUT_EN_VERIFICATION : STATUT_BROUILLON;
         StatutDossier statut = statutDossierJpaRepository.findByCode(codeStatut)
                 .orElseThrow(() -> new ReferentielIntrouvableException(
                         "Statut de dossier introuvable : " + codeStatut));
@@ -186,7 +208,43 @@ public class DossierRepositoryAdapter implements DossierRepository {
         enregistrerOuRemplacerPiece(dossier, connecte, CODE_NOTIFICATION_BOURSE, nouveauDossier.cheminNotificationBourse());
 
         if (paiementFourni) {
+            // Garde-fou : pour un dossier existant on a saute la validation
+            // pieces dans le handler. On verifie ici en base que la piece
+            // d'identite (PIECE_IDENTITE) est presente avant de basculer le
+            // statut en EN_VERIFICATION + enregistrer le paiement.
+            if (nouveauDossier.idDossierExistant() != null) {
+                TypePieceJustificative typePieceId = typePieceJpaRepository.findByCode(CODE_PIECE_IDENTITE)
+                        .orElseThrow(() -> new ReferentielIntrouvableException(
+                                "Type de piece introuvable : " + CODE_PIECE_IDENTITE));
+                boolean cniDeposee = pieceJpa
+                        .findByDossier_IdDossierAndTypePiece_IdTypePiece(
+                                dossier.getIdDossier(), typePieceId.getIdTypePiece())
+                        .isPresent();
+                if (!cniDeposee) {
+                    throw new fr.jegeremacartenavigo.domain.dossier.exception.PieceObligatoireManquanteException(
+                            "La piece d'identite est requise pour payer.");
+                }
+            }
+
             enregistrerPaiement(dossier, connecte, nouveauDossier.modePaiement());
+            // Recu de paiement + accuse de soumission au porteur. La transition
+            // vers EN_VERIFICATION est mecanique (deja faite a l'init du statut)
+            // donc on n'appelle pas appliquerChangementStatut, on emet
+            // directement les deux notifs metier.
+            notificateur.notifierPaiementEnregistre(
+                    connecte.getEmail(),
+                    connecte.getPrenom(),
+                    dossier.getNumeroDossier(),
+                    dossier.getTypeAbonnement().getLibelle(),
+                    dossier.getMontantTotal(),
+                    nouveauDossier.modePaiement() != null ? nouveauDossier.modePaiement().name() : null
+            );
+            notificateur.notifierSoumissionDossier(
+                    connecte.getEmail(),
+                    connecte.getPrenom(),
+                    dossier.getNumeroDossier(),
+                    dossier.getTypeAbonnement().getLibelle()
+            );
         }
 
         return new DossierCree(
@@ -208,8 +266,20 @@ public class DossierRepositoryAdapter implements DossierRepository {
             throw new DossierIntrouvableException(nouveauDossier.idDossierExistant());
         }
         String codeActuel = existant.getStatutActuel().getCode();
+        // Si l'ID pointe vers un dossier deja finalise (EN_VERIFICATION, ACTIF,
+        // etc.), c'est probablement un wizard.idDossierBackend non-reset du
+        // precedent abonnement. On cree un nouveau dossier au lieu de jeter,
+        // pour ne pas bloquer l'utilisateur quand il prend un nouvel abonnement.
         if (!STATUT_BROUILLON.equals(codeActuel) && !STATUT_EN_ATTENTE_PAIEMENT.equals(codeActuel)) {
-            throw new DossierDejaFinaliseException();
+            return new Dossier();
+        }
+        // Si le type d'abonnement demande differe de celui du brouillon existant,
+        // c'est un nouvel abonnement -> nouveau dossier (le brouillon precedent
+        // reste en BDD pour que l'utilisateur puisse y revenir).
+        if (existant.getTypeAbonnement() != null
+                && nouveauDossier.codeTypeAbonnement() != null
+                && !nouveauDossier.codeTypeAbonnement().equals(existant.getTypeAbonnement().getCode())) {
+            return new Dossier();
         }
         return existant;
     }
@@ -282,6 +352,98 @@ public class DossierRepositoryAdapter implements DossierRepository {
         paiementJpaRepository.save(paiement);
     }
 
+    @Override
+    @Transactional
+    public void resilier(Integer id) {
+        Dossier dossier = dossierJpa.findById(id)
+                .orElseThrow(() -> new DossierIntrouvableException(id));
+        StatutDossier statut = statutDossierJpaRepository.findByCode("RESILIE")
+                .orElseThrow(() -> new ReferentielIntrouvableException("Statut RESILIE introuvable"));
+        dossier.setStatutActuel(statut);
+        dossierJpa.save(dossier);
+    }
+
+    @Override
+    @Transactional
+    public void soumettre(Integer id) {
+        Dossier dossier = dossierJpa.findById(id)
+                .orElseThrow(() -> new DossierIntrouvableException(id));
+
+        // Garde metier : un dossier EN_ATTENTE_PAIEMENT ne peut etre soumis que
+        // si un Paiement existe deja. Sinon le frontend doit rediriger vers le
+        // tunnel de paiement (cf. PaiementRequisException -> HTTP 409).
+        String codeStatutActuel = dossier.getStatutActuel() != null
+                ? dossier.getStatutActuel().getCode() : null;
+        // BROUILLON et EN_ATTENTE_PAIEMENT ne peuvent etre soumis que si un
+        // Paiement a deja ete enregistre (la soumission passe par "Payer et
+        // soumettre" cote front, qui fait POST /dossiers avec modePaiement).
+        if ((STATUT_BROUILLON.equals(codeStatutActuel)
+                || STATUT_EN_ATTENTE_PAIEMENT.equals(codeStatutActuel))
+                && !paiementJpaRepository.existsByDossier_IdDossier(id)) {
+            throw new fr.jegeremacartenavigo.domain.dossier.exception.PaiementRequisException(id);
+        }
+        // Seuls les statuts editables peuvent passer en EN_VERIFICATION ; on
+        // refuse l'idempotence sur les statuts deja avances (evite de remettre
+        // EN_VERIFICATION un dossier ACTIF/REJETE/VALIDE par accident).
+        if (codeStatutActuel != null
+                && !STATUT_BROUILLON.equals(codeStatutActuel)
+                && !STATUT_EN_ATTENTE_PAIEMENT.equals(codeStatutActuel)
+                && !CodeStatutDossier.INCOMPLET.name().equals(codeStatutActuel)) {
+            throw new DossierDejaFinaliseException();
+        }
+
+        StatutDossier statut = statutDossierJpaRepository.findByCode("EN_VERIFICATION")
+                .orElseThrow(() -> new ReferentielIntrouvableException("Statut EN_VERIFICATION introuvable"));
+        dossier.setStatutActuel(statut);
+        dossierJpa.save(dossier);
+
+        // Accuse de reception au porteur du dossier.
+        Utilisateur porteur = dossier.getUtilisateurPorteur();
+        if (porteur != null) {
+            notificateur.notifierSoumissionDossier(
+                    porteur.getEmail(),
+                    porteur.getPrenom(),
+                    dossier.getNumeroDossier(),
+                    dossier.getTypeAbonnement().getLibelle()
+            );
+        }
+    }
+
+    @Override
+    @Transactional
+    public void ajouterOuRemplacerPieces(Integer idDossier, java.util.List<PieceADeposer> pieces) {
+        Dossier dossier = dossierJpa.findById(idDossier)
+                .orElseThrow(() -> new DossierIntrouvableException(idDossier));
+        Utilisateur depositaire = dossier.getUtilisateurPorteur();
+        for (PieceADeposer piece : pieces) {
+            enregistrerOuRemplacerPiece(dossier, depositaire, piece.codeTypePiece(), piece.cheminFichier());
+        }
+    }
+
+    @Override
+    @Transactional
+    public void supprimer(Integer id) {
+        if (!dossierJpa.existsById(id)) throw new DossierIntrouvableException(id);
+        // Nullifier les FK optionnelles avant suppression pour éviter la violation de contrainte
+        em.createNativeQuery("UPDATE utilisateur_situation SET id_dossier_justificatif = NULL WHERE id_dossier_justificatif = :id")
+                .setParameter("id", id).executeUpdate();
+        em.createNativeQuery("UPDATE notification SET id_dossier = NULL WHERE id_dossier = :id")
+                .setParameter("id", id).executeUpdate();
+        // Supprimer les entités dépendantes dans l'ordre (respect des FK NOT NULL)
+        em.createNativeQuery("DELETE FROM commentaire_echange WHERE id_dossier = :id")
+                .setParameter("id", id).executeUpdate();
+        em.createNativeQuery("DELETE FROM historique_dossier WHERE id_dossier = :id")
+                .setParameter("id", id).executeUpdate();
+        em.createNativeQuery("DELETE FROM piece_justificative WHERE id_dossier = :id")
+                .setParameter("id", id).executeUpdate();
+        em.createNativeQuery("DELETE FROM paiement WHERE id_dossier = :id")
+                .setParameter("id", id).executeUpdate();
+        em.createNativeQuery("DELETE FROM remboursement_aide WHERE id_dossier = :id")
+                .setParameter("id", id).executeUpdate();
+        em.createNativeQuery("DELETE FROM dossier WHERE id_dossier = :id")
+                .setParameter("id", id).executeUpdate();
+    }
+
     private static DossierResume toResume(Dossier d, long nbPiecesEnAttente) {
         return new DossierResume(
                 d.getIdDossier(),
@@ -304,6 +466,15 @@ public class DossierRepositoryAdapter implements DossierRepository {
                 .map(DossierRepositoryAdapter::toPieceResume)
                 .toList();
 
+        List<PieceRequiseResume> piecesRequises = pieceRequiseJpa
+                .findByTypeAbonnement_Code(d.getTypeAbonnement().getCode())
+                .stream()
+                .map(pr -> new PieceRequiseResume(
+                        pr.getTypePiece().getCode(),
+                        pr.getTypePiece().getLibelle(),
+                        pr.isObligatoire()))
+                .toList();
+
         return new DossierDetail(
                 d.getIdDossier(),
                 d.getNumeroDossier(),
@@ -318,18 +489,209 @@ public class DossierRepositoryAdapter implements DossierRepository {
                 d.getDateDebutDroits(),
                 d.getDateFinDroits(),
                 d.getMontantTotal(),
-                pieces
+                d.getBeneficiaireNomComplet(),
+                pieces,
+                piecesRequises
         );
+    }
+
+    @Override
+    @Transactional
+    public PieceJustificativeResume ajouterPiece(Integer idDossier, Integer idAuteur,
+                                                  String codeTypePiece, String cheminFichier,
+                                                  boolean parAgent) {
+        Dossier dossier = chargerDossierEditable(idDossier, idAuteur, parAgent);
+        TypePieceJustificative typePiece = typePieceJpaRepository.findByCode(codeTypePiece)
+                .orElseThrow(() -> new ReferentielIntrouvableException("Type de piece introuvable : " + codeTypePiece));
+        // Une seule piece par couple (dossier, typePiece) : si elle existe deja,
+        // l'appelant doit passer par "Remplacer".
+        if (pieceJpa.findByDossier_IdDossierAndTypePiece_IdTypePiece(idDossier, typePiece.getIdTypePiece()).isPresent()) {
+            throw new IllegalStateException("Une piece de type " + codeTypePiece + " existe deja sur ce dossier.");
+        }
+
+        PieceJustificative piece = new PieceJustificative();
+        piece.setDossier(dossier);
+        piece.setTypePiece(typePiece);
+        piece.setUtilisateurDepot(dossier.getUtilisateurPorteur());
+        piece.setCheminFichier(cheminFichier);
+        piece.setDateDepot(LocalDateTime.now());
+        piece.setStatutValidation(PieceJustificative.StatutValidation.en_attente);
+        piece.setModifieParAgent(parAgent);
+        pieceJpa.save(piece);
+
+        enregistrerHistoriqueDepot(dossier, idAuteur, parAgent,
+                (parAgent ? "Pièce ajoutée par l'agent : " : "Pièce ajoutée : ") + typePiece.getLibelle());
+        return toPieceResume(piece);
+    }
+
+    @Override
+    @Transactional
+    public PieceJustificativeResume remplacerFichierPiece(Integer idDossier, Integer idPiece,
+                                                          Integer idAuteur, String cheminFichier,
+                                                          boolean parAgent) {
+        Dossier dossier = chargerDossierEditable(idDossier, idAuteur, parAgent);
+        PieceJustificative piece = pieceJpa.findById(idPiece)
+                .filter(p -> p.getDossier().getIdDossier().equals(idDossier))
+                .orElseThrow(() -> new PieceIntrouvableException(idPiece));
+
+        // Reset complet : la piece redevient un nouveau depot a examiner. Le
+        // flag IA est aussi reset : le nouveau contenu n'a pas ete vu par l'IA.
+        piece.setCheminFichier(cheminFichier);
+        piece.setDateDepot(LocalDateTime.now());
+        piece.setStatutValidation(PieceJustificative.StatutValidation.en_attente);
+        piece.setAgentValidation(null);
+        piece.setDateValidation(null);
+        piece.setMotifRejet(null);
+        piece.setModifieParAgent(parAgent);
+        piece.setVerifieParIA(false);
+        pieceJpa.save(piece);
+
+        enregistrerHistoriqueDepot(dossier, idAuteur, parAgent,
+                (parAgent ? "Pièce remplacée par l'agent : " : "Pièce remplacée : ") + piece.getTypePiece().getLibelle());
+        return toPieceResume(piece);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Integer verifierEditable(Integer idDossier, Integer idAuteur, boolean parAgent) {
+        Dossier dossier = chargerDossierEditable(idDossier, idAuteur, parAgent);
+        return dossier.getUtilisateurPorteur().getIdUtilisateur();
+    }
+
+    /**
+     * Charge un dossier editable. La fenetre de statuts depend de qui agit :
+     * - agent backoffice : EN_VERIFICATION ou INCOMPLET (le dossier est en cours
+     *   d'instruction par le service)
+     * - client : BROUILLON / EN_ATTENTE_PAIEMENT / INCOMPLET (le client est libre
+     *   de modifier ses pieces tant qu'aucune action backoffice n'est en cours)
+     *
+     * <p>Pour un client, verifie aussi que {@code idAuteur} est bien le porteur
+     * du dossier (404-like via DossierIntrouvableException pour ne pas leaker
+     * l'existence du dossier).
+     */
+    private Dossier chargerDossierEditable(Integer idDossier, Integer idAuteur, boolean parAgent) {
+        Dossier dossier = dossierJpa.findById(idDossier)
+                .orElseThrow(() -> new DossierIntrouvableException(idDossier));
+        String code = dossier.getStatutActuel().getCode();
+        if (parAgent) {
+            boolean instructible = CodeStatutDossier.EN_VERIFICATION.name().equals(code)
+                    || CodeStatutDossier.INCOMPLET.name().equals(code);
+            if (!instructible) {
+                throw new IllegalStateException("Dossier non instructible (statut actuel : " + code + ")");
+            }
+        } else {
+            if (!dossier.getUtilisateurPorteur().getIdUtilisateur().equals(idAuteur)) {
+                throw new DossierIntrouvableException(idDossier);
+            }
+            boolean editableParClient = CodeStatutDossier.BROUILLON.name().equals(code)
+                    || CodeStatutDossier.EN_ATTENTE_PAIEMENT.name().equals(code)
+                    || CodeStatutDossier.INCOMPLET.name().equals(code);
+            if (!editableParClient) {
+                throw new IllegalStateException("Dossier non modifiable au statut " + code);
+            }
+        }
+        return dossier;
+    }
+
+    @Override
+    @Transactional
+    public void activerDossier(Integer idDossier, Integer idAgent, LocalDate dateDebutDroits) {
+        Dossier dossier = dossierJpa.findById(idDossier)
+                .orElseThrow(() -> new DossierIntrouvableException(idDossier));
+        Agent agent = agentJpaRepository.findById(idAgent)
+                .orElseThrow(() -> new ReferentielIntrouvableException("Agent introuvable : " + idAgent));
+        if (!CodeStatutDossier.VALIDE.name().equals(dossier.getStatutActuel().getCode())) {
+            throw new IllegalStateException("Le dossier doit etre VALIDE pour etre active (statut actuel : "
+                    + dossier.getStatutActuel().getCode() + ").");
+        }
+        if (dateDebutDroits == null) {
+            throw new IllegalStateException("dateDebutDroits requise pour activer le dossier.");
+        }
+
+        LocalDate dateFinDroits = calculerDateFinDroits(dossier.getTypeAbonnement().getPeriodicite(), dateDebutDroits);
+        dossier.setDateDebutDroits(dateDebutDroits);
+        dossier.setDateFinDroits(dateFinDroits);
+        dossierJpa.save(dossier);
+
+        // Notif specifique d'activation (avec dates + montant) au lieu de la
+        // notif generique de transition de statut.
+        appliquerChangementStatut(dossier, CodeStatutDossier.ACTIF, agent,
+                "Abonnement activé : droits du " + dateDebutDroits
+                        + (dateFinDroits != null ? " au " + dateFinDroits : " (sans terme)") + ".",
+                false);
+        Utilisateur porteur = dossier.getUtilisateurPorteur();
+        if (porteur != null) {
+            notificateur.notifierActivation(
+                    porteur.getEmail(),
+                    porteur.getPrenom(),
+                    dossier.getNumeroDossier(),
+                    dossier.getTypeAbonnement().getLibelle(),
+                    dateDebutDroits,
+                    dateFinDroits,
+                    dossier.getMontantTotal()
+            );
+        }
+    }
+
+    @Override
+    @Transactional
+    public void marquerPreVerifieParIA(Integer idDossier, Integer idUtilisateur) {
+        Dossier dossier = dossierJpa.findById(idDossier)
+                .orElseThrow(() -> new DossierIntrouvableException(idDossier));
+        if (!dossier.getUtilisateurPorteur().getIdUtilisateur().equals(idUtilisateur)) {
+            throw new IllegalStateException("Seul le porteur du dossier peut lancer la pre-verification IA.");
+        }
+        // Marque toutes les pieces non rejetees comme pre-verifiees. Les pieces
+        // rejetees gardent leur flag intact (et ne sont pas re-verifiees tant
+        // qu'elles n'ont pas ete remplacees).
+        List<PieceJustificative> pieces = pieceJpa.findByDossier_IdDossierOrderByDateDepotDesc(idDossier);
+        for (PieceJustificative piece : pieces) {
+            if (piece.getStatutValidation() == PieceJustificative.StatutValidation.rejetee) continue;
+            if (piece.isVerifieParIA()) continue;
+            piece.setVerifieParIA(true);
+            pieceJpa.save(piece);
+        }
+    }
+
+    private static LocalDate calculerDateFinDroits(TypeAbonnement.Periodicite periodicite, LocalDate debut) {
+        if (periodicite == null) return null;
+        return switch (periodicite) {
+            case journaliere -> debut.plusDays(1);
+            case hebdomadaire -> debut.plusWeeks(1);
+            case mensuelle -> debut.plusMonths(1);
+            case annuelle -> debut.plusYears(1);
+            case sans_abonnement -> null;
+        };
+    }
+
+    private void enregistrerHistoriqueDepot(Dossier dossier, Integer idAuteur,
+                                             boolean parAgent, String description) {
+        HistoriqueDossier entree = new HistoriqueDossier();
+        entree.setDossier(dossier);
+        entree.setDateAction(LocalDateTime.now());
+        entree.setTypeAction(HistoriqueDossier.TypeAction.depot_piece);
+        if (parAgent) {
+            entree.setAgent(agentJpaRepository.findById(idAuteur)
+                    .orElseThrow(() -> new ReferentielIntrouvableException("Agent introuvable : " + idAuteur)));
+        } else {
+            entree.setUtilisateur(utilisateurJpaRepository.findById(idAuteur)
+                    .orElseThrow(() -> new ReferentielIntrouvableException("Utilisateur introuvable : " + idAuteur)));
+        }
+        entree.setDescription(description);
+        historiqueJpa.save(entree);
     }
 
     private static PieceJustificativeResume toPieceResume(PieceJustificative p) {
         return new PieceJustificativeResume(
                 p.getIdPiece(),
+                p.getTypePiece().getCode(),
                 p.getTypePiece().getLibelle(),
                 p.getCheminFichier(),
                 p.getStatutValidation().name(),
                 p.getDateDepot(),
-                p.getMotifRejet()
+                p.getMotifRejet(),
+                p.isModifieParAgent(),
+                p.isVerifieParIA()
         );
     }
 
@@ -391,14 +753,73 @@ public class DossierRepositoryAdapter implements DossierRepository {
                 : "Pièce rejetée : " + piece.getTypePiece().getLibelle() + " — " + validation.motifRejet());
         historiqueJpa.save(entree);
 
-        // Auto-transition : un rejet de piece bascule un dossier EN_VERIFICATION
-        // vers INCOMPLET pour signaler a l'usager qu'il doit re-uploader des pieces.
-        // La validation reste sans effet sur le statut (pilote par le bouton
-        // "Valider le dossier" cote backoffice).
-        if (!validation.valider() && CodeStatutDossier.EN_VERIFICATION.name().equals(dossier.getStatutActuel().getCode())) {
+        // Auto-transitions selon le contexte :
+        // - Rejet d'une piece sur EN_VERIFICATION -> INCOMPLET (re-upload attendu).
+        // - Validation de la derniere piece restante en attente -> VALIDE depuis
+        //   EN_VERIFICATION ou INCOMPLET (un dossier peut etre repris apres
+        //   correction des pieces rejetees / ajout de pieces manquantes).
+        String codeActuel = dossier.getStatutActuel().getCode();
+        boolean instructible = CodeStatutDossier.EN_VERIFICATION.name().equals(codeActuel)
+                || CodeStatutDossier.INCOMPLET.name().equals(codeActuel);
+        if (!validation.valider() && CodeStatutDossier.EN_VERIFICATION.name().equals(codeActuel)) {
+            // Skip notif generique de transition : notifierPieceRejetee couvre
+            // deja le besoin avec un message plus precis (incluant le motif).
             appliquerChangementStatut(dossier, CodeStatutDossier.INCOMPLET, agent,
-                    "Statut passé à INCOMPLET suite au rejet d'une pièce.");
+                    "Statut passé à INCOMPLET suite au rejet d'une pièce.", false);
+        } else if (validation.valider() && instructible
+                && conditionsVALIDESatisfaites(dossier, piece)) {
+            appliquerChangementStatut(dossier, CodeStatutDossier.VALIDE, agent,
+                    "Statut passé à VALIDÉ : toutes les pièces ont été validées.");
         }
+
+        // Notification specifique au porteur en cas de rejet, avec le motif.
+        if (!validation.valider()) {
+            Utilisateur porteur = dossier.getUtilisateurPorteur();
+            if (porteur != null) {
+                notificateur.notifierPieceRejetee(
+                        porteur.getEmail(),
+                        porteur.getPrenom(),
+                        dossier.getNumeroDossier(),
+                        piece.getTypePiece().getLibelle(),
+                        validation.motifRejet()
+                );
+            }
+        }
+    }
+
+    /**
+     * Vrai si toutes les conditions pour passer le dossier a VALIDE sont reunies :
+     * - toutes les pieces existantes du dossier sont {@code validee} (la piece
+     *   qu'on vient de sauvegarder est exclue de la query pour eviter le piege
+     *   du flush Hibernate non garanti ; on sait qu'elle vient d'etre validee
+     *   puisqu'on rentre dans ce code path).
+     * - chaque type de piece marque obligatoire pour le typeAbonnement du
+     *   dossier est couvert par une piece {@code validee}. Si le referentiel
+     *   {@code piece_requise} ne contient rien pour ce type, on ne bloque pas
+     *   (compatibilite avec les abonnements pas encore configures).
+     */
+    private boolean conditionsVALIDESatisfaites(Dossier dossier, PieceJustificative pieceVenantDEtreValidee) {
+        List<PieceJustificative> autresPieces = pieceJpa
+                .findByDossier_IdDossierOrderByDateDepotDesc(dossier.getIdDossier())
+                .stream()
+                .filter(p -> !p.getIdPiece().equals(pieceVenantDEtreValidee.getIdPiece()))
+                .toList();
+        boolean autresToutesValidees = autresPieces.stream()
+                .allMatch(p -> p.getStatutValidation() == PieceJustificative.StatutValidation.validee);
+        if (!autresToutesValidees) return false;
+
+        // Couverture des pieces obligatoires du referentiel
+        List<PieceRequise> requises = pieceRequiseJpa
+                .findByTypeAbonnement_Code(dossier.getTypeAbonnement().getCode());
+        if (requises.isEmpty()) return true;
+        java.util.Set<Integer> codesValidees = java.util.stream.Stream.concat(
+                autresPieces.stream(), java.util.stream.Stream.of(pieceVenantDEtreValidee))
+                .filter(p -> p.getStatutValidation() == PieceJustificative.StatutValidation.validee)
+                .map(p -> p.getTypePiece().getIdTypePiece())
+                .collect(java.util.stream.Collectors.toSet());
+        return requises.stream()
+                .filter(PieceRequise::isObligatoire)
+                .allMatch(r -> codesValidees.contains(r.getTypePiece().getIdTypePiece()));
     }
 
     /**
@@ -428,9 +849,25 @@ public class DossierRepositoryAdapter implements DossierRepository {
      */
     private void appliquerChangementStatut(Dossier dossier, CodeStatutDossier nouveauCode,
                                             Agent agent, String descriptionOverride) {
+        appliquerChangementStatut(dossier, nouveauCode, agent, descriptionOverride, true);
+    }
+
+    /**
+     * Variante avec {@code envoyerNotifGenerique} : permet aux callers qui ont
+     * une notif specialisee (ex: activation, rejet de piece) de skip la notif
+     * generique de transition pour eviter le doublon dans la boite du client.
+     */
+    private void appliquerChangementStatut(Dossier dossier, CodeStatutDossier nouveauCode,
+                                            Agent agent, String descriptionOverride,
+                                            boolean envoyerNotifGenerique) {
         StatutDossier nouveauStatut = statutDossierJpaRepository.findByCode(nouveauCode.name())
                 .orElseThrow(() -> new ReferentielIntrouvableException("Statut introuvable : " + nouveauCode));
         StatutDossier ancienStatut = dossier.getStatutActuel();
+        // No-op : transition vide (ex: auto-transition redondante). Evite d'envoyer
+        // une notif sans changement reel.
+        if (ancienStatut != null && ancienStatut.getCode().equals(nouveauStatut.getCode())) {
+            return;
+        }
 
         dossier.setStatutActuel(nouveauStatut);
         dossierJpa.save(dossier);
@@ -448,6 +885,22 @@ public class DossierRepositoryAdapter implements DossierRepository {
         // (ex: rejet d'une piece) via descriptionOverride.
         entree.setDescription(descriptionOverride);
         historiqueJpa.save(entree);
+
+        // Notification email best-effort au porteur du dossier. L'adapter Resend
+        // capture toutes les exceptions : si l'API est down ou la cle non configuree,
+        // la transition de statut reste persistee.
+        Utilisateur porteur = dossier.getUtilisateurPorteur();
+        if (envoyerNotifGenerique && porteur != null) {
+            notificateur.notifierChangementStatut(
+                    porteur.getEmail(),
+                    porteur.getPrenom(),
+                    dossier.getNumeroDossier(),
+                    dossier.getTypeAbonnement().getLibelle(),
+                    ancienStatut != null ? ancienStatut.getLibelle() : null,
+                    nouveauStatut.getCode(),
+                    nouveauStatut.getLibelle()
+            );
+        }
     }
 
     private String genererNumeroDossier() {
