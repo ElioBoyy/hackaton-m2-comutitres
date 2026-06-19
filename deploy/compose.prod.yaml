@@ -1,12 +1,18 @@
-# Compose de PRODUCTION (sur le VPS).
+# Compose de PRODUCTION — deployé via Coolify (Docker Compose mode).
 #
-# A placer dans un dossier sur le VPS (ex: /opt/jegeremacartenavigo/) avec un
-# fichier .env a cote (voir .env.prod.example). La CI fait, par service :
-#   docker compose pull <service> && docker compose up -d <service>
-# => un deploy backend ne redemarre que `backend`, idem pour `frontend`.
+# Coolify clone le repo, build les images sur place, et gère le reverse proxy
+# Traefik (HTTPS, domaines). Les ports 8080/3000 ne sont PAS exposés sur l'hôte :
+# Coolify route le trafic vers les containers via le réseau interne.
 #
-# Les images sont tirees de GHCR. BACKEND_IMAGE / FRONTEND_IMAGE incluent le tag
-# (ex: ghcr.io/elioboyy/hackaton-backend:sha-abc123), pousse par la CI.
+# Variables à renseigner dans l'UI Coolify (onglet Environment) :
+#   POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD
+#   MINIO_ROOT_USER, MINIO_ROOT_PASSWORD
+#   FRONTEND_ORIGIN      -> https://jgmcn.mtsrt.fr
+#   APP_SECURITY_JWT_SECRET
+#   VOYAGE_API_KEY
+#   MISTRAL_API_KEY
+#   RESEND_API_KEY
+#   RESEND_FROM_EMAIL    -> l'adresse expéditrice configurée dans Resend
 
 services:
   postgres:
@@ -40,7 +46,8 @@ services:
       retries: 5
 
   backend:
-    image: ${BACKEND_IMAGE}
+    build:
+      context: ../backend
     restart: unless-stopped
     depends_on:
       postgres:
@@ -48,26 +55,32 @@ services:
       minio:
         condition: service_healthy
     environment:
+      # Profil "docker" : désactive spring.docker.compose (inutile en container).
+      SPRING_PROFILES_ACTIVE: docker
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
-      # Origines CORS autorisees (liste separee par des virgules -> List<String>).
       APP_CORS_ALLOWED_ORIGINS: ${FRONTEND_ORIGIN}
       APP_STORAGE_ENDPOINT: http://minio:9000
       APP_STORAGE_ACCESS_KEY: ${MINIO_ROOT_USER}
       APP_STORAGE_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
-    ports:
-      - "8080:8080"
+      APP_SECURITY_JWT_SECRET: ${APP_SECURITY_JWT_SECRET}
+      VOYAGE_API_KEY: ${VOYAGE_API_KEY}
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL}
 
   frontend:
-    image: ${FRONTEND_IMAGE}
+    build:
+      context: ../frontend
+      args:
+        # VITE_API_URL est bakée dans le bundle au moment du build (Vite).
+        VITE_API_URL: https://api-jgmcn.mtsrt.fr
     restart: unless-stopped
     depends_on:
       - backend
     environment:
       PORT: 3000
-    ports:
-      - "3000:3000"
 
 volumes:
   pg-data:
