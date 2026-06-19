@@ -2,7 +2,6 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import { ArrowRight, ChevronLeft, ChevronRight, Info, LogOut, Menu, Sparkles, X } from 'lucide-react'
 import { UserSidebar } from '~/components/UserSidebar'
-import { LanguageSwitcher } from '~/components/LanguageSwitcher'
 import { NavigoIllustration } from '~/components/illustrations/NavigoIllustration'
 import { ImagineRIllustration } from '~/components/illustrations/ImagineRIllustration'
 import { AmethysteIllustration } from '~/components/illustrations/AmethysteIllustration'
@@ -359,7 +358,7 @@ function HomePage() {
 
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Top bar */}
-        <header className="flex h-16 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 lg:justify-end lg:px-6">
+        <header className="flex h-16 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 lg:justify-end lg:pl-6 lg:pr-10">
           {/* Hamburger — mobile only */}
           <button
             type="button"
@@ -372,7 +371,6 @@ function HomePage() {
 
           {/* Auth zone — desktop only */}
           <div className="hidden items-center gap-3 lg:flex">
-            <LanguageSwitcher />
             {authentifie ? (
               <>
                 {prenom && (
