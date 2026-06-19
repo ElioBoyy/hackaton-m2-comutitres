@@ -66,6 +66,8 @@ services:
       MISTRAL_API_KEY: ${MISTRAL_API_KEY}
       RESEND_API_KEY: ${RESEND_API_KEY}
       RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL}
+    expose:
+      - "8080"
 
   frontend:
     build:
@@ -78,4 +80,6 @@ services:
       - backend
     environment:
       PORT: 3000
+    expose:
+      - "3000"
 
