@@ -1,0 +1,20 @@
+{
+  "name": "Comutitres",
+  "short_name": "Comutitres",
+  "description": "Gérez vos titres de transport Île-de-France",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0050aa",
+  "background_color": "#ffffff",
+  "lang": "fr",
+  "icons": [
+    {
+      "src": "/iconeMobile.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
