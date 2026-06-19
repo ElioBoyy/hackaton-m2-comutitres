@@ -75,7 +75,7 @@ services:
       context: ../frontend
       args:
         # VITE_API_URL est bakée dans le bundle au moment du build (Vite).
-        VITE_API_URL: https://api-jgmcn.mtsrt.fr
+        VITE_API_URL: https://api-jgmcn.mathistassart.fr
     restart: unless-stopped
     depends_on:
       - backend
