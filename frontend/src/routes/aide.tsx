@@ -487,10 +487,7 @@ function AccordionQuestion({ question, reponse }: SousQuestion) {
 
 function SectionFaqCard({ section }: { section: SectionFaq }) {
   const [ouvert, setOuvert] = React.useState(false)
-  const [toutesVues, setToutesVues] = React.useState(false)
   const Icon = section.icon
-  const questionsAffichees = toutesVues ? section.questions : section.questions.slice(0, 3)
-  const resteCount = section.questions.length - 3
 
   return (
     <div className={`overflow-hidden rounded-2xl border border-gray-200 ${section.couleurBg}`}>
@@ -526,25 +523,9 @@ function SectionFaqCard({ section }: { section: SectionFaq }) {
       {/* Questions */}
       {ouvert && (
         <div className="border-t border-gray-200 bg-white px-5">
-          {questionsAffichees.map((q) => (
+          {section.questions.map((q) => (
             <AccordionQuestion key={q.question} {...q} />
           ))}
-          {resteCount > 0 && (
-            <button
-              type="button"
-              onClick={() => setToutesVues((v) => !v)}
-              className="flex items-center gap-1.5 py-3 text-sm font-medium text-primary hover:underline"
-            >
-              {toutesVues
-                ? 'Masquer les questions supplémentaires'
-                : `Voir toutes les questions (${section.questions.length})`}
-              <ChevronDown
-                size={14}
-                className={`transition-transform duration-200 ${toutesVues ? 'rotate-180' : ''}`}
-                aria-hidden="true"
-              />
-            </button>
-          )}
         </div>
       )}
     </div>
