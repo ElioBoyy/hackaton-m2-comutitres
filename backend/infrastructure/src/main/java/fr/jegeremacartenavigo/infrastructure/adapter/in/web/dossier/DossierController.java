@@ -156,7 +156,15 @@ public class DossierController {
                         .map(p -> new PieceADeposer(p.codeTypePiece(), p.cheminFichier()))
                         .toList()
                 : List.of();
-        return commandBus.send(new SoumettreEnVerificationCommand(id, pieces));
+        try {
+            return commandBus.send(new SoumettreEnVerificationCommand(id, pieces));
+        } catch (fr.jegeremacartenavigo.domain.dossier.exception.PaiementRequisException e) {
+            // 409 + corps {code, message} : le frontend distingue ce cas pour
+            // rediriger vers /souscription/paiement plutot que d'afficher un
+            // toast d'erreur generique.
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "PAIEMENT_REQUIS:" + e.getMessage(), e);
+        }
     }
 
     @GetMapping("/{id}/historique")

@@ -46,15 +46,22 @@ public class CreerDossierHandler implements CommandHandler<CreerDossierCommand, 
     // notification de bourse reste facultative meme si boursier = true.
     //
     // Ces pieces ne sont exigees que si on paie reellement (modePaiement
-    // present) : un brouillon ("Sauvegarder et quitter", modePaiement
-    // absent) peut etre sauvegarde avant meme d'avoir depose quoi que ce
-    // soit.
+    // present) ET qu'on cree un nouveau dossier. Pour un dossier existant
+    // (idDossierExistant != null), les pieces ont ete deposees independamment
+    // via /dossier/{id} (upload UI) ; on delegue la validation au repository
+    // qui peut lire les pieces existantes en base.
     private void validerPiecesObligatoires(CreerDossierCommand command) {
         if (command.demandePour() == DemandePour.TIERS
                 && (command.beneficiaireNomComplet() == null || command.beneficiaireNomComplet().isBlank())) {
             throw new BeneficiaireManquantException();
         }
         if (command.modePaiement() == null) {
+            return;
+        }
+        // Dossier existant : les pieces sont sur le dossier en base, pas dans
+        // le payload (le frontend ne renvoie pas les chemins quand on paie un
+        // brouillon existant). Le repository verifie en base.
+        if (command.idDossierExistant() != null) {
             return;
         }
         if (command.cheminPieceIdentite() == null || command.cheminPieceIdentite().isBlank()) {

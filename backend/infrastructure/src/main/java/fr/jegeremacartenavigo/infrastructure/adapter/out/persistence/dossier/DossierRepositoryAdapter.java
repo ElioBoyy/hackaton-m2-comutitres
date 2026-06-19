@@ -187,9 +187,11 @@ public class DossierRepositoryAdapter implements DossierRepository {
                         "Type d'abonnement introuvable ou inactif : " + nouveauDossier.codeTypeAbonnement()));
 
         boolean paiementFourni = nouveauDossier.modePaiement() != null;
-        String codeStatut = paiementFourni ? STATUT_EN_VERIFICATION
-                : Boolean.TRUE.equals(nouveauDossier.enAttentePaiement()) ? STATUT_EN_ATTENTE_PAIEMENT
-                : STATUT_BROUILLON;
+        // Plus de distinction BROUILLON / EN_ATTENTE_PAIEMENT : tous les
+        // dossiers non payes sont BROUILLON. Le statut EN_ATTENTE_PAIEMENT
+        // reste defini en BDD pour les dossiers legacy (V1) mais n'est plus
+        // jamais cree par ce flux. Le flag enAttentePaiement est ignore.
+        String codeStatut = paiementFourni ? STATUT_EN_VERIFICATION : STATUT_BROUILLON;
         StatutDossier statut = statutDossierJpaRepository.findByCode(codeStatut)
                 .orElseThrow(() -> new ReferentielIntrouvableException(
                         "Statut de dossier introuvable : " + codeStatut));
@@ -206,6 +208,24 @@ public class DossierRepositoryAdapter implements DossierRepository {
         enregistrerOuRemplacerPiece(dossier, connecte, CODE_NOTIFICATION_BOURSE, nouveauDossier.cheminNotificationBourse());
 
         if (paiementFourni) {
+            // Garde-fou : pour un dossier existant on a saute la validation
+            // pieces dans le handler. On verifie ici en base que la piece
+            // d'identite (PIECE_IDENTITE) est presente avant de basculer le
+            // statut en EN_VERIFICATION + enregistrer le paiement.
+            if (nouveauDossier.idDossierExistant() != null) {
+                TypePieceJustificative typePieceId = typePieceJpaRepository.findByCode(CODE_PIECE_IDENTITE)
+                        .orElseThrow(() -> new ReferentielIntrouvableException(
+                                "Type de piece introuvable : " + CODE_PIECE_IDENTITE));
+                boolean cniDeposee = pieceJpa
+                        .findByDossier_IdDossierAndTypePiece_IdTypePiece(
+                                dossier.getIdDossier(), typePieceId.getIdTypePiece())
+                        .isPresent();
+                if (!cniDeposee) {
+                    throw new fr.jegeremacartenavigo.domain.dossier.exception.PieceObligatoireManquanteException(
+                            "La piece d'identite est requise pour payer.");
+                }
+            }
+
             enregistrerPaiement(dossier, connecte, nouveauDossier.modePaiement());
             // Recu de paiement + accuse de soumission au porteur. La transition
             // vers EN_VERIFICATION est mecanique (deja faite a l'init du statut)
@@ -246,8 +266,20 @@ public class DossierRepositoryAdapter implements DossierRepository {
             throw new DossierIntrouvableException(nouveauDossier.idDossierExistant());
         }
         String codeActuel = existant.getStatutActuel().getCode();
+        // Si l'ID pointe vers un dossier deja finalise (EN_VERIFICATION, ACTIF,
+        // etc.), c'est probablement un wizard.idDossierBackend non-reset du
+        // precedent abonnement. On cree un nouveau dossier au lieu de jeter,
+        // pour ne pas bloquer l'utilisateur quand il prend un nouvel abonnement.
         if (!STATUT_BROUILLON.equals(codeActuel) && !STATUT_EN_ATTENTE_PAIEMENT.equals(codeActuel)) {
-            throw new DossierDejaFinaliseException();
+            return new Dossier();
+        }
+        // Si le type d'abonnement demande differe de celui du brouillon existant,
+        // c'est un nouvel abonnement -> nouveau dossier (le brouillon precedent
+        // reste en BDD pour que l'utilisateur puisse y revenir).
+        if (existant.getTypeAbonnement() != null
+                && nouveauDossier.codeTypeAbonnement() != null
+                && !nouveauDossier.codeTypeAbonnement().equals(existant.getTypeAbonnement().getCode())) {
+            return new Dossier();
         }
         return existant;
     }
@@ -336,6 +368,30 @@ public class DossierRepositoryAdapter implements DossierRepository {
     public void soumettre(Integer id) {
         Dossier dossier = dossierJpa.findById(id)
                 .orElseThrow(() -> new DossierIntrouvableException(id));
+
+        // Garde metier : un dossier EN_ATTENTE_PAIEMENT ne peut etre soumis que
+        // si un Paiement existe deja. Sinon le frontend doit rediriger vers le
+        // tunnel de paiement (cf. PaiementRequisException -> HTTP 409).
+        String codeStatutActuel = dossier.getStatutActuel() != null
+                ? dossier.getStatutActuel().getCode() : null;
+        // BROUILLON et EN_ATTENTE_PAIEMENT ne peuvent etre soumis que si un
+        // Paiement a deja ete enregistre (la soumission passe par "Payer et
+        // soumettre" cote front, qui fait POST /dossiers avec modePaiement).
+        if ((STATUT_BROUILLON.equals(codeStatutActuel)
+                || STATUT_EN_ATTENTE_PAIEMENT.equals(codeStatutActuel))
+                && !paiementJpaRepository.existsByDossier_IdDossier(id)) {
+            throw new fr.jegeremacartenavigo.domain.dossier.exception.PaiementRequisException(id);
+        }
+        // Seuls les statuts editables peuvent passer en EN_VERIFICATION ; on
+        // refuse l'idempotence sur les statuts deja avances (evite de remettre
+        // EN_VERIFICATION un dossier ACTIF/REJETE/VALIDE par accident).
+        if (codeStatutActuel != null
+                && !STATUT_BROUILLON.equals(codeStatutActuel)
+                && !STATUT_EN_ATTENTE_PAIEMENT.equals(codeStatutActuel)
+                && !CodeStatutDossier.INCOMPLET.name().equals(codeStatutActuel)) {
+            throw new DossierDejaFinaliseException();
+        }
+
         StatutDossier statut = statutDossierJpaRepository.findByCode("EN_VERIFICATION")
                 .orElseThrow(() -> new ReferentielIntrouvableException("Statut EN_VERIFICATION introuvable"));
         dossier.setStatutActuel(statut);
@@ -433,6 +489,7 @@ public class DossierRepositoryAdapter implements DossierRepository {
                 d.getDateDebutDroits(),
                 d.getDateFinDroits(),
                 d.getMontantTotal(),
+                d.getBeneficiaireNomComplet(),
                 pieces,
                 piecesRequises
         );

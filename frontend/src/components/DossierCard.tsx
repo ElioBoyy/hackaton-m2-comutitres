@@ -179,7 +179,9 @@ export function DossierCard({ dossier }: { dossier: DossierDashboard }) {
             <p className="mt-1 text-sm text-gray-500">
               {m.dashboard_for_holder()}{' '}
               <span className="font-semibold text-gray-700">
-                {dossier.porteurIdentite.prenom} {dossier.porteurIdentite.nom}
+                {dossier.beneficiaireNomComplet
+                  ? dossier.beneficiaireNomComplet
+                  : `${dossier.porteurIdentite.prenom} ${dossier.porteurIdentite.nom}`}
               </span>
             </p>
             <p className="text-sm text-gray-500">

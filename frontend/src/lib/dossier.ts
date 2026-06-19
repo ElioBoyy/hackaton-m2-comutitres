@@ -77,6 +77,7 @@ export interface DossierDetail {
   dateDebutDroits: string | null
   dateFinDroits: string | null
   montantTotal: number
+  beneficiaireNomComplet: string | null
   pieces: PieceJustificative[]
   piecesRequises: PieceRequise[]
 }
