@@ -174,20 +174,23 @@ function AbonnementModal({ abo, categoryHex, modalColor, onClose }: { abo: TypeA
 
 /* ─── Abonnement card ────────────────────────────────────────────────── */
 
+const ILLUSTRATIONS = ['/navigo-illustration.svg', '/navigo-illustration-2.svg']
+
 function AbonnementCard({ abo, categoryHex, categoryModalText }: { abo: TypeAbonnement; categoryHex: string; categoryModalText?: string }) {
   const [open, setOpen] = useState(false)
   const Illustration = illustrationFor(abo.code)
   const bg = cardBgFor(abo.code, categoryHex)
   const badgeText = badgeTextFor(bg)
+  const illustration = (abo.code.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 7 === 0) ? ILLUSTRATIONS[1] : ILLUSTRATIONS[0]
 
   return (
     <>
-      <article className="flex h-72 flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition hover:shadow-md">
-        <div className="relative shrink-0 overflow-hidden" style={{ backgroundColor: bg, height: '9rem' }}>
-          <Illustration className="absolute inset-0 h-full w-full" />
+      <article className="flex h-64 flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition hover:shadow-md">
+        <div className="relative shrink-0 overflow-hidden bg-blue-pale" style={{ height: '7rem' }}>
+          <img src={illustration} alt="" className="absolute inset-0 h-full w-full object-cover" />
         </div>
         <div className="flex flex-1 flex-col gap-3 p-4">
-          <h3 className="font-heading text-sm font-bold text-gray-900">{abo.libelle}</h3>
+          <h3 className="font-heading text-sm font-bold" style={{ color: badgeText === '#ffffff' ? bg : badgeText }}>{abo.libelle}</h3>
           {abo.description && (
             <p className="text-xs text-gray-500 leading-snug">{abo.description}</p>
           )}
@@ -217,6 +220,7 @@ function AbonnementCard({ abo, categoryHex, categoryModalText }: { abo: TypeAbon
 /* ─── Carousel ───────────────────────────────────────────────────────── */
 
 const CARD_W = 200 // approximate card width + gap for scroll step
+
 
 function Carousel({ categorie, items }: { categorie: string; items: TypeAbonnement[] }) {
   const cfg = CATEGORY_CONFIG[categorie] ?? { bg: '#9185be', text: '#9185be' }
@@ -265,9 +269,9 @@ function Carousel({ categorie, items }: { categorie: string; items: TypeAbonneme
       {/* Scrollable track */}
       <div
         ref={trackRef}
-        className="flex gap-3 overflow-x-auto scroll-smooth px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex gap-5 overflow-x-auto scroll-smooth px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        {items.map((abo) => (
+        {items.map((abo, idx) => (
           <div key={abo.code} className="shrink-0 w-64">
             <AbonnementCard abo={abo} categoryHex={cfg.bg} categoryModalText={cfg.modalText} />
           </div>
@@ -411,14 +415,17 @@ function HomePage() {
 
         <main className="flex-1 overflow-y-auto px-6 py-5">
           {/* CTA banner */}
-          <div
-            className="mb-5 flex flex-col gap-4 rounded-2xl p-4 sm:flex-row sm:items-center sm:justify-between"
-            style={{ background: 'linear-gradient(to right, #1972d2, #0050aa)' }}
-          >
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/20">
-                <Sparkles size={18} className="text-white" />
-              </div>
+          <Link to="/recommandation" className="relative mb-5 block overflow-hidden rounded-2xl cursor-pointer" style={{ minHeight: '13rem' }}>
+            <img
+              src="/train-banner.png"
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: '50% 60%' }}
+            />
+            <div
+              className="absolute inset-0"
+              style={{ background: 'linear-gradient(to right, rgba(0,50,120,0.82) 40%, rgba(0,50,120,0.3))' }}
+            />
+            <div className="relative flex h-full flex-col justify-center gap-3 p-5 sm:flex-row sm:items-center sm:justify-between" style={{ minHeight: '13rem' }}>
               <div>
                 <p className="font-heading text-sm font-semibold text-white">
                   {m.home_recommend_title()}
@@ -427,15 +434,12 @@ function HomePage() {
                   {m.home_recommend_subtitle()}
                 </p>
               </div>
+              <span className="flex w-full items-center justify-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-primary transition hover:bg-blue-pale sm:w-auto sm:shrink-0">
+                Je trouve mon abonnement
+                <ArrowRight size={14} />
+              </span>
             </div>
-            <Link
-              to="/recommandation"
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-primary transition hover:bg-blue-pale sm:w-auto sm:shrink-0"
-            >
-              {m.home_recommend_cta()}
-              <ArrowRight size={14} />
-            </Link>
-          </div>
+          </Link>
 
           {/* Carousels */}
           <div className="flex flex-col gap-10">
