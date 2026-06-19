@@ -1,4 +1,5 @@
 import { Fragment } from 'react'
+import { m } from '~/paraglide/messages'
 
 interface StepperProps {
   steps: readonly string[]
@@ -7,7 +8,7 @@ interface StepperProps {
 
 export function Stepper({ steps, current }: StepperProps) {
   return (
-    <ol aria-label="Étapes" className="mb-8 flex items-start">
+    <ol aria-label={m.stepper_aria()} className="mb-8 flex items-start">
       {steps.map((label, i) => {
         const state = i < current ? 'done' : i === current ? 'active' : 'todo'
         const circleClass =

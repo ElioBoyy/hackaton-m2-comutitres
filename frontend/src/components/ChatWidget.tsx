@@ -1,5 +1,6 @@
 import * as React from 'react'
 import { streamChat, type ChatCitation, type ChatFin } from '~/lib/api'
+import { m as t } from '~/paraglide/messages'
 
 interface Message {
   role: 'utilisateur' | 'assistant'
@@ -88,21 +89,21 @@ export function ChatWidget() {
         <section
           className="chat-panel-in flex h-[30rem] max-h-[calc(100vh-6rem)] w-[22rem] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-gray-300 bg-white shadow-2xl"
           role="dialog"
-          aria-label="Assistant Navigo"
+          aria-label={t.chat_dialog_aria()}
         >
           {/* En-tete */}
           <header className="flex items-center justify-between gap-2 bg-focus px-4 py-3 text-white">
             <div>
-              <p className="font-heading text-base font-semibold leading-tight">Assistant Navigo</p>
-              <p className="text-xs text-white/80">Souscription, tarifs, justificatifs…</p>
+              <p className="font-heading text-base font-semibold leading-tight">{t.chat_title()}</p>
+              <p className="text-xs text-white/80">{t.chat_subtitle()}</p>
             </div>
             <div className="flex items-center gap-1">
               <button
                 type="button"
                 onClick={nouvelleConversation}
                 disabled={enCours}
-                title="Nouvelle conversation"
-                aria-label="Nouvelle conversation"
+                title={t.chat_new_conversation()}
+                aria-label={t.chat_new_conversation()}
                 className="rounded-lg p-1.5 transition hover:bg-white/15 disabled:opacity-50"
               >
                 <IconePlus />
@@ -110,8 +111,8 @@ export function ChatWidget() {
               <button
                 type="button"
                 onClick={() => setOuvert(false)}
-                title="Fermer"
-                aria-label="Fermer le chat"
+                title={t.common_close()}
+                aria-label={t.chat_close_aria()}
                 className="rounded-lg p-1.5 transition hover:bg-white/15"
               >
                 <IconeFermer />
@@ -123,8 +124,7 @@ export function ChatWidget() {
           <div className="flex-1 space-y-2 overflow-y-auto bg-gray-100 px-3 py-3">
             {messages.length === 0 && (
               <p className="mt-6 px-2 text-center text-sm text-gray-700">
-                Bonjour&nbsp;! Posez votre question sur les titres Navigo. Les réponses
-                sont fondées sur la documentation officielle et citées.
+                {t.chat_greeting()}
               </p>
             )}
             {messages.map((m, i) => (
@@ -138,14 +138,14 @@ export function ChatWidget() {
             <input
               value={saisie}
               onChange={(e) => setSaisie(e.target.value)}
-              placeholder="Écrivez un message…"
-              aria-label="Votre message"
+              placeholder={t.chat_input_placeholder()}
+              aria-label={t.chat_input_aria()}
               className="min-w-0 flex-1 rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-dark outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/25"
             />
             <button
               type="submit"
               disabled={enCours || !saisie.trim()}
-              aria-label="Envoyer"
+              aria-label={t.chat_send_aria()}
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-focus text-white transition hover:bg-focus/90 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <IconeEnvoyer />
@@ -159,7 +159,7 @@ export function ChatWidget() {
         type="button"
         onClick={() => setOuvert((v) => !v)}
         aria-expanded={ouvert}
-        aria-label={ouvert ? 'Réduire le chat' : 'Ouvrir le chat'}
+        aria-label={ouvert ? t.chat_reduce_aria() : t.chat_open_aria()}
         className="flex h-14 w-14 items-center justify-center rounded-full bg-focus text-white shadow-xl transition hover:bg-focus/90 hover:scale-105 active:scale-95"
       >
         {ouvert ? <IconeFermer /> : <IconeChat />}
@@ -186,7 +186,7 @@ function Bulle({ message, enCours }: { message: Message; enCours: boolean }) {
         }`}
       >
         {enAttente ? (
-          <span className="flex items-center gap-1 py-1" aria-label="L'assistant écrit">
+          <span className="flex items-center gap-1 py-1" aria-label={t.chat_typing_aria()}>
             <span className="chat-typing-dot" />
             <span className="chat-typing-dot" />
             <span className="chat-typing-dot" />
@@ -197,14 +197,14 @@ function Bulle({ message, enCours }: { message: Message; enCours: boolean }) {
 
         {message.escalade && (
           <div className="mt-2 border-t border-gray-200 pt-1.5 text-xs italic text-gray-700">
-            Transmis à un conseiller
-            {message.referenceTicket ? ` (ticket ${message.referenceTicket})` : ''}.
+            {t.chat_escalated()}
+            {message.referenceTicket ? t.chat_escalated_ticket({ ref: message.referenceTicket }) : ''}.
           </div>
         )}
 
         {sources.length > 0 && (
           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-gray-200 pt-1.5 text-xs">
-            <span className="font-medium text-gray-700">Sources&nbsp;:</span>
+            <span className="font-medium text-gray-700">{t.chat_sources()}</span>
             {sources.map((c, i) => (
               <a
                 key={c.url}

@@ -161,7 +161,7 @@ function DashboardPage() {
                 aria-selected={active}
                 disabled={empty}
                 onClick={() => !empty && changeFiltre(tab.filtre)}
-                className={`relative px-5 py-3 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-primary/30 ${
+                className={`relative px-5 py-3 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
                   empty
                     ? 'cursor-not-allowed text-gray-300'
                     : active

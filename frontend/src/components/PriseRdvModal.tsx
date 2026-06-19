@@ -76,7 +76,7 @@ export function PriseRdvModal({ point, connecte: dejaConnecte, onConnecte, onClo
         {/* En-tete */}
         <div className="flex items-start justify-between gap-3 border-b border-gray-200 p-5">
           <div>
-            <h2 className="font-heading text-lg font-bold text-dark">Prendre rendez-vous</h2>
+            <h2 className="font-heading text-lg font-bold text-dark">{m.rdv_modal_title()}</h2>
             <p className="mt-0.5 flex items-center gap-1.5 text-sm text-gray-700">
               <MapPin size={14} className="shrink-0 text-primary" aria-hidden="true" />
               {point.name}
@@ -85,7 +85,7 @@ export function PriseRdvModal({ point, connecte: dejaConnecte, onConnecte, onClo
           <button
             type="button"
             onClick={onClose}
-            aria-label="Fermer"
+            aria-label={m.common_close()}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-gray-500 transition hover:bg-gray-100"
           >
             <X size={18} aria-hidden="true" />
@@ -165,9 +165,9 @@ function EtapeConnexion({ onConnecte }: { onConnecte: () => void }) {
       <div className="flex items-start gap-3 rounded-xl bg-blue-pale p-3">
         <LogIn size={18} className="mt-0.5 shrink-0 text-primary" aria-hidden="true" />
         <div>
-          <p className="text-sm font-semibold text-dark">Connectez-vous pour réserver</p>
+          <p className="text-sm font-semibold text-dark">{m.rdv_login_required_title()}</p>
           <p className="mt-0.5 text-xs text-gray-700">
-            Un compte est nécessaire pour prendre rendez-vous en point de vente.
+            {m.rdv_login_required_subtitle()}
           </p>
         </div>
       </div>
@@ -236,7 +236,7 @@ function EtapeRdv({ point, onClose }: { point: PointDeVente; onClose: () => void
         <div className="flex h-14 w-14 items-center justify-center rounded-full bg-success/10">
           <Check size={28} className="text-success" aria-hidden="true" />
         </div>
-        <h3 className="font-heading text-lg font-semibold text-dark">Rendez-vous confirmé</h3>
+        <h3 className="font-heading text-lg font-semibold text-dark">{m.rdv_confirmed()}</h3>
         <p className="text-sm text-gray-700">
           {jour.labelJour} {jour.labelDate} à <strong>{creneau}</strong>
           <br />

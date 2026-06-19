@@ -1,13 +1,16 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
-import { ArrowRight, ChevronLeft, ChevronRight, Info, Menu, Sparkles, X } from 'lucide-react'
+import { ArrowRight, ChevronLeft, ChevronRight, Info, LogOut, Menu, Sparkles, X } from 'lucide-react'
 import { UserSidebar } from '~/components/UserSidebar'
+import { LanguageSwitcher } from '~/components/LanguageSwitcher'
 import { NavigoIllustration } from '~/components/illustrations/NavigoIllustration'
 import { ImagineRIllustration } from '~/components/illustrations/ImagineRIllustration'
 import { AmethysteIllustration } from '~/components/illustrations/AmethysteIllustration'
 import { TransportScolaireIllustration } from '~/components/illustrations/TransportScolaireIllustration'
 import { getAbonnements, type TypeAbonnement } from '~/lib/api'
 import { TransportBadges, ZoneBadges } from '~/components/TransportZoneBadges'
+import { isAuthenticated, logout, me, type MeResponse } from '~/lib/auth'
+import { m } from '~/paraglide/messages'
 import type { ComponentType } from 'react'
 
 
@@ -57,8 +60,8 @@ function badgeTextFor(bg: string): string {
 }
 
 function formatPrix(abo: TypeAbonnement): string {
-  if (abo.tarifPlein === null) return 'Tarif social'
-  if (abo.tarifPlein === 0) return 'Gratuit'
+  if (abo.tarifPlein === null) return m.abo_price_social()
+  if (abo.tarifPlein === 0) return m.abo_price_free()
   const n = Number(abo.tarifPlein)
   const formatted = new Intl.NumberFormat('fr-FR', {
     style: 'currency',
@@ -67,9 +70,9 @@ function formatPrix(abo: TypeAbonnement): string {
     maximumFractionDigits: 2,
   }).format(n)
   switch (abo.periodicite) {
-    case 'annuelle':     return `${formatted} / an`
-    case 'mensuelle':    return `${formatted} / mois`
-    case 'hebdomadaire': return `${formatted} / sem.`
+    case 'annuelle':     return m.abo_price_per_year({ price: formatted })
+    case 'mensuelle':    return m.abo_price_per_month({ price: formatted })
+    case 'hebdomadaire': return m.abo_price_per_week({ price: formatted })
     default:             return formatted
   }
 }
@@ -159,7 +162,7 @@ function AbonnementModal({ abo, categoryHex, modalColor, onClose }: { abo: TypeA
               onClick={handleDemande}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-focus"
             >
-              Faire une demande
+              {m.abo_modal_request_cta()}
               <ArrowRight size={14} />
             </button>
           </div>
@@ -204,7 +207,7 @@ function AbonnementCard({ abo, categoryHex, categoryModalText }: { abo: TypeAbon
               className="flex items-center gap-1 rounded-lg bg-primary px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-focus"
             >
               <Info size={11} />
-              + d'infos
+              {m.abo_more_info()}
             </button>
           </div>
         </div>
@@ -257,7 +260,7 @@ function Carousel({ categorie, items }: { categorie: string; items: TypeAbonneme
       <button
         type="button"
         onClick={() => scroll('left')}
-        aria-label="Précédent"
+        aria-label={m.common_previous()}
         className={`absolute left-0 top-1/2 z-10 -translate-y-1/2 -translate-x-3 hidden h-8 w-8 items-center justify-center rounded-full bg-white shadow-md border border-gray-200 text-gray-600 transition hover:bg-gray-50 lg:flex ${canLeft ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
       >
         <ChevronLeft size={16} />
@@ -279,7 +282,7 @@ function Carousel({ categorie, items }: { categorie: string; items: TypeAbonneme
       <button
         type="button"
         onClick={() => scroll('right')}
-        aria-label="Suivant"
+        aria-label={m.common_next()}
         className={`absolute right-0 top-1/2 z-10 -translate-y-1/2 translate-x-3 hidden h-8 w-8 items-center justify-center rounded-full bg-white shadow-md border border-gray-200 text-gray-600 transition hover:bg-gray-50 lg:flex ${canRight ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
       >
         <ChevronRight size={16} />
@@ -307,15 +310,31 @@ function CarouselSkeleton() {
 /* ─── Page ───────────────────────────────────────────────────────────── */
 
 function HomePage() {
+  const navigate = useNavigate()
   const [abonnements, setAbonnements] = useState<TypeAbonnement[]>([])
   const [loading, setLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [authentifie, setAuthentifie] = useState(false)
+  const [utilisateur, setUtilisateur] = useState<MeResponse | null>(null)
 
   useEffect(() => {
+    if (isAuthenticated()) {
+      setAuthentifie(true)
+      me().then(setUtilisateur).catch(() => {})
+    }
     getAbonnements()
       .then(setAbonnements)
       .finally(() => setLoading(false))
   }, [])
+
+  function onLogout() {
+    logout()
+    setAuthentifie(false)
+    setUtilisateur(null)
+    navigate({ to: '/login' })
+  }
+
+  const prenom = utilisateur?.prenom ?? ''
 
   const grouped = CATEGORY_ORDER.map((cat) => ({
     categorie: cat,
@@ -345,23 +364,52 @@ function HomePage() {
           <button
             type="button"
             onClick={() => setSidebarOpen(true)}
-            aria-label="Ouvrir le menu"
+            aria-label={m.common_open_menu()}
             className="flex h-9 w-9 items-center justify-center rounded-xl text-gray-700 hover:bg-blue-pale lg:hidden"
           >
             <Menu size={20} />
           </button>
 
-          {/* Auth links — desktop only */}
+          {/* Auth zone — desktop only */}
           <div className="hidden items-center gap-3 lg:flex">
-            <Link to="/login" className="text-sm font-medium text-gray-600 transition hover:text-primary">
-              Connexion
-            </Link>
-            <Link
-              to="/register"
-              className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-focus"
-            >
-              Créer un compte
-            </Link>
+            <LanguageSwitcher />
+            {authentifie ? (
+              <>
+                {prenom && (
+                  <div className="flex items-center gap-2">
+                    <div
+                      aria-hidden="true"
+                      className="flex h-8 w-8 items-center justify-center rounded-full bg-focus text-sm font-semibold text-white"
+                    >
+                      {prenom.charAt(0).toUpperCase()}
+                    </div>
+                    <span className="text-sm font-medium text-gray-900">
+                      {m.dashboard_hello()} {prenom}
+                    </span>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={onLogout}
+                  aria-label={m.me_sign_out()}
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-gray-700 transition hover:bg-blue-pale focus:outline-none focus:ring-2 focus:ring-primary/30"
+                >
+                  <LogOut size={18} aria-hidden="true" />
+                </button>
+              </>
+            ) : (
+              <>
+                <Link to="/login" className="text-sm font-medium text-gray-600 transition hover:text-primary">
+                  {m.auth_sign_in()}
+                </Link>
+                <Link
+                  to="/register"
+                  className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-focus"
+                >
+                  {m.home_signup_cta()}
+                </Link>
+              </>
+            )}
           </div>
         </header>
 
@@ -379,11 +427,11 @@ function HomePage() {
             />
             <div className="relative flex h-full flex-col justify-center gap-3 p-5 sm:flex-row sm:items-center sm:justify-between" style={{ minHeight: '13rem' }}>
               <div>
-                <p className="font-heading text-lg font-bold text-white leading-snug">
-                  Quel abonnement Navigo vous convient ?
+                <p className="font-heading text-sm font-semibold text-white">
+                  {m.home_recommend_title()}
                 </p>
-                <p className="mt-0.5 text-sm text-white/80">
-                  Répondez à 3 questions et on vous trouve le pass idéal.
+                <p className="text-xs text-white/70">
+                  {m.home_recommend_subtitle()}
                 </p>
               </div>
               <span className="flex w-full items-center justify-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-primary transition hover:bg-blue-pale sm:w-auto sm:shrink-0">

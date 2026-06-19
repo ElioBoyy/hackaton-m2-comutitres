@@ -129,6 +129,25 @@ public class DossierController {
         return commandBus.send(new ResilierDossierCommand(id));
     }
 
+    /**
+     * Marque le dossier comme pre-verifie par l'IA (action cote client). Le
+     * porteur du dossier doit etre l'utilisateur connecte. Retourne le detail
+     * actualise pour rafraichir l'UI cliente. L'agent verra ensuite le flag
+     * dans son backoffice.
+     */
+    @PostMapping("/{id}/pre-verification-ia")
+    public DossierDetailResponse preVerifierIA(@PathVariable Integer id,
+                                                @AuthenticationPrincipal Jwt jwt) {
+        try {
+            dossierRepository.marquerPreVerifieParIA(id, Integer.valueOf(jwt.getSubject()));
+        } catch (IllegalStateException e) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, e.getMessage(), e);
+        }
+        return dossierRepository.findDetailById(id)
+                .map(DossierDetailResponse::from)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Dossier introuvable"));
+    }
+
     @PostMapping("/{id}/soumettre")
     public StatutMisAJourResponse soumettre(@PathVariable Integer id,
                                              @RequestBody(required = false) SoumettreRequest body) {

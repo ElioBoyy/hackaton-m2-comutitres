@@ -1,11 +1,12 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { ApiError } from '~/lib/api'
-import { login } from '~/lib/auth'
+import { getCurrentTokenType, login, logout } from '~/lib/auth'
 import { parseViolations, validateEmail, validatePassword } from '~/lib/validation'
 import { AuthLayout } from '~/components/AuthLayout'
 import { Field } from '~/components/Field'
 import { Button } from '~/components/Button'
+import { m } from '~/paraglide/messages'
 
 export const Route = createFileRoute('/backoffice/login')({
   component: BackofficeLoginPage,
@@ -52,23 +53,28 @@ function BackofficeLoginPage() {
     setPending(true)
     try {
       await login(form.email.trim(), form.password)
+      if (getCurrentTokenType() === 'client') {
+        logout()
+        setFormError(m.auth_wrong_space_agent())
+        return
+      }
       await navigate({ to: '/backoffice/dashboard' })
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 401) {
-          setFormError('Email ou mot de passe invalide.')
+          setFormError(m.auth_invalid_credentials())
         } else if (err.status === 400) {
           const body = err.body as { violations?: string[] } | undefined
           const { fields, unmatched } = parseViolations(body?.violations, FIELDS)
           setFieldErrors((prev) => ({ ...prev, ...fields }))
           if (!Object.keys(fields).length) {
-            setFormError(unmatched.join(' • ') || 'Requete invalide.')
+            setFormError(unmatched.join(' • ') || m.auth_bad_request())
           }
         } else {
           setFormError(err.message)
         }
       } else {
-        setFormError('Impossible de joindre le serveur. Reessayez.')
+        setFormError(m.auth_server_unreachable())
       }
     } finally {
       setPending(false)
@@ -76,12 +82,13 @@ function BackofficeLoginPage() {
   }
 
   return (
-    <AuthLayout title="Connexion agent">
+    <AuthLayout title={m.backoffice_login_title()}>
       <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
         <Field
-          label="Email"
+          label={m.register_fields_email()}
           type="email"
           autoComplete="email"
+          placeholder={m.register_fields_email_placeholder()}
           required
           value={form.email}
           onChange={(e) => update('email', e.target.value)}
@@ -89,9 +96,10 @@ function BackofficeLoginPage() {
           error={fieldErrors.email}
         />
         <Field
-          label="Mot de passe"
+          label={m.register_fields_password()}
           type="password"
           autoComplete="current-password"
+          placeholder={m.register_fields_password_placeholder()}
           required
           value={form.password}
           onChange={(e) => update('password', e.target.value)}
@@ -107,7 +115,7 @@ function BackofficeLoginPage() {
           </div>
         )}
         <Button type="submit" disabled={pending} className="mt-2">
-          {pending ? 'Connexion...' : 'Se connecter'}
+          {pending ? m.login_signing_in() : m.auth_sign_in()}
         </Button>
       </form>
     </AuthLayout>

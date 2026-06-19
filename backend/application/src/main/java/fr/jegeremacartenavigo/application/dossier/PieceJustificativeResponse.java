@@ -19,11 +19,12 @@ public record PieceJustificativeResponse(
         String statutValidation,
         LocalDateTime dateDepot,
         String motifRejet,
-        boolean modifieParAgent
+        boolean modifieParAgent,
+        boolean verifieParIA
 ) implements Response {
     public static PieceJustificativeResponse from(PieceJustificativeResume p) {
         return new PieceJustificativeResponse(
                 p.id(), p.codeTypePiece(), p.libelleTypePiece(), p.cheminFichier(),
-                p.statutValidation(), p.dateDepot(), p.motifRejet(), p.modifieParAgent());
+                p.statutValidation(), p.dateDepot(), p.motifRejet(), p.modifieParAgent(), p.verifieParIA());
     }
 }

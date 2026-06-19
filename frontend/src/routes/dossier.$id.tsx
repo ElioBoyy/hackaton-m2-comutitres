@@ -9,10 +9,11 @@ import {
   Sparkles,
   Wallet,
 } from 'lucide-react'
-import { ajouterPiece, ApiError, remplacerFichierPiece } from '~/lib/api'
+import { ApiError, remplacerFichierPiece } from '~/lib/api'
 import { isAuthenticated, logout } from '~/lib/auth'
 import {
   fetchDossierDetail,
+  lancerPreVerificationIA,
   resilierDossier,
   soumettreEnVerification,
   enregistrerPieces,
@@ -24,6 +25,7 @@ import { deposerFichier, type TypePiece } from '~/lib/fichier'
 import { DashboardLayout } from '~/components/DashboardLayout'
 import { StatusBadge } from '~/components/backoffice/StatusBadge'
 import { TableauPieces } from '~/components/TableauPieces'
+import { m } from '~/paraglide/messages'
 import type { StatutCategorie } from '~/lib/types/dossier'
 
 export const Route = createFileRoute('/dossier/$id')({
@@ -101,14 +103,14 @@ function ChampFichier({
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-dark">{label}</p>
           <p className="truncate text-xs text-gray-500">
-            {uploading ? 'Envoi en cours…' : valeur ? valeur.nom : 'Aucun fichier sélectionné'}
+            {uploading ? m.champ_uploading() : valeur ? valeur.nom : m.champ_no_file()}
           </p>
         </div>
         {!uploading && (
           <span className={`shrink-0 rounded-lg px-2.5 py-1 text-xs font-semibold ${
             valeur ? 'bg-success/10 text-success' : 'bg-blue-pale text-primary'
           }`}>
-            {valeur ? 'Modifier' : 'Choisir'}
+            {valeur ? m.common_modify() : m.common_choose()}
           </span>
         )}
         <input
@@ -168,130 +170,6 @@ function DossierDetailSkeleton() {
 
 type IAEtat = 'idle' | 'loading' | 'done'
 
-/**
- * Modale d'ajout d'une piece cote client. Liste les types disponibles a
- * partir de {@code piecesRequises} (filtree des deja deposees). Si vide,
- * propose les 3 types courants en fallback (PIECE_IDENTITE, etc.).
- */
-function ModalAjouterPieceClient({
-  open,
-  data,
-  onClose,
-  onSubmit,
-}: {
-  open: boolean
-  data: DossierDetail | null
-  onClose: () => void
-  onSubmit: (codeTypePiece: string, file: File) => Promise<boolean>
-}) {
-  const [codeTypePiece, setCodeTypePiece] = useState('')
-  const [file, setFile] = useState<File | null>(null)
-  const [submitting, setSubmitting] = useState(false)
-
-  useEffect(() => {
-    if (!open) {
-      setCodeTypePiece('')
-      setFile(null)
-      setSubmitting(false)
-    }
-  }, [open])
-
-  if (!open || !data) return null
-
-  // Types deja deposes (par code metier, robuste face aux accents/normalisations).
-  const codesDeposes = new Set(data.pieces.map((p) => p.codeTypePiece))
-  const requises = (data.piecesRequises ?? []).filter(
-    (r) => !codesDeposes.has(r.codeTypePiece),
-  )
-  // Fallback : si le referentiel piecesRequises est vide pour cet abonnement,
-  // on propose au moins les 3 types courants pour debloquer l'ajout - filtre
-  // egalement par code pour eviter le doublon.
-  const fallback = requises.length === 0 ? [
-    { codeTypePiece: 'PIECE_IDENTITE', libelleTypePiece: "Pièce d'identité", obligatoire: true },
-    { codeTypePiece: 'CERTIFICAT_SCOLARITE', libelleTypePiece: 'Certificat de scolarité', obligatoire: false },
-    { codeTypePiece: 'NOTIFICATION_BOURSE', libelleTypePiece: 'Notification de bourse', obligatoire: false },
-  ].filter((r) => !codesDeposes.has(r.codeTypePiece)) : []
-  const options = requises.length > 0 ? requises : fallback
-
-  async function handleSubmit() {
-    if (!codeTypePiece || !file) return
-    setSubmitting(true)
-    const ok = await onSubmit(codeTypePiece, file)
-    setSubmitting(false)
-    if (ok) onClose()
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-        <h2 className="mb-1 font-heading text-lg font-semibold text-dark">Ajouter une pièce</h2>
-        <p className="mb-5 text-sm text-gray-500">
-          Choisissez le type de pièce puis le fichier à téléverser.
-        </p>
-
-        {options.length === 0 ? (
-          <div className="mb-4 rounded-lg bg-blue-pale p-3 text-sm text-primary">
-            Tous les types de pièces possibles ont déjà été déposés.
-          </div>
-        ) : (
-          <>
-            <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-400">
-              Type de pièce
-            </label>
-            <select
-              value={codeTypePiece}
-              onChange={(e) => setCodeTypePiece(e.target.value)}
-              className="mb-4 w-full cursor-pointer rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-            >
-              <option value="">— Sélectionner —</option>
-              {options.map((r) => (
-                <option key={r.codeTypePiece} value={r.codeTypePiece}>
-                  {r.libelleTypePiece}
-                  {r.obligatoire ? '' : ' (optionnel)'}
-                </option>
-              ))}
-            </select>
-          </>
-        )}
-
-        <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-400">
-          Fichier
-        </label>
-        <label className="mb-5 flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed border-gray-300 p-3 transition hover:border-primary">
-          <FileText size={18} className="shrink-0 text-primary" aria-hidden />
-          <span className="flex-1 truncate text-sm text-gray-700">
-            {file ? file.name : 'Choisir un fichier…'}
-          </span>
-          <input
-            type="file"
-            className="hidden"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          />
-        </label>
-
-        <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={submitting}
-            className="flex-1 cursor-pointer rounded-xl border border-gray-300 px-4 py-2 text-sm text-gray-600 transition hover:bg-gray-50 disabled:opacity-40"
-          >
-            Annuler
-          </button>
-          <button
-            type="button"
-            onClick={() => void handleSubmit()}
-            disabled={!codeTypePiece || !file || submitting}
-            className="flex-1 cursor-pointer rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-focus disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
-          >
-            {submitting ? 'Envoi…' : 'Ajouter'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 function DossierDetailPage() {
   const { id } = Route.useParams()
   const navigate = useNavigate()
@@ -304,12 +182,10 @@ function DossierDetailPage() {
   const [confirmerResilier, setConfirmerResilier] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [iaEtat, setIaEtat] = useState<IAEtat>('idle')
-  const [iaPreVerifie, setIaPreVerifie] = useState(false)
 
   // Pièces localement uploadées : codeTypePiece → PieceUploaded
   const [piecesLocales, setPiecesLocales] = useState<PieceJustificative[]>([])
   const [uploadedByCode, setUploadedByCode] = useState<Record<string, PieceUploaded>>({})
-  const [ajoutOuvert, setAjoutOuvert] = useState(false)
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -319,7 +195,11 @@ function DossierDetailPage() {
     let cancelled = false
     setLoading(true)
     fetchDossierDetail(idNum)
-      .then((d) => { if (!cancelled) { setData(d); setError(null) } })
+      .then((d) => {
+        if (cancelled) return
+        setData(d)
+        setError(null)
+      })
       .catch((err) => {
         if (cancelled) return
         if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
@@ -332,6 +212,23 @@ function DossierDetailPage() {
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [idNum, navigate])
+
+  // Resync iaEtat sur changement de pieces (upload, remplacement, validation).
+  // Le 'loading' transitoire de la pre-verification est laisse intact ; 'done'
+  // est garde tant que toutes les pieces non rejetees sont verifiees, sinon
+  // on revient a 'idle' pour reafficher le bouton "Pre-verifier".
+  useEffect(() => {
+    if (!data) return
+    setIaEtat((prev) => {
+      if (prev === 'loading') return prev
+      const aDesNonVerifiees = data.pieces.some(
+        (p) => !p.verifieParIA && p.statutValidation !== 'rejetee',
+      )
+      const aDesVerifiees = data.pieces.some((p) => p.verifieParIA)
+      if (!aDesNonVerifiees && aDesVerifiees) return 'done'
+      return 'idle'
+    })
+  }, [data])
 
   // Pré-remplir uploadedByCode depuis les pièces déjà en base (affiche "Modifier" au chargement)
   useEffect(() => {
@@ -352,23 +249,6 @@ function DossierDetailPage() {
       return next
     })
   }, [data])
-
-  async function handleAjouterPiece(codeTypePiece: string, file: File): Promise<boolean> {
-    try {
-      await ajouterPiece(idNum, file, codeTypePiece)
-      const fresh = await fetchDossierDetail(idNum)
-      setData(fresh)
-      setPiecesLocales([])
-      return true
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 409) {
-        window.alert('Une pièce de ce type existe déjà — utilisez « Remplacer ».')
-      } else {
-        window.alert("Échec de l'envoi. Réessayez.")
-      }
-      return false
-    }
-  }
 
   async function handleRemplacerPiece(piece: PieceJustificative, file: File) {
     try {
@@ -400,6 +280,7 @@ function DossierDetailPage() {
         motifRejet: null,
         cheminFichier: uploaded.cle,
         modifieParAgent: false,
+        verifieParIA: false,
       }]
     })
     // Recharger depuis le serveur pour synchroniser data.pieces (persistance entre sessions)
@@ -470,7 +351,19 @@ function DossierDetailPage() {
 
   function onPreVerifierIA() {
     setIaEtat('loading')
-    setTimeout(() => { setIaEtat('done'); setIaPreVerifie(true) }, 2000)
+    // Delai pour mimer le traitement IA cote UX, puis persiste cote backend
+    // afin que l'agent voie le flag dans le backoffice.
+    setTimeout(() => {
+      lancerPreVerificationIA(idNum)
+        .then((fresh) => {
+          setData(fresh)
+          setIaEtat('done')
+        })
+        .catch(() => {
+          setIaEtat('idle')
+          window.alert("Échec de la pré-vérification IA. Réessayez.")
+        })
+    }, 2000)
   }
 
   const codeStatut = data?.statut.code ?? ''
@@ -480,27 +373,33 @@ function DossierDetailPage() {
   const isIncomplet = codeStatut === 'INCOMPLET'
   const canEdit = isBrouillon || isIncomplet
 
+  const estActifOuValide = codeStatut === 'ACTIF' || codeStatut === 'VALIDE'
+  const aDesDroitsConnus = estActifOuValide
+    && ((data?.dateDebutDroits ?? null) !== null || (data?.dateFinDroits ?? null) !== null)
+  const todayMs = new Date(); todayMs.setHours(0, 0, 0, 0)
+  const actifFutur =
+    codeStatut === 'ACTIF' &&
+    data?.dateDebutDroits != null &&
+    new Date(data.dateDebutDroits).getTime() > todayMs.getTime()
+  const libelleStatut = actifFutur
+    ? m.dossier_card_active_from({ date: formatDate(data?.dateDebutDroits) })
+    : data?.statut.libelle ?? ''
+
   const userName = data ? `${data.titulaire.prenom} ${data.titulaire.nom}` : ''
 
   return (
-    <DashboardLayout title="Mon abonnement" userName={userName} alertes={[]}>
-      <ModalAjouterPieceClient
-        open={ajoutOuvert}
-        data={data}
-        onClose={() => setAjoutOuvert(false)}
-        onSubmit={handleAjouterPiece}
-      />
+    <DashboardLayout title={m.dossier_layout_title()} userName={userName} alertes={[]}>
       <div className="mx-auto max-w-2xl">
 
         {/* ── Retour ── */}
         <button
           type="button"
           onClick={() => window.history.back()}
-          aria-label="Retour au tableau de bord"
+          aria-label={m.dossier_back_aria()}
           className="mb-6 flex items-center gap-2 text-sm font-medium text-gray-500 transition hover:text-primary focus:outline-none"
         >
           <ArrowLeft size={16} aria-hidden />
-          Retour à mes abonnements
+          {m.dossier_back_link()}
         </button>
 
         {loading && <DossierDetailSkeleton />}
@@ -519,37 +418,41 @@ function DossierDetailPage() {
                   {data.typeAbonnement.libelle}
                 </h1>
                 <p className="mt-1 text-sm text-gray-500">
-                  Créé le {formatDate(data.dateCreation)}
+                  {m.dossier_created_on({ date: formatDate(data.dateCreation) })}
                 </p>
               </div>
-              <StatusBadge libelle={data.statut.libelle} categorie={categorie} />
+              <StatusBadge libelle={libelleStatut} categorie={categorie} />
             </div>
 
             {/* ── Infos ── */}
-            <section aria-label="Informations sur l'abonnement">
+            <section aria-label={m.dossier_section_info_aria()}>
               <h2 className="mb-4 text-xs font-semibold uppercase tracking-widest text-gray-400">
-                Informations
+                {m.dossier_section_info_title()}
               </h2>
               <dl className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-3">
-                <InfoItem label="Titulaire" value={`${data.titulaire.prenom} ${data.titulaire.nom}`} />
-                <InfoItem label="Payeur" value={`${data.payeur.prenom} ${data.payeur.nom}`} />
-                <InfoItem label="Type" value={data.typeAbonnement.libelle} />
+                <InfoItem label={m.dossier_info_holder()} value={`${data.titulaire.prenom} ${data.titulaire.nom}`} />
+                <InfoItem label={m.dossier_info_payer()} value={`${data.payeur.prenom} ${data.payeur.nom}`} />
+                <InfoItem label={m.dossier_info_type()} value={data.typeAbonnement.libelle} />
               </dl>
 
               <div className="mt-6 flex flex-wrap gap-6">
-                <div className="flex items-start gap-2">
-                  <CalendarDays size={15} className="mt-0.5 shrink-0 text-gray-400" aria-hidden />
-                  <div>
-                    <p className="text-xs font-semibold text-gray-500">Période</p>
-                    <p className="mt-0.5 text-sm text-dark">
-                      {formatDate(data.dateDebutDroits)} → {formatDate(data.dateFinDroits)}
-                    </p>
+                {aDesDroitsConnus && (
+                  <div className="flex items-start gap-2">
+                    <CalendarDays size={15} className="mt-0.5 shrink-0 text-gray-400" aria-hidden />
+                    <div>
+                      <p className="text-xs font-semibold text-gray-500">{m.dossier_info_period()}</p>
+                      <p className="mt-0.5 text-sm text-dark">
+                        {data.dateFinDroits
+                          ? m.dossier_info_period_range({ start: formatDate(data.dateDebutDroits), end: formatDate(data.dateFinDroits) })
+                          : m.dossier_info_period_open({ start: formatDate(data.dateDebutDroits) })}
+                      </p>
+                    </div>
                   </div>
-                </div>
+                )}
                 <div className="flex items-start gap-2">
                   <Wallet size={15} className="mt-0.5 shrink-0 text-gray-400" aria-hidden />
                   <div>
-                    <p className="text-xs font-semibold text-gray-500">Montant</p>
+                    <p className="text-xs font-semibold text-gray-500">{m.dossier_info_amount()}</p>
                     <p className="mt-0.5 text-sm text-dark">{formatMontant(data.montantTotal)}</p>
                   </div>
                 </div>
@@ -559,31 +462,11 @@ function DossierDetailPage() {
             <div className="h-px bg-gray-200" />
 
             {/* ── Pièces ── */}
-            <section aria-label="Pièces justificatives">
+            <section aria-label={m.dossier_pieces_aria()}>
               <div className="mb-4 flex items-center justify-between gap-3">
                 <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400">
-                  Pièces justificatives
+                  {m.dossier_pieces_title()}
                 </h2>
-                {canEdit && (() => {
-                  // Calcule s'il reste un type a proposer (meme logique que la
-                  // modale) pour griser le bouton si tout est deja depose.
-                  const codesDeposes = new Set(data.pieces.map((p) => p.codeTypePiece))
-                  const requises = (data.piecesRequises ?? []).filter((r) => !codesDeposes.has(r.codeTypePiece))
-                  const fallbackCodes = ['PIECE_IDENTITE', 'CERTIFICAT_SCOLARITE', 'NOTIFICATION_BOURSE']
-                  const fallbackDispo = requises.length === 0 && fallbackCodes.some((c) => !codesDeposes.has(c))
-                  const peutAjouter = requises.length > 0 || fallbackDispo
-                  return (
-                    <button
-                      type="button"
-                      onClick={() => setAjoutOuvert(true)}
-                      disabled={!peutAjouter}
-                      title={peutAjouter ? undefined : 'Toutes les pièces possibles sont déjà déposées.'}
-                      className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-blue-pale hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white disabled:hover:border-gray-300 disabled:hover:text-gray-700"
-                    >
-                      + Ajouter une pièce
-                    </button>
-                  )
-                })()}
               </div>
 
               <TableauPieces
@@ -597,17 +480,17 @@ function DossierDetailPage() {
             {isActif && (
               <>
                 <div className="h-px bg-gray-200" />
-                <section aria-label="Résiliation">
+                <section aria-label={m.dossier_section_resiliation_aria()}>
                   <h2 className="mb-4 text-xs font-semibold uppercase tracking-widest text-gray-400">
-                    Résiliation
+                    {m.dossier_resiliation_title()}
                   </h2>
                   <p className="mb-4 text-sm text-gray-600">
-                    La résiliation est définitive et immédiate. Vous ne pourrez plus utiliser votre abonnement.
+                    {m.dossier_resiliation_warning()}
                   </p>
 
                   {confirmerResilier && (
                     <p className="mb-4 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm font-semibold text-danger">
-                      Confirmez-vous la résiliation de cet abonnement ?
+                      {m.dossier_resiliation_confirm_question()}
                     </p>
                   )}
 
@@ -619,7 +502,7 @@ function DossierDetailPage() {
                       className="flex items-center gap-2 rounded-xl bg-danger px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-danger/90 focus:outline-none focus:ring-2 focus:ring-danger/30 disabled:opacity-50"
                     >
                       {submitting && <Loader2 size={14} className="animate-spin" />}
-                      {confirmerResilier ? 'Confirmer' : 'Résilier mon abonnement'}
+                      {confirmerResilier ? m.common_confirm() : m.dossier_resilier_button()}
                     </button>
                     {confirmerResilier && (
                       <button
@@ -627,7 +510,7 @@ function DossierDetailPage() {
                         onClick={() => setConfirmerResilier(false)}
                         className="text-sm font-medium text-gray-500 hover:text-dark"
                       >
-                        Annuler
+                        {m.common_cancel()}
                       </button>
                     )}
                   </div>
@@ -639,84 +522,104 @@ function DossierDetailPage() {
             {canEdit && (
               <>
                 <div className="h-px bg-gray-200" />
-                <section aria-label="Documents">
+                <section aria-label={m.dossier_documents_aria()}>
                   <h2 className="mb-1 text-xs font-semibold uppercase tracking-widest text-gray-400">
-                    {isIncomplet ? 'Compléter vos pièces' : 'Ajouter vos documents'}
+                    {isIncomplet ? m.dossier_complete_pieces() : m.dossier_add_documents()}
                   </h2>
 
                   {isIncomplet && (
                     <p className="mb-4 mt-2 text-sm text-warning">
-                      Des pièces sont manquantes ou ont été rejetées. Déposez-les à nouveau pour soumettre votre dossier.
+                      {m.dossier_pieces_missing_warning()}
                     </p>
                   )}
 
                   <div className="mt-4 space-y-3">
-                    {(data.piecesRequises ?? [])
-                      .filter((req) => {
-                        // Montrer uniquement les pièces manquantes ou rejetées
+                    {(() => {
+                      // Source des pieces a uploader : referentiel piecesRequises si
+                      // defini pour ce type d'abonnement, sinon fallback sur les 3
+                      // types courants pour debloquer l'utilisateur cote front (cas
+                      // ou le seed n'a pas de piece_requise pour ce type).
+                      const FALLBACK = [
+                        { codeTypePiece: 'PIECE_IDENTITE', libelleTypePiece: m.dossier_piece_identity_label(), obligatoire: true },
+                        { codeTypePiece: 'CERTIFICAT_SCOLARITE', libelleTypePiece: m.dossier_piece_certificat_scolarite(), obligatoire: false },
+                        { codeTypePiece: 'NOTIFICATION_BOURSE', libelleTypePiece: m.dossier_piece_notification_bourse(), obligatoire: false },
+                      ]
+                      const source = (data.piecesRequises ?? []).length > 0
+                        ? (data.piecesRequises ?? [])
+                        : FALLBACK
+                      const codesDeposes = new Set(data.pieces.map((p) => p.codeTypePiece))
+                      const aUploader = source.filter((req) => {
                         const existing = toutesLesPieces().find((p) => {
                           const lib = p.libelleTypePiece.toLowerCase()
                           return lib === req.libelleTypePiece.toLowerCase() || p.cheminFichier?.includes(req.codeTypePiece.toLowerCase())
                         })
-                        return !existing || existing.statutValidation === 'rejete' || existing.statutValidation === 'rejetee'
+                        const matchedByCode = codesDeposes.has(req.codeTypePiece)
+                        const pieceExistante = existing ?? (matchedByCode ? data.pieces.find((p) => p.codeTypePiece === req.codeTypePiece) : undefined)
+                        return !pieceExistante || pieceExistante.statutValidation === 'rejete' || pieceExistante.statutValidation === 'rejetee'
                       })
-                      .map((req) => (
-                        <ChampFichier
-                          key={req.codeTypePiece}
-                          label={`${req.libelleTypePiece} — ${data.titulaire.prenom} ${data.titulaire.nom}`}
-                          typePiece={req.codeTypePiece as TypePiece}
-                          valeur={uploadedByCode[req.codeTypePiece] ?? null}
-                          idDossier={idNum}
-                          onSaved={(u) => onPieceSaved(req.codeTypePiece, req.libelleTypePiece, u)}
-                        />
-                      ))}
-                    {(data.piecesRequises ?? []).filter((req) => {
-                      const existing = toutesLesPieces().find((p) => {
-                        const lib = p.libelleTypePiece.toLowerCase()
-                        return lib === req.libelleTypePiece.toLowerCase() || p.cheminFichier?.includes(req.codeTypePiece.toLowerCase())
-                      })
-                      return !existing || existing.statutValidation === 'rejete' || existing.statutValidation === 'rejetee'
-                    }).length === 0 && (
-                      <p className="text-sm text-success">Tous les documents requis ont été déposés.</p>
-                    )}
+                      return (
+                        <>
+                          {aUploader.map((req) => (
+                            <ChampFichier
+                              key={req.codeTypePiece}
+                              label={req.libelleTypePiece}
+                              typePiece={req.codeTypePiece as TypePiece}
+                              valeur={uploadedByCode[req.codeTypePiece] ?? null}
+                              idDossier={idNum}
+                              onSaved={(u) => onPieceSaved(req.codeTypePiece, req.libelleTypePiece, u)}
+                            />
+                          ))}
+                          {(data.piecesRequises ?? []).length > 0 && aUploader.length === 0 && (
+                            <p className="text-sm text-success">{m.dossier_all_required_uploaded()}</p>
+                          )}
+                        </>
+                      )
+                    })()}
                   </div>
 
                   {iaEtat === 'loading' && (
                     <div className="mt-4 flex items-center gap-3">
                       <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                      <p className="text-sm text-gray-600">Vérification IA en cours…</p>
+                      <p className="text-sm text-gray-600">{m.dossier_ia_checking()}</p>
                     </div>
                   )}
 
                   {iaEtat === 'done' && (
                     <div className="mt-4 flex items-center gap-2 text-sm text-success">
                       <BadgeCheck size={16} />
-                      Documents pré-vérifiés — aucune anomalie détectée.
+                      {m.dossier_ia_done()}
                     </div>
                   )}
 
                   <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                    {!iaPreVerifie && iaEtat === 'idle' && (
-                      <button
-                        type="button"
-                        disabled={toutesLesPieces().length === 0}
-                        onClick={onPreVerifierIA}
-                        className="flex items-center justify-center gap-2 rounded-xl border-2 border-primary px-4 py-2.5 text-sm font-semibold text-primary transition hover:bg-blue-pale focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-40 sm:w-auto"
-                      >
-                        <Sparkles size={14} aria-hidden />
-                        Pré-vérifier avec l'IA
-                      </button>
-                    )}
+                    {(() => {
+                      // Bouton "Pré-vérifier avec l'IA" visible tant qu'il y a au
+                      // moins une piece non rejetee non encore verifiee par l'IA.
+                      const aVerifier = toutesLesPieces().some(
+                        (p) => !p.verifieParIA && p.statutValidation !== 'rejetee',
+                      )
+                      return iaEtat === 'idle' && aVerifier ? (
+                        <button
+                          type="button"
+                          disabled={toutesLesPieces().length === 0}
+                          onClick={onPreVerifierIA}
+                          className="flex items-center justify-center gap-2 rounded-xl border-2 border-primary px-4 py-2.5 text-sm font-semibold text-primary transition hover:bg-blue-pale focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-40 sm:w-auto"
+                        >
+                          <Sparkles size={14} aria-hidden />
+                          {m.dossier_pre_verify_ia()}
+                        </button>
+                      ) : null
+                    })()}
 
                     <button
                       type="button"
                       disabled={submitting || !peutSoumettre()}
                       onClick={onSoumettre}
-                      title={!peutSoumettre() ? "Ajoutez au moins la pièce d'identité pour soumettre" : undefined}
+                      title={!peutSoumettre() ? m.dossier_submit_min_piece_tooltip() : undefined}
                       className="flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-focus focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50 sm:w-auto"
                     >
                       {submitting && <Loader2 size={14} className="animate-spin" />}
-                      Soumettre pour vérification
+                      {m.dossier_submit_for_review()}
                     </button>
 
                     {isBrouillon && (
@@ -726,7 +629,7 @@ function DossierDetailPage() {
                         onClick={() => setShowDeleteModal(true)}
                         className="flex items-center justify-center gap-2 rounded-xl border border-danger/40 px-4 py-2.5 text-sm font-medium text-danger transition hover:bg-danger/5 focus:outline-none focus:ring-2 focus:ring-danger/30 disabled:opacity-50 sm:w-auto sm:ml-auto"
                       >
-                        Supprimer ce brouillon
+                        {m.dossier_delete_draft_button()}
                       </button>
                     )}
                   </div>
@@ -753,10 +656,10 @@ function DossierDetailPage() {
           />
           <div className="relative w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
             <h2 id="modal-suppr-titre" className="font-heading text-base font-semibold text-dark">
-              Supprimer ce brouillon ?
+              {m.dossier_delete_draft_title()}
             </h2>
             <p className="mt-2 text-sm text-gray-600">
-              Cette action est irréversible. Le dossier et les documents associés seront définitivement supprimés.
+              {m.dossier_delete_draft_warning()}
             </p>
             <div className="mt-5 flex items-center justify-end gap-3">
               <button
@@ -764,7 +667,7 @@ function DossierDetailPage() {
                 onClick={() => setShowDeleteModal(false)}
                 className="rounded-xl px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-100"
               >
-                Annuler
+                {m.common_cancel()}
               </button>
               <button
                 type="button"
@@ -773,7 +676,7 @@ function DossierDetailPage() {
                 className="flex items-center gap-2 rounded-xl bg-danger px-5 py-2 text-sm font-semibold text-white transition hover:bg-danger/90 disabled:opacity-50"
               >
                 {submitting && <Loader2 size={14} className="animate-spin" />}
-                Supprimer définitivement
+                {m.dossier_delete_confirm()}
               </button>
             </div>
           </div>
