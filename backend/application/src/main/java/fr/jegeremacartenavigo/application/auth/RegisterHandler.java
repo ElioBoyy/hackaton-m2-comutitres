@@ -8,19 +8,23 @@ import fr.jegeremacartenavigo.domain.auth.model.UtilisateurAuth;
 import fr.jegeremacartenavigo.domain.auth.port.PasswordHasher;
 import fr.jegeremacartenavigo.domain.auth.port.TokenIssuer;
 import fr.jegeremacartenavigo.domain.auth.port.UtilisateurAuthRepository;
+import fr.jegeremacartenavigo.domain.dossier.port.NotificateurDossier;
 
 public class RegisterHandler implements CommandHandler<RegisterCommand, TokenResponse> {
 
     private final UtilisateurAuthRepository repository;
     private final PasswordHasher passwordHasher;
     private final TokenIssuer tokenIssuer;
+    private final NotificateurDossier notificateur;
 
     public RegisterHandler(UtilisateurAuthRepository repository,
                            PasswordHasher passwordHasher,
-                           TokenIssuer tokenIssuer) {
+                           TokenIssuer tokenIssuer,
+                           NotificateurDossier notificateur) {
         this.repository = repository;
         this.passwordHasher = passwordHasher;
         this.tokenIssuer = tokenIssuer;
+        this.notificateur = notificateur;
     }
 
     @Override
@@ -47,6 +51,7 @@ public class RegisterHandler implements CommandHandler<RegisterCommand, TokenRes
                 StatutCompte.actif
         );
         UtilisateurAuth persiste = repository.save(nouveau);
+        notificateur.notifierBienvenue(persiste.email(), persiste.prenom());
         return TokenResponse.bearer(tokenIssuer.issue(persiste), tokenIssuer.ttlSeconds());
     }
 }

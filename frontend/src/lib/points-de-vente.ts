@@ -167,3 +167,24 @@ export function formaterDistance(km: number): string {
   if (km < 1) return `${Math.round(km * 1000)} m`
   return `${km.toFixed(1)} km`
 }
+
+/**
+ * Envoie un email de confirmation de RDV au porteur connecte. La prise de RDV
+ * elle-meme reste mockee cote front (pas d'API IDFM correspondante en demo) ;
+ * cet appel sert juste a declencher l'envoi de l'email Resend cote backend.
+ */
+import { apiFetch } from '~/lib/api'
+
+export interface ConfirmerRdvPayload {
+  nomPointDeVente: string
+  adressePointDeVente: string
+  /** Format ISO LocalDateTime (sans timezone), ex: "2026-06-19T14:30:00". */
+  creneau: string
+}
+
+export function confirmerRdv(payload: ConfirmerRdvPayload): Promise<void> {
+  return apiFetch<void>('/rendez-vous/confirmation', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}

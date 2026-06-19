@@ -6,7 +6,7 @@ import { login } from '~/lib/auth'
 import { LoginSchema } from '~/lib/schemas'
 import { parseViolations } from '~/lib/validation'
 import { Field } from '~/components/Field'
-import { adresseComplete, libelleJours, type PointDeVente } from '~/lib/points-de-vente'
+import { adresseComplete, confirmerRdv, libelleJours, type PointDeVente } from '~/lib/points-de-vente'
 import { m } from '~/paraglide/messages'
 
 // Modale de prise de RDV. Si l'utilisateur n'est pas connecte, elle affiche
@@ -307,7 +307,18 @@ function EtapeRdv({ point, onClose }: { point: PointDeVente; onClose: () => void
       <button
         type="button"
         disabled={!creneau}
-        onClick={() => setConfirme(true)}
+        onClick={() => {
+          if (!creneau) return
+          // Envoi email best-effort : la confirmation UX passe meme si l'API
+          // est indisponible (RDV reste mocke cote front).
+          const isoCreneau = `${jour.cle}T${creneau}:00`
+          confirmerRdv({
+            nomPointDeVente: point.name,
+            adressePointDeVente: adresseComplete(point),
+            creneau: isoCreneau,
+          }).catch(() => {})
+          setConfirme(true)
+        }}
         className="mt-4 w-full rounded-xl bg-focus px-4 py-3 font-semibold text-white transition hover:bg-focus/90 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {creneau ? `Confirmer le rendez-vous à ${creneau}` : 'Choisissez un créneau'}

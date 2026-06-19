@@ -75,6 +75,7 @@ public class DossierRepositoryAdapter implements DossierRepository {
     private final SequenceAnnuelleDossierJpaRepository sequenceJpa;
     private final PieceRequiseJpaRepository pieceRequiseJpa;
     private final EntityManager em;
+    private final fr.jegeremacartenavigo.domain.dossier.port.NotificateurDossier notificateur;
 
     public DossierRepositoryAdapter(
             DossierJpaRepository dossierJpa,
@@ -88,7 +89,8 @@ public class DossierRepositoryAdapter implements DossierRepository {
             AgentJpaRepository agentJpaRepository,
             SequenceAnnuelleDossierJpaRepository sequenceJpa,
             PieceRequiseJpaRepository pieceRequiseJpa,
-            EntityManager em) {
+            EntityManager em,
+            fr.jegeremacartenavigo.domain.dossier.port.NotificateurDossier notificateur) {
         this.dossierJpa = dossierJpa;
         this.pieceJpa = pieceJpa;
         this.utilisateurJpaRepository = utilisateurJpaRepository;
@@ -101,6 +103,7 @@ public class DossierRepositoryAdapter implements DossierRepository {
         this.sequenceJpa = sequenceJpa;
         this.pieceRequiseJpa = pieceRequiseJpa;
         this.em = em;
+        this.notificateur = notificateur;
     }
 
     @Override
@@ -204,6 +207,24 @@ public class DossierRepositoryAdapter implements DossierRepository {
 
         if (paiementFourni) {
             enregistrerPaiement(dossier, connecte, nouveauDossier.modePaiement());
+            // Recu de paiement + accuse de soumission au porteur. La transition
+            // vers EN_VERIFICATION est mecanique (deja faite a l'init du statut)
+            // donc on n'appelle pas appliquerChangementStatut, on emet
+            // directement les deux notifs metier.
+            notificateur.notifierPaiementEnregistre(
+                    connecte.getEmail(),
+                    connecte.getPrenom(),
+                    dossier.getNumeroDossier(),
+                    dossier.getTypeAbonnement().getLibelle(),
+                    dossier.getMontantTotal(),
+                    nouveauDossier.modePaiement() != null ? nouveauDossier.modePaiement().name() : null
+            );
+            notificateur.notifierSoumissionDossier(
+                    connecte.getEmail(),
+                    connecte.getPrenom(),
+                    dossier.getNumeroDossier(),
+                    dossier.getTypeAbonnement().getLibelle()
+            );
         }
 
         return new DossierCree(
@@ -319,6 +340,17 @@ public class DossierRepositoryAdapter implements DossierRepository {
                 .orElseThrow(() -> new ReferentielIntrouvableException("Statut EN_VERIFICATION introuvable"));
         dossier.setStatutActuel(statut);
         dossierJpa.save(dossier);
+
+        // Accuse de reception au porteur du dossier.
+        Utilisateur porteur = dossier.getUtilisateurPorteur();
+        if (porteur != null) {
+            notificateur.notifierSoumissionDossier(
+                    porteur.getEmail(),
+                    porteur.getPrenom(),
+                    dossier.getNumeroDossier(),
+                    dossier.getTypeAbonnement().getLibelle()
+            );
+        }
     }
 
     @Override
@@ -524,9 +556,24 @@ public class DossierRepositoryAdapter implements DossierRepository {
         dossier.setDateFinDroits(dateFinDroits);
         dossierJpa.save(dossier);
 
+        // Notif specifique d'activation (avec dates + montant) au lieu de la
+        // notif generique de transition de statut.
         appliquerChangementStatut(dossier, CodeStatutDossier.ACTIF, agent,
                 "Abonnement activé : droits du " + dateDebutDroits
-                        + (dateFinDroits != null ? " au " + dateFinDroits : " (sans terme)") + ".");
+                        + (dateFinDroits != null ? " au " + dateFinDroits : " (sans terme)") + ".",
+                false);
+        Utilisateur porteur = dossier.getUtilisateurPorteur();
+        if (porteur != null) {
+            notificateur.notifierActivation(
+                    porteur.getEmail(),
+                    porteur.getPrenom(),
+                    dossier.getNumeroDossier(),
+                    dossier.getTypeAbonnement().getLibelle(),
+                    dateDebutDroits,
+                    dateFinDroits,
+                    dossier.getMontantTotal()
+            );
+        }
     }
 
     @Override
@@ -658,12 +705,28 @@ public class DossierRepositoryAdapter implements DossierRepository {
         boolean instructible = CodeStatutDossier.EN_VERIFICATION.name().equals(codeActuel)
                 || CodeStatutDossier.INCOMPLET.name().equals(codeActuel);
         if (!validation.valider() && CodeStatutDossier.EN_VERIFICATION.name().equals(codeActuel)) {
+            // Skip notif generique de transition : notifierPieceRejetee couvre
+            // deja le besoin avec un message plus precis (incluant le motif).
             appliquerChangementStatut(dossier, CodeStatutDossier.INCOMPLET, agent,
-                    "Statut passé à INCOMPLET suite au rejet d'une pièce.");
+                    "Statut passé à INCOMPLET suite au rejet d'une pièce.", false);
         } else if (validation.valider() && instructible
                 && conditionsVALIDESatisfaites(dossier, piece)) {
             appliquerChangementStatut(dossier, CodeStatutDossier.VALIDE, agent,
                     "Statut passé à VALIDÉ : toutes les pièces ont été validées.");
+        }
+
+        // Notification specifique au porteur en cas de rejet, avec le motif.
+        if (!validation.valider()) {
+            Utilisateur porteur = dossier.getUtilisateurPorteur();
+            if (porteur != null) {
+                notificateur.notifierPieceRejetee(
+                        porteur.getEmail(),
+                        porteur.getPrenom(),
+                        dossier.getNumeroDossier(),
+                        piece.getTypePiece().getLibelle(),
+                        validation.motifRejet()
+                );
+            }
         }
     }
 
@@ -729,9 +792,25 @@ public class DossierRepositoryAdapter implements DossierRepository {
      */
     private void appliquerChangementStatut(Dossier dossier, CodeStatutDossier nouveauCode,
                                             Agent agent, String descriptionOverride) {
+        appliquerChangementStatut(dossier, nouveauCode, agent, descriptionOverride, true);
+    }
+
+    /**
+     * Variante avec {@code envoyerNotifGenerique} : permet aux callers qui ont
+     * une notif specialisee (ex: activation, rejet de piece) de skip la notif
+     * generique de transition pour eviter le doublon dans la boite du client.
+     */
+    private void appliquerChangementStatut(Dossier dossier, CodeStatutDossier nouveauCode,
+                                            Agent agent, String descriptionOverride,
+                                            boolean envoyerNotifGenerique) {
         StatutDossier nouveauStatut = statutDossierJpaRepository.findByCode(nouveauCode.name())
                 .orElseThrow(() -> new ReferentielIntrouvableException("Statut introuvable : " + nouveauCode));
         StatutDossier ancienStatut = dossier.getStatutActuel();
+        // No-op : transition vide (ex: auto-transition redondante). Evite d'envoyer
+        // une notif sans changement reel.
+        if (ancienStatut != null && ancienStatut.getCode().equals(nouveauStatut.getCode())) {
+            return;
+        }
 
         dossier.setStatutActuel(nouveauStatut);
         dossierJpa.save(dossier);
@@ -749,6 +828,22 @@ public class DossierRepositoryAdapter implements DossierRepository {
         // (ex: rejet d'une piece) via descriptionOverride.
         entree.setDescription(descriptionOverride);
         historiqueJpa.save(entree);
+
+        // Notification email best-effort au porteur du dossier. L'adapter Resend
+        // capture toutes les exceptions : si l'API est down ou la cle non configuree,
+        // la transition de statut reste persistee.
+        Utilisateur porteur = dossier.getUtilisateurPorteur();
+        if (envoyerNotifGenerique && porteur != null) {
+            notificateur.notifierChangementStatut(
+                    porteur.getEmail(),
+                    porteur.getPrenom(),
+                    dossier.getNumeroDossier(),
+                    dossier.getTypeAbonnement().getLibelle(),
+                    ancienStatut != null ? ancienStatut.getLibelle() : null,
+                    nouveauStatut.getCode(),
+                    nouveauStatut.getLibelle()
+            );
+        }
     }
 
     private String genererNumeroDossier() {
