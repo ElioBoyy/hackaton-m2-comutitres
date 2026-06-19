@@ -127,4 +127,18 @@ public interface DossierJpaRepository extends JpaRepository<Dossier, Integer> {
             group by d.statutActuel.categorie
             """)
     List<Object[]> countByNumeroDossierGroupByCategorie(@Param("terme") String terme);
+
+    /**
+     * Dossiers ACTIF dont la date de fin de droits tombe le jour cible :
+     * utilise par le scheduler de rappel renouvellement (T-30j, T-7j).
+     */
+    @Query("""
+            select d from Dossier d
+            join fetch d.utilisateurPorteur up
+            join fetch d.statutActuel sd
+            join fetch d.typeAbonnement ta
+            where sd.code = 'ACTIF'
+              and d.dateFinDroits = :dateCible
+            """)
+    List<Dossier> findActifsAvecFinDroitsLe(@Param("dateCible") java.time.LocalDate dateCible);
 }

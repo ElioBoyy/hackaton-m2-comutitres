@@ -139,6 +139,15 @@ rag:
     taille-cible: 1200
     chevauchement: 200
 
+# --- Resend (envoi d'emails transactionnels) ---
+# Notifications de changement de statut dossier au porteur. Si api-key est
+# vide, l'envoi est un no-op silencieux (warn logge), aucune transition n'est
+# bloquee. Cf. ResendNotificateurDossierAdapter.
+resend:
+  api-key: ${RESEND_API_KEY:}
+  from-email: ${RESEND_FROM_EMAIL:noreply@comutitres.fr}
+  from-name: ${RESEND_FROM_NAME:Comutitres}
+
 logging:
   level:
     fr.jegeremacartenavigo: DEBUG

@@ -3,6 +3,7 @@ package fr.jegeremacartenavigo.bootstrap;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * Composition root de l'application jegeremacartenavigo.
@@ -13,6 +14,7 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
  */
 @SpringBootApplication(scanBasePackages = "fr.jegeremacartenavigo")
 @ConfigurationPropertiesScan("fr.jegeremacartenavigo")
+@EnableScheduling
 public class BootstrapApplication {
 
     public static void main(String[] args) {
