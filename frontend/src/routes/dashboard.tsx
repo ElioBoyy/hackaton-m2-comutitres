@@ -18,12 +18,18 @@ export const Route = createFileRoute('/dashboard')({
 type TabFiltre = 'ACTIVE' | 'EN_COURS' | 'FERME' | 'TOUS'
 type AllData = Record<TabFiltre, DashboardResponse>
 
-const TABS: { label: string; filtre: TabFiltre; empty: string }[] = [
-  { label: 'Actifs',                  filtre: 'ACTIVE',   empty: "Aucun abonnement n'est actuellement actif." },
-  { label: 'Mes procédures en cours', filtre: 'EN_COURS', empty: 'Aucune demande en cours de traitement.' },
-  { label: 'Fermés',                  filtre: 'FERME',    empty: "Aucun abonnement n'a été résilié ou refusé." },
-  { label: 'TOUS',                    filtre: 'TOUS',     empty: 'Aucun dossier trouvé.' },
-]
+type Tab = { label: () => string; filtre: TabFiltre; empty: () => string }
+
+function buildTabs(): Tab[] {
+  return [
+    { label: m.dashboard_filter_active,   filtre: 'ACTIVE',   empty: m.dashboard_no_active },
+    { label: m.dashboard_filter_en_cours, filtre: 'EN_COURS', empty: m.dashboard_no_en_cours },
+    { label: m.dashboard_filter_ferme,    filtre: 'FERME',    empty: m.dashboard_no_ferme },
+    { label: m.dashboard_filter_all,      filtre: 'TOUS',     empty: m.dashboard_no_tous },
+  ]
+}
+
+const TABS = buildTabs()
 
 const VALID_TABS = new Set<string>(TABS.map((t) => t.filtre))
 const STORAGE_KEY = 'dashboard_tab'
@@ -169,7 +175,7 @@ function DashboardPage() {
                       : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                {tab.label}
+                {tab.label()}
                 {active && !empty && (
                   <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-primary" />
                 )}
@@ -178,9 +184,9 @@ function DashboardPage() {
           })}
         </div>
 
-        <div className="mt-5 flex flex-col gap-5" role="tabpanel" aria-label={activeTab.label}>
+        <div className="mt-5 flex flex-col gap-5" role="tabpanel" aria-label={activeTab.label()}>
           {totalDossiers === 0 ? (
-            <p className="text-sm text-gray-500">{activeTab.empty}</p>
+            <p className="text-sm text-gray-500">{activeTab.empty()}</p>
           ) : (
             <>
               {pageDossiers.map((d) => (

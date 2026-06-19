@@ -44,7 +44,7 @@ export function UserSidebar({ isOpen, onClose }: UserSidebarProps) {
     <>
       {isMobileDrawer && isOpen && (
         <div
-          className="fixed inset-0 z-20 bg-black/40 lg:hidden"
+          className="fixed inset-0 z-[1000] bg-black/40 lg:hidden"
           aria-hidden="true"
           onClick={onClose}
         />
@@ -53,7 +53,7 @@ export function UserSidebar({ isOpen, onClose }: UserSidebarProps) {
         className={[
           "flex w-64 shrink-0 flex-col border-r border-gray-200 bg-white p-4",
           isMobileDrawer
-            ? `fixed inset-0 right-auto z-30 transition-transform duration-200 lg:static lg:translate-x-0 ${isOpen ? "translate-x-0" : "-translate-x-full"}`
+            ? `fixed inset-0 right-auto z-[1001] transition-transform duration-200 lg:static lg:translate-x-0 ${isOpen ? "translate-x-0" : "-translate-x-full"}`
             : "hidden lg:flex h-screen overflow-y-auto",
         ].join(" ")}
       >
