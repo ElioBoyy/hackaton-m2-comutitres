@@ -1,9 +1,10 @@
 import { Link } from '@tanstack/react-router'
-import { LayoutDashboard } from 'lucide-react'
+import { LayoutDashboard, MessageSquare } from 'lucide-react'
 import { AppSidebar, type SidebarNavItem } from '~/components/AppSidebar'
 
 const ITEMS: SidebarNavItem[] = [
   { label: 'Dossiers', icon: LayoutDashboard, to: '/backoffice/dashboard' },
+  { label: 'Réclamations', icon: MessageSquare, to: '/backoffice/reclamations' },
 ]
 
 export function Sidebar() {

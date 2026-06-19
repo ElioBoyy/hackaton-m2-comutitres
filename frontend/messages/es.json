@@ -206,7 +206,7 @@
   "dossier_ia_checking": "Verificación IA en curso…",
   "dossier_ia_done": "Documentos preverificados — ninguna anomalía detectada.",
   "dossier_pre_verify_ia": "Preverificar con IA",
-  "dossier_submit_min_piece_tooltip": "Añada al menos el documento de identidad para enviar",
+  "dossier_submit_min_piece_tooltip": "Suba todos los documentos obligatorios antes de enviar",
   "dossier_submit_for_review": "Enviar para verificación",
   "dossier_delete_draft_button": "Eliminar este borrador",
   "dossier_pay_and_submit": "Pagar y enviar",
@@ -496,6 +496,9 @@
   "sav_cancel": "Cancelar",
   "sav_submit": "Enviar",
   "sav_form_success": "Su reclamación ha sido enviada. Nuestro equipo le responderá en 48 h.",
+  "sav_loading": "Cargando sus solicitudes…",
+  "sav_load_error": "No se pueden cargar sus solicitudes en este momento.",
+  "sav_send_error": "Error al enviar. Inténtelo de nuevo.",
   "sav_form_category": "Categoría",
   "sav_form_subject": "Asunto",
   "sav_form_subject_placeholder": "Resuma su problema en pocas palabras",
@@ -543,5 +546,8 @@
   "sav_faq_section_paiement": "Pago y renovación",
   "sav_faq_section_arrivant": "Recién llegado a Île-de-France",
   "sav_faq_section_accessibilite": "Accesibilidad y necesidades específicas",
-  "sav_faq_section_proche": "Gestionar el abono de un familiar"
+  "sav_faq_section_proche": "Gestionar el abono de un familiar",
+  "wizard_pour_qui_moi_deja_actif": "Ya tiene un abono activo para usted.",
+  "bo_dossier_info_beneficiary": "Titular del abono",
+  "bo_dossier_info_beneficiary_note": "Abono creado para un tercero"
 }

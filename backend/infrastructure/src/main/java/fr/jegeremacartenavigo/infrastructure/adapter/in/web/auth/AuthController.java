@@ -52,7 +52,13 @@ public class AuthController {
                       "password": "Password123!",
                       "nom": "Martin",
                       "prenom": "Lea",
-                      "dateNaissance": "2003-04-12"
+                      "dateNaissance": "2003-04-12",
+                      "telephone": "0612345678",
+                      "numeroEtVoie": "10 rue de Rivoli",
+                      "codePostal": "75004",
+                      "ville": "Paris",
+                      "departementCode": "75",
+                      "departementLibelle": "Paris"
                     }
                     """))
     )

@@ -53,6 +53,9 @@ export interface HistoriqueEntree {
   statutAvant: string | null
   statutApres: string | null
   nomAuteur: string
+  /** True quand l'auteur est un agent backoffice (vs un utilisateur client).
+   *  L'UI ajoute "(agent)" derriere le nom pour clarifier. */
+  auteurEstAgent: boolean
   description: string | null
 }
 

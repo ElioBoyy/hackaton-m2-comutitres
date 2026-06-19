@@ -16,7 +16,7 @@ export function BackofficeLayout({
       <Sidebar />
       <div className="flex flex-1 flex-col">
         <BackofficeHeader agentName={agentName} onLogout={onLogout} />
-        <main className="flex-1 p-6">{children}</main>
+        <main className="relative flex-1 overflow-y-auto p-6">{children}</main>
       </div>
     </div>
   )

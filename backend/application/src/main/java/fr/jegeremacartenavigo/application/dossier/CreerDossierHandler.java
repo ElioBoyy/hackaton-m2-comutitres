@@ -1,6 +1,7 @@
 package fr.jegeremacartenavigo.application.dossier;
 
 import fr.jegeremacartenavigo.application.cqrs.CommandHandler;
+import fr.jegeremacartenavigo.domain.dossier.exception.AbonnementActifExistantException;
 import fr.jegeremacartenavigo.domain.dossier.exception.BeneficiaireManquantException;
 import fr.jegeremacartenavigo.domain.dossier.exception.PieceObligatoireManquanteException;
 import fr.jegeremacartenavigo.domain.dossier.model.DemandePour;
@@ -8,6 +9,8 @@ import fr.jegeremacartenavigo.domain.dossier.model.DossierCree;
 import fr.jegeremacartenavigo.domain.dossier.model.NouveauDossier;
 import fr.jegeremacartenavigo.domain.dossier.model.SituationDemande;
 import fr.jegeremacartenavigo.domain.dossier.port.DossierRepository;
+
+import java.time.LocalDate;
 
 public class CreerDossierHandler implements CommandHandler<CreerDossierCommand, DossierResponse> {
 
@@ -20,6 +23,7 @@ public class CreerDossierHandler implements CommandHandler<CreerDossierCommand, 
     @Override
     public DossierResponse handle(CreerDossierCommand command) {
         validerPiecesObligatoires(command);
+        validerPasDeDoublon(command);
 
         NouveauDossier nouveauDossier = new NouveauDossier(
                 command.idUtilisateurConnecte(),
@@ -71,6 +75,25 @@ public class CreerDossierHandler implements CommandHandler<CreerDossierCommand, 
                 && (command.cheminCertificatScolarite() == null || command.cheminCertificatScolarite().isBlank())) {
             throw new PieceObligatoireManquanteException(
                     "Le certificat de scolarite est requis pour une situation Etudiant.");
+        }
+    }
+
+    /**
+     * Bloque la creation d'un dossier qui ferait doublon avec un abonnement
+     * deja actif chez ce porteur (lui-meme si MOI, ou la meme personne nommee
+     * si TIERS). Saute le check quand on continue un brouillon existant
+     * ({@code idDossierExistant} non nul) : le dossier vise n'est par
+     * definition pas encore actif.
+     */
+    private void validerPasDeDoublon(CreerDossierCommand command) {
+        if (command.idDossierExistant() != null) {
+            return;
+        }
+        String beneficiaire = command.demandePour() == DemandePour.TIERS
+                ? command.beneficiaireNomComplet()
+                : null;
+        if (repository.existeAbonnementActifPour(command.idUtilisateurConnecte(), beneficiaire, LocalDate.now())) {
+            throw new AbonnementActifExistantException(beneficiaire);
         }
     }
 }

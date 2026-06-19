@@ -140,6 +140,19 @@ rag:
     taille-cible: 1200
     chevauchement: 200
 
+infobip:
+  api-key: ${INFOBIP_API_KEY:}
+  # base de l'API specifique au compte (visible dans le portail Infobip)
+  base-url: ${INFOBIP_BASE_URL:https://api.infobip.com}
+  # laisses vides => l'application 2FA et le template sont crees au 1er envoi et
+  # logues ; reporter ensuite les ids ci-dessous pour un comportement deterministe
+  application-id: ${INFOBIP_2FA_APPLICATION_ID:}
+  message-id: ${INFOBIP_2FA_MESSAGE_ID:}
+  from: ${INFOBIP_2FA_FROM:NavigoAuth}
+  pin-length: 6
+  message-text: "Votre code de verification jegeremacartenavigo est {{pin}}"
+  application-name: jegeremacartenavigo-2fa
+
 # --- Resend (envoi d'emails transactionnels) ---
 # Notifications de changement de statut dossier au porteur. Si api-key est
 # vide, l'envoi est un no-op silencieux (warn logge), aucune transition n'est

@@ -15,6 +15,9 @@ public record RegisterCommand(
         @NotBlank @Size(max = 100) String nom,
         @NotBlank @Size(max = 100) String prenom,
         @Past LocalDate dateNaissance,
+        // numero FR (mobile ou fixe), avec ou sans separateurs : 0612345678,
+        // 06 12 34 56 78, +33612345678. La normalisation MSISDN se fait a l'envoi.
+        @NotBlank @Pattern(regexp = "^(?:\\+33|0)[1-9](?:[ .]?\\d{2}){4}$") String telephone,
         @NotBlank @Size(max = 150) String numeroEtVoie,
         @NotBlank @Pattern(regexp = "\\d{5}") String codePostal,
         @NotBlank @Size(max = 100) String ville,

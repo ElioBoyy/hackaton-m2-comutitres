@@ -67,9 +67,7 @@ public class ResendNotificateurDossierAdapter implements NotificateurDossier {
         String body = """
                 <p>%s</p>
                 <p>%s</p>
-                <p style="margin:0 0 20px 0;padding:24px;background:#fff;border-radius:12px;border-left:5px solid %s;text-align:center;font-size:22px;">
-                  %s %s
-                </p>
+                <p style="margin:0 0 16px 0;font-size:18px;font-weight:600;">%s</p>
                 <p style="margin:0 0 12px 0;">Détails du dossier :</p>
                 <ul style="margin:0 0 16px 0;padding:0 0 0 22px;font-size:16px;">
                   <li><strong>Numéro :</strong> %s</li>
@@ -80,9 +78,7 @@ public class ResendNotificateurDossierAdapter implements NotificateurDossier {
                 """.formatted(
                 salutation(prenom),
                 t.intro,
-                t.couleur,
-                t.emoji,
-                "<strong>" + esc(libelleApres) + "</strong>",
+                esc(libelleApres),
                 esc(numero),
                 esc(libelleAbo),
                 transitionAffichee,

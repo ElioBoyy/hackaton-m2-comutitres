@@ -9,6 +9,7 @@ import { isAuthenticated } from '~/lib/auth'
 import { construirePayloadDossier, creerDossier } from '~/lib/dossier'
 import { piecesSontCompletes } from '~/domain/pieces'
 import { calculerRecommandation, selectionnerAbonnement } from '~/domain/recommendation'
+import { useCatalogueAbonnements } from '~/domain/useCatalogueAbonnements'
 import { SITUATIONS } from '~/domain/situation'
 import { m } from '~/paraglide/messages'
 import { useAppDispatch, useAppSelector } from '~/store/hooks'
@@ -43,18 +44,24 @@ function RecapitulatifStep() {
   const [erreur, setErreur] = React.useState<ErreurSauvegarde | null>(null)
   const { code } = Route.useSearch()
   const { abo: aboDirecte, chargement } = useAbonnementParCode(code)
+  const catalogue = useCatalogueAbonnements()
 
   const isDirectPath = !!code
 
-  // Chemin questionnaire : calculer la recommandation
+  // Chemin questionnaire : calculer la recommandation avec le catalogue
+  // reel (memes prix que ceux affiches sur l'ecran resultat).
   const resultat = React.useMemo(() => {
     if (isDirectPath || !wizard.situation || !wizard.frequenceDeplacement) return null
-    return calculerRecommandation({
-      situation: wizard.situation,
-      frequenceDeplacement: wizard.frequenceDeplacement,
-      residence: wizard.residence,
-    })
-  }, [isDirectPath, wizard.situation, wizard.frequenceDeplacement, wizard.residence])
+    if (!catalogue) return null
+    return calculerRecommandation(
+      {
+        situation: wizard.situation,
+        frequenceDeplacement: wizard.frequenceDeplacement,
+        residence: wizard.residence,
+      },
+      catalogue,
+    )
+  }, [isDirectPath, wizard.situation, wizard.frequenceDeplacement, wizard.residence, catalogue])
 
   // Ni chemin direct ni questionnaire rempli
   if (!isDirectPath && !resultat) {
@@ -95,7 +102,11 @@ function RecapitulatifStep() {
       if (err instanceof ApiError && err.status === 401) {
         setErreur({ type: 'non-authentifie' })
       } else if (err instanceof ApiError) {
-        setErreur({ type: 'autre', message: err.message })
+        // Extrait le {@code detail} ProblemDetail (RFC 7807) plutot que le
+        // libelle HTTP brut. Couvre notamment le 422 "abonnement actif
+        // existant" et "pieces obligatoires manquantes".
+        const body = err.body as { detail?: string } | undefined
+        setErreur({ type: 'autre', message: body?.detail ?? err.message })
       } else {
         setErreur({ type: 'autre', message: 'Impossible de joindre le serveur. Réessayez.' })
       }

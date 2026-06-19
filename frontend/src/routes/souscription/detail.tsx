@@ -7,7 +7,9 @@ import { ChoiceCard } from '~/components/ui/ChoiceCard'
 import { ProgressBar } from '~/components/ui/ProgressBar'
 import { TransportBadges, ZoneBadges } from '~/components/TransportZoneBadges'
 import { POUR_QUI } from '~/domain/pourQui'
+import { useAbonnementActifPourMoi } from '~/domain/useAbonnementActifPourMoi'
 import { calculerRecommandation, selectionnerAbonnement } from '~/domain/recommendation'
+import { useCatalogueAbonnements } from '~/domain/useCatalogueAbonnements'
 import { getAbonnements, type TypeAbonnement } from '~/lib/api'
 import { m } from '~/paraglide/messages'
 import { useAppDispatch, useAppSelector } from '~/store/hooks'
@@ -62,6 +64,9 @@ function DetailDepuisTypeAbonnement({
   const peutEtreBoursier = situationDeduite === 'ETUDIANT'
   const [pourQui, setPourQui] = React.useState<'MOI' | 'TIERS' | null>(null)
   const [boursier, setBoursier] = React.useState(false)
+  // Bloque "Pour moi" si abo actif deja en cours pour le user connecte
+  // (cf. AbonnementActifExistantException backend).
+  const aDejaPourMoi = useAbonnementActifPourMoi()
 
   // Prix mensuel calcule si periodicite annuelle, pour une lecture rapide.
   const prixMensuel = abo.tarifPlein !== null && abo.periodicite === 'annuelle'
@@ -140,6 +145,7 @@ function DetailDepuisTypeAbonnement({
           {POUR_QUI.map((item) => {
             const label = item.value === 'MOI' ? m.wizard_pour_qui_moi() : m.wizard_pour_qui_tiers()
             const description = item.value === 'TIERS' ? m.wizard_pour_qui_tiers_description() : undefined
+            const desactive = item.value === 'MOI' && aDejaPourMoi === true
             return (
               <ChoiceCard
                 key={item.value}
@@ -148,6 +154,8 @@ function DetailDepuisTypeAbonnement({
                 icon={item.icon}
                 selected={pourQui === item.value}
                 onSelect={() => setPourQui(item.value)}
+                disabled={desactive}
+                title={desactive ? m.wizard_pour_qui_moi_deja_actif() : undefined}
               />
             )
           })}
@@ -187,6 +195,7 @@ function DetailStep() {
   const { code } = Route.useSearch()
   const [aboDirecte, setAboDirecte] = React.useState<TypeAbonnement | null>(null)
   const [chargement, setChargement] = React.useState(false)
+  const catalogue = useCatalogueAbonnements()
 
   React.useEffect(() => {
     if (!code) return
@@ -243,11 +252,22 @@ function DetailStep() {
     )
   }
 
-  const resultat = calculerRecommandation({
-    situation: wizard.situation,
-    frequenceDeplacement: wizard.frequenceDeplacement,
-    residence: wizard.residence,
-  })
+  if (!catalogue) {
+    return (
+      <main className="mx-auto flex max-w-2xl flex-col items-center gap-4 py-24 text-center">
+        <p className="text-sm text-gray-500">{m.common_loading_short()}</p>
+      </main>
+    )
+  }
+
+  const resultat = calculerRecommandation(
+    {
+      situation: wizard.situation,
+      frequenceDeplacement: wizard.frequenceDeplacement,
+      residence: wizard.residence,
+    },
+    catalogue,
+  )
 
   const { abonnement } = selectionnerAbonnement(resultat, wizard.abonnementSelectionneId)
 

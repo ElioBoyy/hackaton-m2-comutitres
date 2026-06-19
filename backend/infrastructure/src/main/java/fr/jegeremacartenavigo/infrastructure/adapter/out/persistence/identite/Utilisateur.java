@@ -45,6 +45,12 @@ public class Utilisateur {
     @Column(name = "telephone", length = 20)
     private String telephone;
 
+    @Column(name = "telephone_verifie", nullable = false)
+    private boolean telephoneVerifie = false;
+
+    @Column(name = "telephone_pin_id", length = 64)
+    private String telephonePinId;
+
     @Column(name = "mot_de_passe_hash", length = 255, nullable = false)
     private String motDePasseHash;
 

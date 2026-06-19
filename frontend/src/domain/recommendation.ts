@@ -47,11 +47,25 @@ function scoreAbonnement(abonnementId: string, reponses: ReponsesWizard): number
   return Math.max(5, Math.min(score, 95))
 }
 
-export function calculerRecommandation(reponses: ReponsesWizard): ResultatRecommandation {
-  const classement = CATALOGUE_ABONNEMENTS.map((abonnement) => ({
-    abonnement,
-    scoreAdaptation: scoreAbonnement(abonnement.id, reponses),
-  })).sort((a, b) => b.scoreAdaptation - a.scoreAdaptation)
+/**
+ * Calcule la recommandation a partir des reponses du wizard. Si un
+ * {@code catalogue} est fourni (ex: catalogue reel charge depuis
+ * {@code /referentiel/abonnements}), il est utilise a la place du catalogue
+ * statique. Limite a 4 entrees max pour ne pas inonder le resultat quand le
+ * referentiel backend en contient une dizaine.
+ */
+export function calculerRecommandation(
+  reponses: ReponsesWizard,
+  catalogue: Abonnement[] = CATALOGUE_ABONNEMENTS,
+): ResultatRecommandation {
+  const source = catalogue.length > 0 ? catalogue : CATALOGUE_ABONNEMENTS
+  const classement = source
+    .map((abonnement) => ({
+      abonnement,
+      scoreAdaptation: scoreAbonnement(abonnement.id, reponses),
+    }))
+    .sort((a, b) => b.scoreAdaptation - a.scoreAdaptation)
+    .slice(0, 4)
 
   const [recommandePrincipal, ...autresOptions] = classement
   const moinsAdapte = classement[classement.length - 1]

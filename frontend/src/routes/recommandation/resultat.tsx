@@ -7,13 +7,17 @@ import { ApiError } from '~/lib/api'
 import { isAuthenticated } from '~/lib/auth'
 import { construirePayloadDossier, creerDossier } from '~/lib/dossier'
 import { calculerRecommandation, selectionnerAbonnement } from '~/domain/recommendation'
+import { useCatalogueAbonnements } from '~/domain/useCatalogueAbonnements'
 import { m } from '~/paraglide/messages'
 import { useAppDispatch, useAppSelector } from '~/store/hooks'
 import { abonnementSauvegarde, abonnementSelectionne, dossierBackendDefini } from '~/store/wizardSlice'
 
 // Erreur d'enregistrement du brouillon : distingue "pas connecte" (lien vers
-// /login) des autres erreurs (message brut de l'API ou reseau).
-type ErreurSauvegarde = { type: 'non-authentifie' } | { type: 'autre'; message: string }
+// /login) des autres erreurs (message brut de l'API ou reseau). Le champ
+// {@code action} sert a choisir un libelle adapte (m'abonner vs sauvegarder).
+type ErreurSauvegarde =
+  | { type: 'non-authentifie'; action: 'subscribe' | 'save' }
+  | { type: 'autre'; message: string }
 
 export const Route = createFileRoute('/recommandation/resultat')({
   component: ResultatStep,
@@ -26,21 +30,39 @@ function ResultatStep() {
   const [envoiEnCours, setEnvoiEnCours] = React.useState(false)
   const [erreur, setErreur] = React.useState<ErreurSauvegarde | null>(null)
 
+  // Catalogue reel charge depuis /referentiel/abonnements. null tant que le
+  // fetch n'a pas resolu : on attend avant de calculer pour eviter d'afficher
+  // les prix du catalogue statique puis de les voir changer.
+  const catalogue = useCatalogueAbonnements()
+
   const resultat = React.useMemo(() => {
     if (!wizard.situation || !wizard.frequenceDeplacement) return null
-    return calculerRecommandation({
-      situation: wizard.situation,
-      frequenceDeplacement: wizard.frequenceDeplacement,
-      residence: wizard.residence,
-    })
-  }, [wizard])
+    if (!catalogue) return null
+    return calculerRecommandation(
+      {
+        situation: wizard.situation,
+        frequenceDeplacement: wizard.frequenceDeplacement,
+        residence: wizard.residence,
+      },
+      catalogue,
+    )
+  }, [wizard, catalogue])
 
+  // Distinguer "wizard incomplet" (besoin de reprendre les questions) du
+  // simple "catalogue encore en train de charger" : sans ca, l'utilisateur
+  // verrait brievement le CTA "reprendre le questionnaire" pendant le
+  // fetch reseau.
   if (!resultat) {
+    const wizardIncomplet = !wizard.situation || !wizard.frequenceDeplacement
     return (
       <main className="mx-auto flex max-w-2xl flex-col gap-4 py-12 text-center">
-        <Button onClick={() => navigate({ to: '/recommandation/pour-qui' })}>
-          {m.wizard_resume_questionnaire()}
-        </Button>
+        {wizardIncomplet ? (
+          <Button onClick={() => navigate({ to: '/recommandation/pour-qui' })}>
+            {m.wizard_resume_questionnaire()}
+          </Button>
+        ) : (
+          <p className="text-sm text-gray-500" aria-live="polite">{m.common_loading_short()}</p>
+        )}
       </main>
     )
   }
@@ -53,9 +75,21 @@ function ResultatStep() {
     (item) => item.abonnement.id !== selectionne.abonnement.id,
   )
 
+  function onSouscrire() {
+    if (!isAuthenticated()) {
+      // Bloque la suite tant que pas connecte : sans utilisateur le backend
+      // refuserait la creation du dossier (401) et le wizard partirait dans
+      // un etat incoherent. Le wizard Redux survit a la navigation client
+      // donc le retour de /login a /souscription/detail conserve les choix.
+      setErreur({ type: 'non-authentifie', action: 'subscribe' })
+      return
+    }
+    navigate({ to: '/souscription/detail' })
+  }
+
   async function sauvegarderEtQuitter() {
     if (!isAuthenticated()) {
-      setErreur({ type: 'non-authentifie' })
+      setErreur({ type: 'non-authentifie', action: 'save' })
       return
     }
     setErreur(null)
@@ -73,9 +107,13 @@ function ResultatStep() {
       navigate({ to: '/dashboard' })
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
-        setErreur({ type: 'non-authentifie' })
+        setErreur({ type: 'non-authentifie', action: 'save' })
       } else if (err instanceof ApiError) {
-        setErreur({ type: 'autre', message: err.message })
+        // Extrait le {@code detail} ProblemDetail (RFC 7807) plutot que le
+        // libelle HTTP brut. Couvre notamment le 422 "abonnement actif
+        // existant" pour ne pas afficher "422 Unprocessable" a l'user.
+        const body = err.body as { detail?: string } | undefined
+        setErreur({ type: 'autre', message: body?.detail ?? err.message })
       } else {
         setErreur({ type: 'autre', message: 'Impossible de joindre le serveur. Réessayez.' })
       }
@@ -126,7 +164,7 @@ function ResultatStep() {
         <div className="flex items-start gap-3 border-2 border-dashed border-success p-4 text-sm">
           <PiggyBank className="h-6 w-6 shrink-0 text-success" strokeWidth={1.75} />
           <div>
-            <p className="font-mono font-semibold text-success">
+            <p className="font-semibold text-success">
               {m.wizard_resultat_savings({ amount: economieAnnuelleEuros.toFixed(0) })}
             </p>
             <p className="text-gray-700">{m.wizard_resultat_savings_vs()}</p>
@@ -160,7 +198,7 @@ function ResultatStep() {
         <div className="rounded-lg bg-danger-light/15 border border-danger-light/40 px-3 py-2 text-sm text-danger">
           {erreur.type === 'non-authentifie' ? (
             <>
-              {m.wizard_not_connected_save()}{' '}
+              {erreur.action === 'subscribe' ? m.wizard_not_connected_pay() : m.wizard_not_connected_save()}{' '}
               <Link to="/login" className="font-medium underline">
                 {m.wizard_not_connected_login()}
               </Link>
@@ -172,7 +210,7 @@ function ResultatStep() {
       ) : null}
 
       <div className="flex flex-col gap-3">
-        <Button onClick={() => navigate({ to: '/souscription/detail' })}>
+        <Button onClick={onSouscrire}>
           {m.wizard_resultat_subscribe()}
         </Button>
         <Button variant="ghost" onClick={sauvegarderEtQuitter} disabled={envoiEnCours}>

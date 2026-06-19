@@ -20,6 +20,13 @@ import {
   Wallet,
 } from 'lucide-react'
 import { isAuthenticated, me } from '~/lib/auth'
+import {
+  ApiError,
+  creerReclamation,
+  getMesReclamations,
+  getReclamation,
+  repondreReclamation,
+} from '~/lib/api'
 import { DashboardLayout } from '~/components/DashboardLayout'
 import { ContactBanner } from '~/components/ContactBanner'
 import { Button } from '~/components/Button'
@@ -28,7 +35,6 @@ import { StatusBadge } from '~/components/backoffice/StatusBadge'
 import { m } from '~/paraglide/messages'
 import {
   CATEGORIES_SAV,
-  MOCK_RECLAMATIONS,
   categoriePourStatut,
   libelleCategorie,
   libelleStatut,
@@ -565,12 +571,20 @@ function SectionFaqCard({ section }: { section: SectionFaq }) {
 
 function SavPage() {
   const [authentifie, setAuthentifie] = useState(false)
+  // authResolu : passe a true des qu'on sait si l'utilisateur est connecte ou
+  // non (et, si connecte, des que me() a repondu). Permet de couper le
+  // skeleton de la sidebar pour les visiteurs non connectes — sinon il
+  // resterait actif a vie puisque me() ne tournerait jamais.
+  const [authResolu, setAuthResolu] = useState(false)
   const [userName, setUserName] = useState('')
   const [activeTab, setActiveTab] = useState<'faq' | 'demandes'>('faq')
 
   // état tickets
-  const [reclamations, setReclamations] = useState<Reclamation[]>(MOCK_RECLAMATIONS)
+  const [reclamations, setReclamations] = useState<Reclamation[]>([])
+  const [loadingTickets, setLoadingTickets] = useState(false)
+  const [ticketsError, setTicketsError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [replyTexts, setReplyTexts] = useState<Record<string, string>>({})
   const [categorie, setCategorie] = useState<CategorieReclamation>('PAIEMENT')
@@ -581,13 +595,35 @@ function SavPage() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
 
   useEffect(() => {
-    if (isAuthenticated()) {
-      setAuthentifie(true)
-      me()
-        .then((u) => setUserName(`${u.prenom} ${u.nom}`))
-        .catch(() => {})
+    if (!isAuthenticated()) {
+      setAuthResolu(true)
+      return
     }
+    setAuthentifie(true)
+    me()
+      .then((u) => setUserName(`${u.prenom} ${u.nom}`))
+      .catch(() => {})
+      .finally(() => setAuthResolu(true))
+
+    setLoadingTickets(true)
+    setTicketsError(null)
+    getMesReclamations()
+      .then(setReclamations)
+      .catch(() => setTicketsError(m.sav_load_error()))
+      .finally(() => setLoadingTickets(false))
   }, [])
+
+  /** Ouvre/ferme une demande ; charge le fil de messages a la premiere ouverture. */
+  function handleToggleExpand(recId: string) {
+    setExpandedId((prev) => (prev === recId ? null : recId))
+    const rec = reclamations.find((r) => r.id === recId)
+    if (!rec || rec.messages.length > 0) return
+    getReclamation(recId)
+      .then((detail) =>
+        setReclamations((prev) => prev.map((r) => (r.id === recId ? detail : r))),
+      )
+      .catch(() => {})
+  }
 
   function handleToggleForm() {
     if (showForm) {
@@ -600,7 +636,7 @@ function SavPage() {
     setShowForm((v) => !v)
   }
 
-  function handleSubmitForm(e: FormEvent) {
+  async function handleSubmitForm(e: FormEvent) {
     e.preventDefault()
     let valid = true
     if (!objet.trim()) {
@@ -615,59 +651,41 @@ function SavPage() {
     } else {
       setDescError(undefined)
     }
-    if (!valid) return
+    if (!valid || submitting) return
 
-    const newRec: Reclamation = {
-      id: `r${reclamations.length + 1}`,
-      reference: `REC-2026-00${reclamations.length + 1}`,
-      categorie,
-      objet: objet.trim(),
-      dateCreation: new Date().toISOString(),
-      dateMiseAJour: new Date().toISOString(),
-      statut: 'OUVERT',
-      messages: [
-        {
-          id: `m${Date.now()}`,
-          auteur: 'CLIENT',
-          contenu: description.trim(),
-          date: new Date().toISOString(),
-        },
-      ],
+    setSubmitting(true)
+    setTicketsError(null)
+    try {
+      const creee = await creerReclamation({
+        codeCategorie: categorie,
+        objet: objet.trim(),
+        description: description.trim(),
+      })
+      setReclamations((prev) => [creee, ...prev])
+      setExpandedId(creee.id)
+      setObjet('')
+      setDescription('')
+      setCategorie('PAIEMENT')
+      setShowForm(false)
+      setSuccessMsg(m.sav_form_success())
+      setTimeout(() => setSuccessMsg(null), 6000)
+    } catch (err) {
+      setTicketsError(err instanceof ApiError ? err.message : m.sav_send_error())
+    } finally {
+      setSubmitting(false)
     }
-
-    setReclamations((prev) => [newRec, ...prev])
-    setExpandedId(newRec.id)
-    setObjet('')
-    setDescription('')
-    setCategorie('PAIEMENT')
-    setShowForm(false)
-    setSuccessMsg(m.sav_form_success())
-    setTimeout(() => setSuccessMsg(null), 6000)
   }
 
-  function handleSendReply(recId: string) {
+  async function handleSendReply(recId: string) {
     const text = replyTexts[recId]?.trim()
     if (!text) return
-    setReclamations((prev) =>
-      prev.map((r) =>
-        r.id !== recId
-          ? r
-          : {
-              ...r,
-              dateMiseAJour: new Date().toISOString(),
-              messages: [
-                ...r.messages,
-                {
-                  id: `m${Date.now()}`,
-                  auteur: 'CLIENT',
-                  contenu: text,
-                  date: new Date().toISOString(),
-                },
-              ],
-            },
-      ),
-    )
-    setReplyTexts((prev) => ({ ...prev, [recId]: '' }))
+    try {
+      const maj = await repondreReclamation(recId, text)
+      setReclamations((prev) => prev.map((r) => (r.id === recId ? maj : r)))
+      setReplyTexts((prev) => ({ ...prev, [recId]: '' }))
+    } catch {
+      setTicketsError(m.sav_send_error())
+    }
   }
 
   const openTickets = reclamations.filter(
@@ -675,7 +693,7 @@ function SavPage() {
   ).length
 
   return (
-    <DashboardLayout title={m.sav_page_title()} userName={userName} alertes={[]} loading={!userName}>
+    <DashboardLayout title={m.sav_page_title()} userName={userName} alertes={[]} loading={!authResolu}>
       <div className="mx-auto flex max-w-4xl flex-col gap-6">
 
         {/* Bandeau numéro de téléphone */}
@@ -918,7 +936,7 @@ function SavPage() {
                   </div>
 
                   <div className="flex flex-wrap gap-3 pt-1">
-                    <Button type="submit" className="flex-1 sm:w-auto sm:flex-none">
+                    <Button type="submit" className="flex-1 sm:w-auto sm:flex-none" disabled={submitting}>
                       {m.sav_submit()}
                     </Button>
                     <Button
@@ -940,7 +958,17 @@ function SavPage() {
                 {m.sav_list_title()}
               </h2>
 
-              {reclamations.length === 0 ? (
+              {ticketsError && (
+                <div role="alert" className="mb-3 rounded-2xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm font-medium text-danger">
+                  {ticketsError}
+                </div>
+              )}
+
+              {loadingTickets ? (
+                <div className="flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-6 py-14 text-sm text-gray-700">
+                  {m.sav_loading()}
+                </div>
+              ) : reclamations.length === 0 ? (
                 <div className="flex flex-col items-center gap-3 rounded-2xl border border-gray-200 bg-white px-6 py-14 text-center">
                   <MessageSquare size={36} className="text-gray-300" aria-hidden="true" />
                   <p className="font-heading text-base font-semibold text-gray-900">
@@ -961,7 +989,7 @@ function SavPage() {
                         <button
                           type="button"
                           className="flex w-full items-center gap-4 px-4 py-4 text-left transition hover:bg-blue-pale focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary/30"
-                          onClick={() => setExpandedId((prev) => (prev === rec.id ? null : rec.id))}
+                          onClick={() => handleToggleExpand(rec.id)}
                           aria-expanded={expanded}
                           aria-controls={`rec-detail-${rec.id}`}
                         >

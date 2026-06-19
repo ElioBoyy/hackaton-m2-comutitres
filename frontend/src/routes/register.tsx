@@ -29,6 +29,7 @@ export const Route = createFileRoute('/register')({
 const FIELDS = [
   'email',
   'password',
+  'telephone',
   'nom',
   'prenom',
   'dateNaissance',
@@ -56,6 +57,7 @@ const STEP_OF_FIELD: Partial<Record<FieldKey, number>> = {
   dateNaissance: 0,
   email: 1,
   password: 1,
+  telephone: 1,
   numeroEtVoie: 2,
   codePostal: 2,
   ville: 2,
@@ -119,6 +121,7 @@ function RegisterPage() {
     defaultValues: {
       email: '',
       password: '',
+      telephone: '',
       nom: '',
       prenom: '',
       dateNaissance: '',
@@ -135,6 +138,7 @@ function RegisterPage() {
           await register({
             email: value.email.trim(),
             password: value.password,
+            telephone: value.telephone.trim(),
             nom: value.nom,
             prenom: value.prenom,
             dateNaissance: value.dateNaissance,
@@ -152,7 +156,7 @@ function RegisterPage() {
     },
     onSubmit: async () => {
       setFormError(null)
-      await navigate({ to: '/dashboard' })
+      await navigate({ to: '/onboarding' })
     },
   })
 
@@ -414,6 +418,28 @@ function RegisterPage() {
                 onChange={(e) => {
                   field.handleChange(e.target.value)
                   clearFieldServerError('password')
+                }}
+                onBlur={field.handleBlur}
+                error={fieldError(field.state.meta.errors)}
+              />
+            )}
+          </form.Field>
+          <form.Field
+            name="telephone"
+            validators={{ onBlur: StepAccessSchema.shape.telephone }}
+          >
+            {(field) => (
+              <Field
+                label={m.register_fields_phone()}
+                hint={m.register_fields_phone_hint()}
+                type="tel"
+                autoComplete="tel"
+                placeholder={m.register_fields_phone_placeholder()}
+                required
+                value={field.state.value}
+                onChange={(e) => {
+                  field.handleChange(e.target.value)
+                  clearFieldServerError('telephone')
                 }}
                 onBlur={field.handleBlur}
                 error={fieldError(field.state.meta.errors)}

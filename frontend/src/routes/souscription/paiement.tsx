@@ -10,12 +10,17 @@ import { isAuthenticated } from '~/lib/auth'
 import { construirePayloadDossier, creerDossier } from '~/lib/dossier'
 import { piecesSontCompletes } from '~/domain/pieces'
 import { calculerRecommandation, selectionnerAbonnement } from '~/domain/recommendation'
+import { useCatalogueAbonnements } from '~/domain/useCatalogueAbonnements'
 import { CarteBancaireSchema, MandatSepaSchema } from '~/lib/schemas'
 import { m } from '~/paraglide/messages'
 import { useAppDispatch, useAppSelector } from '~/store/hooks'
 import { abonnementSauvegarde, dossierBackendDefini, paiementValide } from '~/store/wizardSlice'
 
-type ErreurPaiement = { type: 'non-authentifie' } | { type: 'pieces-manquantes' } | { type: 'autre'; message: string }
+type ErreurPaiement =
+  | { type: 'non-authentifie' }
+  | { type: 'pieces-manquantes' }
+  | { type: 'abonnement-actif'; message: string }
+  | { type: 'autre'; message: string }
 type MoyenPaiement = 'CB' | 'SEPA'
 
 export const Route = createFileRoute('/souscription/paiement')({
@@ -26,6 +31,14 @@ export const Route = createFileRoute('/souscription/paiement')({
 function translateValidation(key: string): string {
   const messages = m as unknown as Record<string, () => string>
   return typeof messages[key] === 'function' ? messages[key]() : key
+}
+
+// Lit le {@code detail} d'un ProblemDetail RFC 7807 si dispo, sinon fallback
+// sur le message d'erreur HTTP par defaut. Permet de distinguer cote UI les
+// differentes causes d'un 422 (pieces manquantes vs doublon d'abonnement).
+function errorDetail(err: ApiError): string {
+  const body = err.body as { detail?: string } | undefined
+  return body?.detail ?? err.message
 }
 
 function PaiementStep() {
@@ -50,15 +63,20 @@ function PaiementStep() {
   }, [code])
 
   const isDirectPath = !!code
+  const catalogue = useCatalogueAbonnements()
 
   const resultat = React.useMemo(() => {
     if (isDirectPath || !wizard.situation || !wizard.frequenceDeplacement) return null
-    return calculerRecommandation({
-      situation: wizard.situation,
-      frequenceDeplacement: wizard.frequenceDeplacement,
-      residence: wizard.residence,
-    })
-  }, [isDirectPath, wizard.situation, wizard.frequenceDeplacement, wizard.residence])
+    if (!catalogue) return null
+    return calculerRecommandation(
+      {
+        situation: wizard.situation,
+        frequenceDeplacement: wizard.frequenceDeplacement,
+        residence: wizard.residence,
+      },
+      catalogue,
+    )
+  }, [isDirectPath, wizard.situation, wizard.frequenceDeplacement, wizard.residence, catalogue])
 
   if (!isDirectPath && !resultat) {
     return (
@@ -116,10 +134,15 @@ function PaiementStep() {
       if (err instanceof ApiError && err.status === 401) {
         setErreur({ type: 'non-authentifie' })
       } else if (err instanceof ApiError && err.status === 422) {
-        // Le backend exige des pieces justificatives obligatoires (piece
-        // d'identite + certificat scolarite si etudiant). Redirige vers
-        // l'etape pieces avec un message clair.
-        setErreur({ type: 'pieces-manquantes' })
+        // 422 = regle metier violee (cf. GlobalExceptionHandler). On regarde
+        // le detail pour distinguer "abonnement actif existant" (cas user qui
+        // veut redoubler son abo) des pieces justificatives manquantes.
+        const detail = errorDetail(err)
+        if (detail.toLowerCase().includes('abonnement actif')) {
+          setErreur({ type: 'abonnement-actif', message: detail })
+        } else {
+          setErreur({ type: 'pieces-manquantes' })
+        }
       } else if (err instanceof ApiError) {
         setErreur({ type: 'autre', message: err.message })
       } else {
@@ -171,6 +194,11 @@ function PaiementStep() {
                 {m.wizard_paiement_pieces_go()}
               </button>
             </>
+          ) : erreur.type === 'abonnement-actif' ? (
+            <>
+              {erreur.message}{' '}
+              <Link to="/dashboard" className="font-medium underline">{m.dashboard_title()}</Link>
+            </>
           ) : erreur.message}
         </div>
       ) : null}
@@ -189,11 +217,46 @@ interface CarteBancaire { nom: string; numero: string; expiration: string; cvc: 
 function FormulaireCarteBancaire({ valeurs, erreurs, onChange, onFieldChange }: { valeurs: CarteBancaire; erreurs: Record<string, string>; onChange: (v: CarteBancaire) => void; onFieldChange: (f: string) => void }) {
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-gray-200 p-4">
-      <ChampTexte label={m.wizard_paiement_cb_holder()} placeholder="Jean Dupont" value={valeurs.nom} erreur={erreurs.nom} onChange={(nom) => { onChange({ ...valeurs, nom }); onFieldChange('nom') }} />
-      <ChampTexte label={m.wizard_paiement_cb_number()} placeholder="4242 4242 4242 4242" value={valeurs.numero} erreur={erreurs.numero} onChange={(numero) => { onChange({ ...valeurs, numero }); onFieldChange('numero') }} />
+      <ChampTexte
+        label={m.wizard_paiement_cb_holder()}
+        placeholder="Jean Dupont"
+        value={valeurs.nom}
+        erreur={erreurs.nom}
+        autoComplete="cc-name"
+        onChange={(nom) => { onChange({ ...valeurs, nom }); onFieldChange('nom') }}
+      />
+      <ChampTexte
+        label={m.wizard_paiement_cb_number()}
+        placeholder="4242 4242 4242 4242"
+        value={valeurs.numero}
+        erreur={erreurs.numero}
+        inputMode="numeric"
+        autoComplete="cc-number"
+        // 16 chiffres + 3 espaces = 19 caracteres
+        maxLength={19}
+        onChange={(brut) => { onChange({ ...valeurs, numero: formaterNumeroCb(brut) }); onFieldChange('numero') }}
+      />
       <div className="grid grid-cols-2 gap-3">
-        <ChampTexte label={m.wizard_paiement_cb_expiry()} placeholder="MM/AA" value={valeurs.expiration} erreur={erreurs.expiration} onChange={(expiration) => { const c = expiration.replace(/\D/g, '').slice(0, 4); const f = c.length > 2 ? c.slice(0, 2) + '/' + c.slice(2) : c; onChange({ ...valeurs, expiration: f }); onFieldChange('expiration') }} />
-        <ChampTexte label={m.wizard_paiement_cb_cvc()} placeholder="123" value={valeurs.cvc} erreur={erreurs.cvc} onChange={(cvc) => { onChange({ ...valeurs, cvc }); onFieldChange('cvc') }} />
+        <ChampTexte
+          label={m.wizard_paiement_cb_expiry()}
+          placeholder="MM/AA"
+          value={valeurs.expiration}
+          erreur={erreurs.expiration}
+          inputMode="numeric"
+          autoComplete="cc-exp"
+          maxLength={5}
+          onChange={(brut) => { onChange({ ...valeurs, expiration: formaterExpirationCb(brut) }); onFieldChange('expiration') }}
+        />
+        <ChampTexte
+          label={m.wizard_paiement_cb_cvc()}
+          placeholder="123"
+          value={valeurs.cvc}
+          erreur={erreurs.cvc}
+          inputMode="numeric"
+          autoComplete="cc-csc"
+          maxLength={3}
+          onChange={(brut) => { onChange({ ...valeurs, cvc: formaterCvc(brut) }); onFieldChange('cvc') }}
+        />
       </div>
     </div>
   )
@@ -210,9 +273,31 @@ function FormulaireMandatSepa({ valeurs, erreurs, consenti, onChange, onFieldCha
         <p>{m.wizard_paiement_sepa_rum()}<span className="block font-mono font-semibold text-dark">{rum}</span></p>
         <p>{m.wizard_paiement_sepa_ics()}<span className="block font-mono font-semibold text-dark">{ICS_CREANCIER}</span></p>
       </div>
-      <ChampTexte label={m.wizard_paiement_sepa_holder()} placeholder="Jean Dupont" value={valeurs.nom} erreur={erreurs.nom} onChange={(nom) => { onChange({ ...valeurs, nom }); onFieldChange('nom') }} />
-      <ChampTexte label={m.wizard_paiement_sepa_iban()} placeholder="FR76 1234 5678 9012 3456 7890 123" value={valeurs.iban} erreur={erreurs.iban} onChange={(iban) => { onChange({ ...valeurs, iban }); onFieldChange('iban') }} />
-      <ChampTexte label={m.wizard_paiement_sepa_bic()} placeholder="BNPAFRPPXXX" value={valeurs.bic} erreur={erreurs.bic} onChange={(bic) => { onChange({ ...valeurs, bic }); onFieldChange('bic') }} />
+      <ChampTexte
+        label={m.wizard_paiement_sepa_holder()}
+        placeholder="Jean Dupont"
+        value={valeurs.nom}
+        erreur={erreurs.nom}
+        autoComplete="name"
+        onChange={(nom) => { onChange({ ...valeurs, nom }); onFieldChange('nom') }}
+      />
+      <ChampTexte
+        label={m.wizard_paiement_sepa_iban()}
+        placeholder="FR76 1234 5678 9012 3456 7890 123"
+        value={valeurs.iban}
+        erreur={erreurs.iban}
+        // 34 caracteres + 8 espaces max = 42
+        maxLength={42}
+        onChange={(brut) => { onChange({ ...valeurs, iban: formaterIban(brut) }); onFieldChange('iban') }}
+      />
+      <ChampTexte
+        label={m.wizard_paiement_sepa_bic()}
+        placeholder="BNPAFRPPXXX"
+        value={valeurs.bic}
+        erreur={erreurs.bic}
+        maxLength={11}
+        onChange={(brut) => { onChange({ ...valeurs, bic: formaterBic(brut) }); onFieldChange('bic') }}
+      />
       <label className="flex items-start gap-3 rounded-lg border border-gray-200 p-3">
         <input type="checkbox" className="mt-0.5 h-5 w-5 shrink-0 accent-primary" checked={consenti} onChange={(e) => onConsentementChange(e.target.checked)} />
         <span className="text-xs text-gray-700">{m.wizard_paiement_sepa_consent()}</span>
@@ -221,7 +306,30 @@ function FormulaireMandatSepa({ valeurs, erreurs, consenti, onChange, onFieldCha
   )
 }
 
-function ChampTexte({ label, placeholder, value, erreur, onChange, readOnly = false }: { label: string; placeholder: string; value?: string; erreur?: string; onChange?: (v: string) => void; readOnly?: boolean }) {
+function ChampTexte({
+  label,
+  placeholder,
+  value,
+  erreur,
+  onChange,
+  readOnly = false,
+  inputMode,
+  maxLength,
+  autoComplete,
+}: {
+  label: string
+  placeholder: string
+  value?: string
+  erreur?: string
+  onChange?: (v: string) => void
+  readOnly?: boolean
+  /** Indice clavier (mobile) : "numeric" pour CVC/numero, defaut "text". */
+  inputMode?: 'text' | 'numeric' | 'decimal' | 'tel'
+  /** Limite cote navigateur. Le formatter onChange reste autoritaire. */
+  maxLength?: number
+  /** Hint browser/password-managers : "cc-number", "cc-csc", "cc-exp", "cc-name", "iban"... */
+  autoComplete?: string
+}) {
   return (
     <div className="flex flex-col gap-1">
       <label className="flex flex-col gap-1 text-sm font-medium text-gray-700">
@@ -231,6 +339,9 @@ function ChampTexte({ label, placeholder, value, erreur, onChange, readOnly = fa
           placeholder={placeholder}
           value={value}
           readOnly={readOnly}
+          inputMode={inputMode}
+          maxLength={maxLength}
+          autoComplete={autoComplete}
           onChange={!readOnly && onChange ? (e) => onChange(e.target.value) : undefined}
           className={`rounded-lg border px-3 py-2 font-sans text-dark ${erreur ? 'border-danger' : 'border-gray-300'} ${readOnly ? 'bg-gray-100 cursor-not-allowed text-gray-700' : 'bg-white'}`}
         />
@@ -238,4 +349,27 @@ function ChampTexte({ label, placeholder, value, erreur, onChange, readOnly = fa
       {erreur && <p className="text-xs text-danger">{erreur}</p>}
     </div>
   )
+}
+
+/** Formatte un numero de CB : digits seulement, max 16 (standard
+ *  Visa/Mastercard), espace tous les 4. */
+function formaterNumeroCb(brut: string): string {
+  return brut.replace(/\D/g, '').slice(0, 16).replace(/(.{4})/g, '$1 ').trim()
+}
+/** Formatte une expiration CB : digits seulement, MM/AA. */
+function formaterExpirationCb(brut: string): string {
+  const c = brut.replace(/\D/g, '').slice(0, 4)
+  return c.length > 2 ? c.slice(0, 2) + '/' + c.slice(2) : c
+}
+/** Formatte un CVC : digits seulement, max 3. */
+function formaterCvc(brut: string): string {
+  return brut.replace(/\D/g, '').slice(0, 3)
+}
+/** Formatte un IBAN : alphanumerique uppercase, max 34, espace tous les 4. */
+function formaterIban(brut: string): string {
+  return brut.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 34).replace(/(.{4})/g, '$1 ').trim()
+}
+/** Formatte un BIC : alphanumerique uppercase, max 11. */
+function formaterBic(brut: string): string {
+  return brut.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 11)
 }

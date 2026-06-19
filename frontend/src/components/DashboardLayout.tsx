@@ -1,7 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { Link, useNavigate } from '@tanstack/react-router'
-import { LogOut, Menu } from 'lucide-react'
-import { isAuthenticated, logout, me, type MeResponse } from '~/lib/auth'
+import { useNavigate } from '@tanstack/react-router'
+import { Menu } from 'lucide-react'
+import { isAuthenticated, me, type MeResponse } from '~/lib/auth'
+import { HeaderAuthZone } from '~/components/HeaderAuthZone'
 import { UserSidebar } from '~/components/UserSidebar'
 import { m } from '~/paraglide/messages'
 
@@ -21,29 +22,19 @@ interface DashboardLayoutProps {
 }
 
 export function DashboardLayout({ title, children, loading }: DashboardLayoutProps) {
-  const navigate = useNavigate()
   const [sidebarOuverte, setSidebarOuverte] = useState(false)
-  const [authentifie, setAuthentifie] = useState(false)
   const [utilisateur, setUtilisateur] = useState<MeResponse | null>(null)
 
   useEffect(() => {
     if (isAuthenticated()) {
-      setAuthentifie(true)
       me().then(setUtilisateur).catch(() => {})
     }
   }, [])
 
-  function onLogout() {
-    logout()
-    setAuthentifie(false)
-    setUtilisateur(null)
-    navigate({ to: '/login' })
-  }
-
   const prenom = utilisateur?.prenom ?? ''
-  // Skeleton tant que le parent charge OU tant que me() n'a pas resolu cote
-  // user connecte (evite le flash "logout seul" sans avatar+nom).
-  const headerSkeleton = loading || (authentifie && !prenom)
+  // Skeleton tant que le parent charge OU tant que me() n'a pas resolu
+  // (evite le flash "logout seul" sans avatar+nom).
+  const headerSkeleton = loading || (isAuthenticated() && !prenom)
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-100">
@@ -70,47 +61,13 @@ export function DashboardLayout({ title, children, loading }: DashboardLayoutPro
                 <div className="h-4 w-28 animate-pulse rounded-md bg-gray-100" />
                 <div className="h-9 w-9 animate-pulse rounded-full bg-gray-100" />
               </div>
-            ) : authentifie ? (
-              <>
-                {prenom && (
-                  <div className="flex items-center gap-2">
-                    <div
-                      aria-hidden="true"
-                      className="flex h-8 w-8 items-center justify-center rounded-full bg-focus text-sm font-semibold text-white"
-                    >
-                      {prenom.charAt(0).toUpperCase()}
-                    </div>
-                    <span className="text-sm font-medium text-gray-900">
-                      {m.dashboard_hello()} {prenom}
-                    </span>
-                  </div>
-                )}
-                <button
-                  type="button"
-                  onClick={onLogout}
-                  aria-label={m.me_sign_out()}
-                  className="flex h-9 w-9 items-center justify-center rounded-full text-gray-700 transition hover:bg-blue-pale focus:outline-none focus:ring-2 focus:ring-primary/30"
-                >
-                  <LogOut size={18} aria-hidden="true" />
-                </button>
-              </>
             ) : (
-              <>
-                <Link to="/login" className="text-sm font-medium text-gray-600 transition hover:text-primary">
-                  {m.auth_sign_in()}
-                </Link>
-                <Link
-                  to="/register"
-                  className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-focus"
-                >
-                  {m.home_signup_cta()}
-                </Link>
-              </>
+              <HeaderAuthZone prenom={prenom || null} />
             )}
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-6" id="main-content">
+        <main className="relative flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-6" id="main-content">
           {children}
         </main>
       </div>
