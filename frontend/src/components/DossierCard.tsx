@@ -184,12 +184,17 @@ export function DossierCard({ dossier }: { dossier: DossierDashboard }) {
                   : `${dossier.porteurIdentite.prenom} ${dossier.porteurIdentite.nom}`}
               </span>
             </p>
-            <p className="text-sm text-gray-500">
-              {m.dashboard_paid_by()}{' '}
-              <span className="font-semibold text-gray-700">
-                {dossier.payeurIdentite.prenom} {dossier.payeurIdentite.nom}
-              </span>
-            </p>
+            {/* "Paye par" : seulement si le paiement a effectivement ete pose.
+                Avant ca (BROUILLON / EN_ATTENTE_PAIEMENT) afficher le payeur
+                serait trompeur — rien n'a encore ete preleve. */}
+            {dossier.statut.code !== 'BROUILLON' && dossier.statut.code !== 'EN_ATTENTE_PAIEMENT' && (
+              <p className="text-sm text-gray-500">
+                {m.dashboard_paid_by()}{' '}
+                <span className="font-semibold text-gray-700">
+                  {dossier.payeurIdentite.prenom} {dossier.payeurIdentite.nom}
+                </span>
+              </p>
+            )}
           </div>
 
           {dossier.transports.length > 0 && (

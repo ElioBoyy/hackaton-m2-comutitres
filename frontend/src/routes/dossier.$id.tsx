@@ -279,17 +279,23 @@ function DossierDetailPage() {
     })
   }, [data])
 
-  // Pré-remplir uploadedByCode depuis les pièces déjà en base (affiche "Modifier" au chargement)
+  // Pré-remplir uploadedByCode depuis les pièces déjà en base (affiche
+  // "Modifier" au chargement). Source : data.piecesRequises si renseigne par
+  // le backend, sinon le fallback adapte au type d'abonnement — sinon les
+  // dossiers fallback (cas typique : seed sans piece_requise) n'auraient
+  // jamais leur uploadedByCode peuple et peutSoumettre() les considererait
+  // comme incomplets. Le match par codeTypePiece est stable, contrairement
+  // au match par libelle qui se cassait sur les accents (DB sans accents
+  // vs libelles i18n avec accents).
   useEffect(() => {
     if (!data) return
+    const source = data.piecesRequises.length > 0
+      ? data.piecesRequises
+      : piecesFallbackPourAbonnement(data.typeAbonnement.code, data.boursier)
     setUploadedByCode((prev) => {
       const next = { ...prev }
-      for (const req of data.piecesRequises) {
-        const dbPiece = data.pieces.find((p) => {
-          const lib = p.libelleTypePiece.toLowerCase()
-          const reqLib = req.libelleTypePiece.toLowerCase()
-          return lib === reqLib || p.cheminFichier?.includes(req.codeTypePiece.toLowerCase())
-        })
+      for (const req of source) {
+        const dbPiece = data.pieces.find((p) => p.codeTypePiece === req.codeTypePiece)
         if (dbPiece?.cheminFichier && !next[req.codeTypePiece]) {
           const nom = dbPiece.cheminFichier.split('/').pop() ?? dbPiece.cheminFichier
           next[req.codeTypePiece] = { nom, cle: dbPiece.cheminFichier }
@@ -363,13 +369,15 @@ function DossierDetailPage() {
     if (obligatoires.length === 0) return toutesLesPieces().length > 0
     return obligatoires.every((r) => {
       if (uploadedByCode[r.codeTypePiece]) return true
-      return toutesLesPieces().some((p) => {
-        const lib = p.libelleTypePiece.toLowerCase()
-        const match = lib === r.libelleTypePiece.toLowerCase()
-          || p.cheminFichier?.includes(r.codeTypePiece.toLowerCase())
-        // Une piece rejetee ne compte pas : il faut la re-uploader.
-        return match && p.statutValidation !== 'rejete' && p.statutValidation !== 'rejetee'
-      })
+      // Match par codeTypePiece (stable cote DB et fallback), contrairement
+      // au libelle qui se cassait sur les accents (DB sans accents vs
+      // libelles i18n avec accents). Une piece rejetee ne compte pas : il
+      // faut la re-uploader.
+      return toutesLesPieces().some((p) =>
+        p.codeTypePiece === r.codeTypePiece
+          && p.statutValidation !== 'rejete'
+          && p.statutValidation !== 'rejetee'
+      )
     })
   }
 
