@@ -24,6 +24,9 @@
   --color-focus: #0050aa; /* Bleu focus */
   --color-dark: #25303b; /* Anthracite */
   --color-blue-pale: #f5f9ff; /* Bleu clair */
+  --color-faq-justificatif: #e8f7f2;
+  --color-faq-paiement: #efebfc;
+  --color-faq-accessibilite: #faefed;
   --color-blue-soft: #deeeff; /* Bleu moyen */
 
   /* Couleurs secondaires -> roles semantiques */

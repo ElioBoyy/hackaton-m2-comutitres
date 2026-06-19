@@ -41,7 +41,9 @@ interface SectionFaq {
   icon: typeof Train
   couleurBg: string
   couleurIcone: string
+  couleurCercleHex: string
   questions: SousQuestion[]
+  imageUrl?: string
 }
 
 // ---------------------------------------------------------------------------
@@ -55,6 +57,8 @@ const FAQ_SECTIONS: SectionFaq[] = [
     icon: Train,
     couleurBg: 'bg-[#f5f8fe]',
     couleurIcone: 'text-primary',
+    couleurCercleHex: '#1972d2',
+    imageUrl: '/train-banner.png',
     questions: [
       {
         question: 'Je ne sais pas quel abonnement choisir',
@@ -135,8 +139,10 @@ const FAQ_SECTIONS: SectionFaq[] = [
     id: 'justificatifs',
     titre: 'Justificatifs & éligibilité',
     icon: FileCheck,
-    couleurBg: 'bg-[#f2faf5]',
+    couleurBg: 'bg-faq-justificatif',
     couleurIcone: 'text-success',
+    couleurCercleHex: '#007d44',
+    imageUrl: '/justificatif-banner.png',
     questions: [
       {
         question: 'Pourquoi dois-je fournir un justificatif ?',
@@ -204,8 +210,10 @@ const FAQ_SECTIONS: SectionFaq[] = [
     id: 'paiement',
     titre: 'Paiement & renouvellement',
     icon: Wallet,
-    couleurBg: 'bg-[#f8f7fe]',
+    couleurBg: 'bg-faq-paiement',
     couleurIcone: 'text-purple-600',
+    couleurCercleHex: '#9333ea',
+    imageUrl: '/paiement-banner.png',
     questions: [
       {
         question: 'Quand mon abonnement arrive-t-il à échéance ?',
@@ -263,6 +271,8 @@ const FAQ_SECTIONS: SectionFaq[] = [
     icon: Globe,
     couleurBg: 'bg-[#fcfaef]',
     couleurIcone: 'text-amber-600',
+    couleurCercleHex: '#d97706',
+    imageUrl: '/arrivant-banner.png',
     questions: [
       {
         question: "Je viens d'arriver en Île-de-France, par où commencer ?",
@@ -320,8 +330,10 @@ const FAQ_SECTIONS: SectionFaq[] = [
     id: 'accessibilite',
     titre: 'Accessibilité & besoins spécifiques',
     icon: Heart,
-    couleurBg: 'bg-[#fdf6f6]',
+    couleurBg: 'bg-faq-accessibilite',
     couleurIcone: 'text-orange-600',
+    couleurCercleHex: '#ea580c',
+    imageUrl: '/accessibilite-banner.png',
     questions: [
       {
         question: 'Existe-t-il des aides pour les personnes en situation de handicap ?',
@@ -385,6 +397,7 @@ const FAQ_SECTIONS: SectionFaq[] = [
     icon: Users,
     couleurBg: 'bg-[#f5f8fe]',
     couleurIcone: 'text-primary',
+    couleurCercleHex: '#1972d2',
     questions: [
       {
         question: 'Puis-je souscrire un abonnement pour mon enfant ?',
@@ -485,20 +498,29 @@ function SectionFaqCard({ section }: { section: SectionFaq }) {
       <button
         type="button"
         onClick={() => setOuvert((v) => !v)}
-        className="flex w-full items-center justify-between gap-4 p-5 text-left transition-colors hover:brightness-95"
+        className="relative flex w-full items-center justify-between gap-4 overflow-hidden p-5 text-left transition-colors"
         aria-expanded={ouvert}
       >
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/60">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white shadow-sm">
             <Icon size={20} className={section.couleurIcone} aria-hidden="true" />
           </div>
           <span className="font-heading text-base font-semibold text-dark">{section.titre}</span>
         </div>
-        <ChevronDown
-          size={18}
-          className={`shrink-0 text-gray-400 transition-transform duration-200 ${ouvert ? 'rotate-180' : ''}`}
-          aria-hidden="true"
-        />
+        <div className="flex items-center gap-3">
+          <ChevronDown
+            size={18}
+            className={`shrink-0 text-gray-400 transition-transform duration-200 ${ouvert ? 'rotate-180' : ''}`}
+            aria-hidden="true"
+          />
+        </div>
+        {section.imageUrl && (
+          <img
+            src={section.imageUrl}
+            alt=""
+            className="pointer-events-none absolute right-14 top-0 h-full w-56 object-cover object-center"
+          />
+        )}
       </button>
 
       {/* Questions */}
