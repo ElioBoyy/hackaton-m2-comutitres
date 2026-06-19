@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import {
   Baby,
@@ -53,18 +53,21 @@ interface SectionFaq {
   icon: typeof Train
   couleurBg: string
   couleurIcone: string
+  couleurCercleHex?: string
+  imageUrl?: string
   questions: SousQuestion[]
 }
 
 // ─── Données FAQ ──────────────────────────────────────────────────────────────
 
-const FAQ_SECTIONS: SectionFaq[] = [
+function buildFaqSections(): SectionFaq[] { return [
   {
     id: 'trouver',
-    titre: 'Trouver mon abonnement',
+    titre: m.sav_faq_section_trouver(),
     icon: Train,
-    couleurBg: 'bg-[#f5f8fe]',
+    couleurBg: 'bg-faq-trouver',
     couleurIcone: 'text-primary',
+    imageUrl: '/train-banner.png',
     questions: [
       {
         question: 'Je ne sais pas quel abonnement choisir',
@@ -143,10 +146,11 @@ const FAQ_SECTIONS: SectionFaq[] = [
   },
   {
     id: 'justificatifs',
-    titre: 'Justificatifs & éligibilité',
+    titre: m.sav_faq_section_justificatifs(),
     icon: FileCheck,
-    couleurBg: 'bg-[#f2faf5]',
+    couleurBg: 'bg-faq-justificatif',
     couleurIcone: 'text-success',
+    imageUrl: '/justificatif-banner.png',
     questions: [
       {
         question: 'Pourquoi dois-je fournir un justificatif ?',
@@ -212,10 +216,11 @@ const FAQ_SECTIONS: SectionFaq[] = [
   },
   {
     id: 'paiement',
-    titre: 'Paiement & renouvellement',
+    titre: m.sav_faq_section_paiement(),
     icon: Wallet,
-    couleurBg: 'bg-[#f8f7fe]',
+    couleurBg: 'bg-faq-paiement',
     couleurIcone: 'text-purple-600',
+    imageUrl: '/paiement-banner.png',
     questions: [
       {
         question: 'Quand mon abonnement arrive-t-il à échéance ?',
@@ -269,10 +274,11 @@ const FAQ_SECTIONS: SectionFaq[] = [
   },
   {
     id: 'arrivant',
-    titre: 'Nouvel arrivant en Île-de-France',
+    titre: m.sav_faq_section_arrivant(),
     icon: Globe,
-    couleurBg: 'bg-[#fcfaef]',
+    couleurBg: 'bg-faq-arrivant',
     couleurIcone: 'text-amber-600',
+    imageUrl: '/arrivant-banner.png',
     questions: [
       {
         question: "Je viens d'arriver en Île-de-France, par où commencer ?",
@@ -328,10 +334,11 @@ const FAQ_SECTIONS: SectionFaq[] = [
   },
   {
     id: 'accessibilite',
-    titre: 'Accessibilité & besoins spécifiques',
+    titre: m.sav_faq_section_accessibilite(),
     icon: Heart,
-    couleurBg: 'bg-[#fdf6f6]',
+    couleurBg: 'bg-faq-accessibilite',
     couleurIcone: 'text-orange-600',
+    imageUrl: '/accessibilite-banner.png',
     questions: [
       {
         question: 'Existe-t-il des aides pour les personnes en situation de handicap ?',
@@ -390,10 +397,11 @@ const FAQ_SECTIONS: SectionFaq[] = [
   },
   {
     id: 'proche',
-    titre: "Gérer l'abonnement d'un proche",
+    titre: m.sav_faq_section_proche(),
     icon: Users,
-    couleurBg: 'bg-[#f5f8fe]',
+    couleurBg: 'bg-faq-trouver',
     couleurIcone: 'text-primary',
+    imageUrl: '/proche-banner.png',
     questions: [
       {
         question: 'Puis-je souscrire un abonnement pour mon enfant ?',
@@ -443,15 +451,17 @@ const FAQ_SECTIONS: SectionFaq[] = [
       },
     ],
   },
-]
+]}
 
-const QUICK_HELP = [
-  { label: 'Trouver un abonnement', icon: Search },
-  { label: "Nouvel arrivant IDF", icon: Globe },
-  { label: "Questions justificatifs", icon: FileCheck },
-  { label: "Abonnement d'un proche", icon: Baby },
-  { label: "Besoin d'aide", icon: HelpCircle },
-]
+function buildQuickHelp() {
+  return [
+    { label: m.sav_qh_find(), icon: Search },
+    { label: m.sav_qh_newcomer(), icon: Globe },
+    { label: m.sav_qh_docs(), icon: FileCheck },
+    { label: m.sav_qh_relative(), icon: Baby },
+    { label: m.sav_qh_help(), icon: HelpCircle },
+  ]
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -501,18 +511,25 @@ function SectionFaqCard({ section }: { section: SectionFaq }) {
       <button
         type="button"
         onClick={() => setOuvert((v) => !v)}
-        className="flex w-full items-center justify-between gap-4 p-5 text-left transition-colors hover:brightness-95"
+        className="relative flex w-full items-center justify-between gap-4 overflow-hidden p-5 text-left"
         aria-expanded={ouvert}
       >
+        {section.imageUrl && (
+          <img
+            src={section.imageUrl}
+            alt=""
+            className="pointer-events-none absolute right-14 top-0 hidden h-full w-56 object-cover object-center sm:block"
+          />
+        )}
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/60">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white shadow-sm">
             <Icon size={20} className={section.couleurIcone} aria-hidden="true" />
           </div>
           <span className="font-heading text-base font-semibold text-dark">{section.titre}</span>
         </div>
         <ChevronDown
           size={18}
-          className={`shrink-0 text-gray-400 transition-transform duration-200 ${ouvert ? 'rotate-180' : ''}`}
+          className={`relative shrink-0 text-gray-400 transition-transform duration-200 ${ouvert ? 'rotate-180' : ''}`}
           aria-hidden="true"
         />
       </button>
@@ -529,8 +546,8 @@ function SectionFaqCard({ section }: { section: SectionFaq }) {
               className="flex items-center gap-1.5 py-3 text-sm font-medium text-primary hover:underline"
             >
               {toutesVues
-                ? 'Masquer les questions supplémentaires'
-                : `Voir toutes les questions (${section.questions.length})`}
+                ? m.sav_faq_show_less()
+                : m.sav_faq_show_all({ count: String(section.questions.length) })}
               <ChevronDown
                 size={14}
                 className={`transition-transform duration-200 ${toutesVues ? 'rotate-180' : ''}`}
@@ -547,7 +564,7 @@ function SectionFaqCard({ section }: { section: SectionFaq }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 function SavPage() {
-  const navigate = useNavigate()
+  const [authentifie, setAuthentifie] = useState(false)
   const [userName, setUserName] = useState('')
   const [activeTab, setActiveTab] = useState<'faq' | 'demandes'>('faq')
 
@@ -564,14 +581,13 @@ function SavPage() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!isAuthenticated()) {
-      navigate({ to: '/login' })
-      return
+    if (isAuthenticated()) {
+      setAuthentifie(true)
+      me()
+        .then((u) => setUserName(`${u.prenom} ${u.nom}`))
+        .catch(() => {})
     }
-    me()
-      .then((u) => setUserName(`${u.prenom} ${u.nom}`))
-      .catch(() => {})
-  }, [navigate])
+  }, [])
 
   function handleToggleForm() {
     if (showForm) {
@@ -659,16 +675,16 @@ function SavPage() {
   ).length
 
   return (
-    <DashboardLayout title="Aide & Support" userName={userName} alertes={[]}>
+    <DashboardLayout title={m.sav_page_title()} userName={userName} alertes={[]} loading={!userName}>
       <div className="mx-auto flex max-w-4xl flex-col gap-6">
 
         {/* Bandeau numéro de téléphone */}
         <ContactBanner />
 
-        {/* Onglets */}
-        <div
+        {/* Onglets — uniquement si connecté */}
+        {authentifie && <div
           role="tablist"
-          aria-label="Sections aide"
+          aria-label={m.sav_tabs_aria()}
           className="flex gap-1 rounded-2xl border border-gray-200 bg-white p-1"
         >
           <button
@@ -685,36 +701,38 @@ function SavPage() {
             }`}
           >
             <HelpCircle size={15} aria-hidden="true" />
-            FAQ
+            {m.sav_tab_faq()}
           </button>
-          <button
-            role="tab"
-            aria-selected={activeTab === 'demandes'}
-            aria-controls="tab-panel-demandes"
-            id="tab-demandes"
-            type="button"
-            onClick={() => setActiveTab('demandes')}
-            className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-primary/30 ${
-              activeTab === 'demandes'
-                ? 'bg-primary text-white shadow-sm'
-                : 'text-gray-700 hover:bg-blue-pale'
-            }`}
-          >
-            <MessageSquare size={15} aria-hidden="true" />
-            Mes demandes
-            {openTickets > 0 && (
-              <span
-                className={`rounded-full px-1.5 py-0.5 text-xs font-semibold ${
-                  activeTab === 'demandes'
-                    ? 'bg-white/20 text-white'
-                    : 'bg-primary/10 text-primary'
-                }`}
-              >
-                {openTickets}
-              </span>
-            )}
-          </button>
-        </div>
+          {authentifie && (
+            <button
+              role="tab"
+              aria-selected={activeTab === 'demandes'}
+              aria-controls="tab-panel-demandes"
+              id="tab-demandes"
+              type="button"
+              onClick={() => setActiveTab('demandes')}
+              className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-primary/30 ${
+                activeTab === 'demandes'
+                  ? 'bg-primary text-white shadow-sm'
+                  : 'text-gray-700 hover:bg-blue-pale'
+              }`}
+            >
+              <MessageSquare size={15} aria-hidden="true" />
+              {m.sav_tab_demandes()}
+              {openTickets > 0 && (
+                <span
+                  className={`rounded-full px-1.5 py-0.5 text-xs font-semibold ${
+                    activeTab === 'demandes'
+                      ? 'bg-white/20 text-white'
+                      : 'bg-primary/10 text-primary'
+                  }`}
+                >
+                  {openTickets}
+                </span>
+              )}
+            </button>
+          )}
+        </div>}
 
         {/* Panneau FAQ */}
         {activeTab === 'faq' && (
@@ -733,7 +751,7 @@ function SavPage() {
               />
               <input
                 type="search"
-                placeholder="Rechercher une question, un abonnement, un justificatif..."
+                placeholder={m.sav_search_placeholder()}
                 className="w-full rounded-xl border border-gray-200 bg-white py-3 pl-10 pr-4 text-sm text-dark shadow-sm placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
@@ -741,10 +759,10 @@ function SavPage() {
             {/* Quick help */}
             <div className="rounded-2xl border border-gray-200 bg-white p-5">
               <p className="mb-4 font-heading font-semibold text-primary">
-                Comment pouvons-nous vous aider aujourd'hui ?
+                {m.sav_help_today()}
               </p>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-                {QUICK_HELP.map(({ label, icon: Icon }) => (
+                {buildQuickHelp().map(({ label, icon: Icon }) => (
                   <button
                     key={label}
                     type="button"
@@ -761,7 +779,7 @@ function SavPage() {
 
             {/* Sections FAQ */}
             <div className="flex flex-col gap-3">
-              {FAQ_SECTIONS.map((section) => (
+              {buildFaqSections().map((section) => (
                 <SectionFaqCard key={section.id} section={section} />
               ))}
             </div>
@@ -769,10 +787,10 @@ function SavPage() {
             {/* Footer CTA */}
             <div className="rounded-2xl border border-gray-200 bg-white p-6 text-center">
               <p className="font-heading font-semibold text-dark">
-                Vous ne trouvez pas la réponse à votre question ?
+                {m.sav_faq_footer_title()}
               </p>
               <p className="mb-4 mt-1 text-sm text-gray-700">
-                Ouvrez une demande et notre équipe vous répond sous 48h.
+                {m.sav_faq_footer_desc()}
               </p>
               <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
                 <Link
@@ -781,7 +799,7 @@ function SavPage() {
                   className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-dark transition hover:bg-gray-50"
                 >
                   <Phone size={16} aria-hidden="true" />
-                  Appeler un conseiller
+                  {m.sav_call_advisor()}
                 </Link>
                 <button
                   type="button"
@@ -789,7 +807,7 @@ function SavPage() {
                   className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-medium text-white transition hover:bg-primary/90"
                 >
                   <MessageCircle size={16} aria-hidden="true" />
-                  Ouvrir une demande
+                  {m.sav_open_request()}
                 </button>
               </div>
             </div>
@@ -974,7 +992,7 @@ function SavPage() {
                             <div
                               className="flex flex-col gap-4"
                               role="list"
-                              aria-label="Fil de messages"
+                              aria-label={m.sav_messages_thread_aria()}
                             >
                               {rec.messages.map((msg) => (
                                 <div

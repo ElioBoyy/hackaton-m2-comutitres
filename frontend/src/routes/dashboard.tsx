@@ -18,12 +18,18 @@ export const Route = createFileRoute('/dashboard')({
 type TabFiltre = 'ACTIVE' | 'EN_COURS' | 'FERME' | 'TOUS'
 type AllData = Record<TabFiltre, DashboardResponse>
 
-const TABS: { label: string; filtre: TabFiltre; empty: string }[] = [
-  { label: 'Actifs',                  filtre: 'ACTIVE',   empty: "Aucun abonnement n'est actuellement actif." },
-  { label: 'Mes procédures en cours', filtre: 'EN_COURS', empty: 'Aucune demande en cours de traitement.' },
-  { label: 'Fermés',                  filtre: 'FERME',    empty: "Aucun abonnement n'a été résilié ou refusé." },
-  { label: 'TOUS',                    filtre: 'TOUS',     empty: 'Aucun dossier trouvé.' },
-]
+type Tab = { label: () => string; filtre: TabFiltre; empty: () => string }
+
+function buildTabs(): Tab[] {
+  return [
+    { label: m.dashboard_filter_active,   filtre: 'ACTIVE',   empty: m.dashboard_no_active },
+    { label: m.dashboard_filter_en_cours, filtre: 'EN_COURS', empty: m.dashboard_no_en_cours },
+    { label: m.dashboard_filter_ferme,    filtre: 'FERME',    empty: m.dashboard_no_ferme },
+    { label: m.dashboard_filter_all,      filtre: 'TOUS',     empty: m.dashboard_no_tous },
+  ]
+}
+
+const TABS = buildTabs()
 
 const VALID_TABS = new Set<string>(TABS.map((t) => t.filtre))
 const STORAGE_KEY = 'dashboard_tab'
@@ -110,22 +116,6 @@ function DashboardPage() {
     return () => { cancelled = true }
   }, [navigate])
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen bg-gray-100">
-        <div className="hidden w-64 shrink-0 md:block" />
-        <div className="flex flex-1 flex-col">
-          <div className="h-16 border-b border-gray-200 bg-white" />
-          <main className="flex-1 p-6">
-            <div className="mx-auto flex max-w-4xl flex-col gap-5" aria-busy="true" aria-label={m.dashboard_loading()}>
-              {[1, 2].map((i) => <DossierCardSkeleton key={i} />)}
-            </div>
-          </main>
-        </div>
-      </div>
-    )
-  }
-
   if (error) {
     return (
       <div className="flex min-h-screen items-center justify-center px-4">
@@ -134,25 +124,28 @@ function DashboardPage() {
     )
   }
 
-  if (!allData) return null
-
-  const currentData = allData[filtre]
-  const { prenom, nom } = currentData.utilisateur
-  const userName = `${prenom} ${nom}`
+  const currentData = allData?.[filtre]
+  const userName = currentData ? `${currentData.utilisateur.prenom} ${currentData.utilisateur.nom}` : ''
   const activeTab = TABS.find((t) => t.filtre === filtre)!
-  const allDossiers = currentData.dossiers
+  const allDossiers = currentData?.dossiers ?? []
   const totalDossiers = allDossiers.length
   const pageDossiers = allDossiers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   return (
-    <DashboardLayout title={m.dashboard_title()} userName={userName} alertes={currentData.alertes}>
+    <DashboardLayout
+      title={m.dashboard_title()}
+      userName={userName}
+      alertes={currentData?.alertes ?? []}
+      loading={loading}
+    >
       <div className="mx-auto flex max-w-4xl flex-col">
 
-        {/* Tabs */}
+        {/* Tabs — toujours visibles, meme en loading (pas de "empty" state
+            tant qu'on ne connait pas les counts). */}
         <div className="flex flex-wrap border-b border-gray-200" role="tablist" aria-label={m.dashboard_title()}>
           {TABS.map((tab) => {
             const active = filtre === tab.filtre
-            const empty = allData[tab.filtre].dossiers.length === 0
+            const empty = !loading && allData ? allData[tab.filtre].dossiers.length === 0 : false
             return (
               <button
                 key={tab.filtre}
@@ -169,7 +162,7 @@ function DashboardPage() {
                       : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                {tab.label}
+                {tab.label()}
                 {active && !empty && (
                   <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-primary" />
                 )}
@@ -178,9 +171,16 @@ function DashboardPage() {
           })}
         </div>
 
-        <div className="mt-5 flex flex-col gap-5" role="tabpanel" aria-label={activeTab.label}>
-          {totalDossiers === 0 ? (
-            <p className="text-sm text-gray-500">{activeTab.empty}</p>
+        <div
+          className="mt-5 flex flex-col gap-5"
+          role="tabpanel"
+          aria-label={activeTab.label()}
+          aria-busy={loading || undefined}
+        >
+          {loading ? (
+            [1, 2].map((i) => <DossierCardSkeleton key={i} />)
+          ) : totalDossiers === 0 ? (
+            <p className="text-sm text-gray-500">{activeTab.empty()}</p>
           ) : (
             <>
               {pageDossiers.map((d) => (

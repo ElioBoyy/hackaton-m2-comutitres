@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
-import { BadgeCheck, ExternalLink, FileText, Loader2, RefreshCw, ShieldCheck, Sparkles, XCircle } from 'lucide-react'
-import { recupererContenu } from '~/lib/fichier'
+import { BadgeCheck, Eye, FileText, RefreshCw, ShieldCheck, Sparkles, XCircle } from 'lucide-react'
+import { DocumentPreviewModal } from '~/components/DocumentPreviewModal'
 import { m } from '~/paraglide/messages'
 import type { PieceJustificative } from '~/lib/dossier'
 
@@ -58,31 +58,12 @@ export function TableauPieces({
   /** Callback quand l'utilisateur a choisi un nouveau fichier pour cette pièce. */
   onRemplacer?: (piece: PieceJustificative, file: File) => void
 }) {
-  const [ouverturePiece, setOuverturePiece] = useState<number | null>(null)
+  // Piece dont l'apercu est ouvert dans la modale (null = modale fermee).
+  const [apercu, setApercu] = useState<{ cle: string; titre: string } | null>(null)
   const [remplacementId, setRemplacementId] = useState<number | null>(null)
 
   if (pieces.length === 0) {
     return <p className="text-sm text-gray-500">{m.pieces_empty()}</p>
-  }
-
-  async function ouvrir(p: PieceJustificative) {
-    if (!p.cheminFichier) return
-    setOuverturePiece(p.id)
-    try {
-      const { url } = await recupererContenu(p.cheminFichier)
-      const a = document.createElement('a')
-      a.href = url
-      a.target = '_blank'
-      a.rel = 'noopener noreferrer'
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      setTimeout(() => URL.revokeObjectURL(url), 60_000)
-    } catch {
-      /* silencieux */
-    } finally {
-      setOuverturePiece(null)
-    }
   }
 
   return (
@@ -165,13 +146,10 @@ export function TableauPieces({
                   {p.cheminFichier && (
                     <button
                       type="button"
-                      disabled={ouverturePiece === p.id}
-                      onClick={() => void ouvrir(p)}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:border-primary hover:text-primary disabled:opacity-50"
+                      onClick={() => setApercu({ cle: p.cheminFichier!, titre: p.libelleTypePiece })}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:border-primary hover:text-primary"
                     >
-                      {ouverturePiece === p.id
-                        ? <Loader2 size={12} className="animate-spin" aria-hidden />
-                        : <ExternalLink size={12} aria-hidden />}
+                      <Eye size={12} aria-hidden />
                       <span className="hidden sm:inline">{m.pieces_open_action()}</span>
                     </button>
                   )}
@@ -181,6 +159,14 @@ export function TableauPieces({
           ))}
         </tbody>
       </table>
+
+      {apercu && (
+        <DocumentPreviewModal
+          cheminFichier={apercu.cle}
+          titre={apercu.titre}
+          onClose={() => setApercu(null)}
+        />
+      )}
     </div>
   )
 }

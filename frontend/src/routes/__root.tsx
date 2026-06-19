@@ -21,9 +21,20 @@ export const Route = createRootRoute({
     meta: [
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'jegeremacartenavigo' },
+      { title: 'Comutitres' },
+      { name: 'application-name', content: 'Comutitres' },
+      { name: 'theme-color', content: '#0050aa' },
+      { name: 'mobile-web-app-capable', content: 'yes' },
+      { name: 'apple-mobile-web-app-capable', content: 'yes' },
+      { name: 'apple-mobile-web-app-status-bar-style', content: 'default' },
+      { name: 'apple-mobile-web-app-title', content: 'Comutitres' },
     ],
-    links: [{ rel: 'stylesheet', href: appCss }],
+    links: [
+      { rel: 'stylesheet', href: appCss },
+      { rel: 'icon', type: 'image/svg+xml', href: '/logo.svg' },
+      { rel: 'manifest', href: '/manifest.json' },
+      { rel: 'apple-touch-icon', href: '/iconeMobile.png' },
+    ],
   }),
   component: RootComponent,
 })

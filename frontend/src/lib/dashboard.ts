@@ -51,6 +51,8 @@ export interface DossierDashboard {
   dateRenouvellement: string | null
   montantTotal: number
   piecesADeposer: boolean
+  /** Nom complet du beneficiaire quand demandePour=TIERS. Null pour MOI. */
+  beneficiaireNomComplet: string | null
 }
 
 export interface DashboardResponse {

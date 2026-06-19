@@ -15,7 +15,7 @@ import { m } from '~/paraglide/messages'
 import { useAppDispatch, useAppSelector } from '~/store/hooks'
 import { abonnementSauvegarde, dossierBackendDefini, paiementValide } from '~/store/wizardSlice'
 
-type ErreurPaiement = { type: 'non-authentifie' } | { type: 'autre'; message: string }
+type ErreurPaiement = { type: 'non-authentifie' } | { type: 'pieces-manquantes' } | { type: 'autre'; message: string }
 type MoyenPaiement = 'CB' | 'SEPA'
 
 export const Route = createFileRoute('/souscription/paiement')({
@@ -115,6 +115,11 @@ function PaiementStep() {
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         setErreur({ type: 'non-authentifie' })
+      } else if (err instanceof ApiError && err.status === 422) {
+        // Le backend exige des pieces justificatives obligatoires (piece
+        // d'identite + certificat scolarite si etudiant). Redirige vers
+        // l'etape pieces avec un message clair.
+        setErreur({ type: 'pieces-manquantes' })
       } else if (err instanceof ApiError) {
         setErreur({ type: 'autre', message: err.message })
       } else {
@@ -155,6 +160,17 @@ function PaiementStep() {
         <div className="rounded-lg bg-danger-light/15 border border-danger-light/40 px-3 py-2 text-sm text-danger">
           {erreur.type === 'non-authentifie' ? (
             <>{m.wizard_not_connected_pay()}{' '}<Link to="/login" className="font-medium underline">{m.wizard_not_connected_login()}</Link></>
+          ) : erreur.type === 'pieces-manquantes' ? (
+            <>
+              {m.wizard_paiement_pieces_required()}{' '}
+              <button
+                type="button"
+                onClick={() => navigate({ to: '/souscription/pieces', search: code ? { code } : {} })}
+                className="font-medium underline"
+              >
+                {m.wizard_paiement_pieces_go()}
+              </button>
+            </>
           ) : erreur.message}
         </div>
       ) : null}
@@ -205,12 +221,19 @@ function FormulaireMandatSepa({ valeurs, erreurs, consenti, onChange, onFieldCha
   )
 }
 
-function ChampTexte({ label, placeholder, value, erreur, onChange }: { label: string; placeholder: string; value?: string; erreur?: string; onChange?: (v: string) => void }) {
+function ChampTexte({ label, placeholder, value, erreur, onChange, readOnly = false }: { label: string; placeholder: string; value?: string; erreur?: string; onChange?: (v: string) => void; readOnly?: boolean }) {
   return (
     <div className="flex flex-col gap-1">
       <label className="flex flex-col gap-1 text-sm font-medium text-gray-700">
         {label}
-        <input type="text" placeholder={placeholder} value={value} onChange={onChange ? (e) => onChange(e.target.value) : undefined} className={`rounded-lg border bg-white px-3 py-2 font-sans text-dark ${erreur ? 'border-danger' : 'border-gray-300'}`} />
+        <input
+          type="text"
+          placeholder={placeholder}
+          value={value}
+          readOnly={readOnly}
+          onChange={!readOnly && onChange ? (e) => onChange(e.target.value) : undefined}
+          className={`rounded-lg border px-3 py-2 font-sans text-dark ${erreur ? 'border-danger' : 'border-gray-300'} ${readOnly ? 'bg-gray-100 cursor-not-allowed text-gray-700' : 'bg-white'}`}
+        />
       </label>
       {erreur && <p className="text-xs text-danger">{erreur}</p>}
     </div>

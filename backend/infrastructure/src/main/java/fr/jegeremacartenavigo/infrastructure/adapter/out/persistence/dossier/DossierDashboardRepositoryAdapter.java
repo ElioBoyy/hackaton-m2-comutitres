@@ -96,7 +96,8 @@ public class DossierDashboardRepositoryAdapter implements DossierDashboardReposi
                 dateFinDroits,
                 dateRenouvellement,
                 d.getMontantTotal(),
-                codeStatut == CodeStatutDossier.INCOMPLET
+                codeStatut == CodeStatutDossier.INCOMPLET,
+                d.getBeneficiaireNomComplet()
         );
     }
 

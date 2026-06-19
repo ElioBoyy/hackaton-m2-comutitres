@@ -4,7 +4,6 @@ import { CalendarClock, Crosshair, LocateFixed, LogOut, MapPin, Menu, Search } f
 import { CartePointsDeVente } from '~/components/CartePointsDeVente'
 import { PriseRdvModal } from '~/components/PriseRdvModal'
 import { UserSidebar } from '~/components/UserSidebar'
-import { LanguageSwitcher } from '~/components/LanguageSwitcher'
 import { isAuthenticated, logout, me, type MeResponse } from '~/lib/auth'
 import { m } from '~/paraglide/messages'
 import {
@@ -128,25 +127,21 @@ function PointsDeVentePage() {
 
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Header app */}
-        <header className="flex h-16 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-3 sm:px-6">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setSidebarOuverte(true)}
-              aria-label="Ouvrir le menu"
-              className="flex h-9 w-9 items-center justify-center rounded-full text-gray-700 transition hover:bg-blue-pale focus:outline-none focus:ring-2 focus:ring-primary/30 lg:hidden"
-            >
-              <Menu size={18} aria-hidden="true" />
-            </button>
-            <h1 className="font-heading text-lg font-semibold text-gray-900">Points de vente Navigo</h1>
-          </div>
+        <header className="flex h-16 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 lg:justify-end lg:px-6">
+          <button
+            type="button"
+            onClick={() => setSidebarOuverte(true)}
+            aria-label={m.common_open_menu()}
+            className="flex h-9 w-9 items-center justify-center rounded-xl text-gray-700 hover:bg-blue-pale lg:hidden"
+          >
+            <Menu size={20} aria-hidden="true" />
+          </button>
 
-          <div className="flex items-center gap-3">
-            <LanguageSwitcher />
+          <div className="hidden items-center gap-3 lg:flex">
             {authentifie ? (
               <>
                 {prenom && (
-                  <div className="hidden items-center gap-2 lg:flex">
+                  <div className="flex items-center gap-2">
                     <div
                       aria-hidden="true"
                       className="flex h-8 w-8 items-center justify-center rounded-full bg-focus text-sm font-semibold text-white"
@@ -168,12 +163,17 @@ function PointsDeVentePage() {
                 </button>
               </>
             ) : (
-              <Link
-                to="/login"
-                className="rounded-xl bg-focus px-4 py-2 text-sm font-semibold text-white transition hover:bg-focus/90"
-              >
-                Se connecter
-              </Link>
+              <>
+                <Link to="/login" className="text-sm font-medium text-gray-600 transition hover:text-primary">
+                  {m.auth_sign_in()}
+                </Link>
+                <Link
+                  to="/register"
+                  className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-focus"
+                >
+                  {m.home_signup_cta()}
+                </Link>
+              </>
             )}
           </div>
         </header>
@@ -184,10 +184,10 @@ function PointsDeVentePage() {
             <div className="border-b border-gray-100 p-4">
               <p className="text-sm text-gray-700">
                 {chargement
-                  ? 'Chargement…'
+                  ? m.pdv_loading()
                   : recherche.trim()
-                    ? `${totalVue.toLocaleString('fr-FR')} résultat${totalVue > 1 ? 's' : ''}`
-                    : `${totalVue.toLocaleString('fr-FR')} dans cette zone · ${points.length.toLocaleString('fr-FR')} en Île-de-France`}
+                    ? m.pdv_results_count({ count: totalVue.toLocaleString(), plural: totalVue > 1 ? 's' : '' })
+                    : m.pdv_zone_count({ zone: totalVue.toLocaleString(), total: points.length.toLocaleString() })}
               </p>
 
               {/* Recherche */}
@@ -201,7 +201,7 @@ function PointsDeVentePage() {
                   type="search"
                   value={recherche}
                   onChange={(e) => setRecherche(e.target.value)}
-                  placeholder="Ville, code postal, nom…"
+                  placeholder={m.pdv_search_placeholder()}
                   className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-3 text-sm text-dark placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
               </div>
@@ -214,22 +214,20 @@ function PointsDeVentePage() {
                 className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-primary bg-blue-pale px-4 py-2.5 text-sm font-semibold text-primary transition hover:bg-blue-soft disabled:opacity-50"
               >
                 {geoEnCours ? <Crosshair size={16} className="animate-spin" /> : <LocateFixed size={16} />}
-                {geoEnCours ? 'Localisation…' : 'Trouver le plus proche'}
+                {geoEnCours ? m.pdv_locate_loading() : m.pdv_locate_cta()}
               </button>
               {geoErreur && <p className="mt-2 text-xs text-danger">{geoErreur}</p>}
               {position && !geoErreur && (
-                <p className="mt-2 text-xs text-success">
-                  Position trouvée — points triés du plus proche au plus loin.
-                </p>
+                <p className="mt-2 text-xs text-success">{m.pdv_locate_success()}</p>
               )}
 
               {/* Filtres type */}
               <div className="mt-3 flex gap-2">
                 {(
                   [
-                    ['tous', 'Tous'],
-                    ['Guichet Navigo', 'Guichets'],
-                    ['Commerce de proximité', 'Commerces'],
+                    ['tous', m.pdv_filter_all()],
+                    ['Guichet Navigo', m.pdv_filter_guichet()],
+                    ['Commerce de proximité', m.pdv_filter_commerce()],
                   ] as const
                 ).map(([val, label]) => (
                   <button
@@ -250,9 +248,9 @@ function PointsDeVentePage() {
 
             {/* Liste */}
             <div className="flex-1 overflow-y-auto">
-              {erreurData && <p className="p-4 text-sm text-danger">Erreur de chargement : {erreurData}</p>}
+              {erreurData && <p className="p-4 text-sm text-danger">{m.pdv_load_error({ error: erreurData })}</p>}
               {!chargement && !erreurData && liste.length === 0 && (
-                <p className="p-4 text-sm text-gray-500">Aucun point de vente ne correspond.</p>
+                <p className="p-4 text-sm text-gray-500">{m.pdv_empty()}</p>
               )}
               <ul>
                 {liste.map((p) => (
@@ -283,29 +281,34 @@ function PointsDeVentePage() {
                               : 'bg-success/10 text-success'
                           }`}
                         >
-                          {p.type}
+                          {p.type === 'Guichet Navigo' ? m.pdv_type_guichet() : m.pdv_type_commerce()}
                         </span>
                         <span className="text-[11px] text-gray-500">{libelleJours(p.jours)}</span>
                       </div>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          demanderRdv(p)
-                        }}
-                        className="mt-2 flex items-center gap-1.5 rounded-lg bg-focus px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-focus/90"
-                      >
-                        <CalendarClock size={13} aria-hidden="true" />
-                        Prendre rendez-vous
-                      </button>
+                      {p.type === 'Guichet Navigo' && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            demanderRdv(p)
+                          }}
+                          className="mt-2 flex items-center gap-1.5 rounded-lg bg-focus px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-focus/90"
+                        >
+                          <CalendarClock size={13} aria-hidden="true" />
+                          {m.pdv_rdv_cta()}
+                        </button>
+                      )}
                     </article>
                   </li>
                 ))}
               </ul>
               {totalVue > PLAFOND_LISTE && (
                 <p className="px-4 py-3 text-xs text-gray-500">
-                  {PLAFOND_LISTE} affichés sur {totalVue.toLocaleString('fr-FR')}
-                  {recherche.trim() ? ' — affinez la recherche' : ' — zoomez ou déplacez la carte'}.
+                  {m.pdv_truncated({
+                    shown: String(PLAFOND_LISTE),
+                    total: totalVue.toLocaleString(),
+                    hint: recherche.trim() ? m.pdv_truncated_hint_search() : m.pdv_truncated_hint_map(),
+                  })}
                 </p>
               )}
             </div>
@@ -326,11 +329,11 @@ function PointsDeVentePage() {
             <div className="pointer-events-none absolute bottom-3 left-3 z-[500] flex flex-col gap-1 rounded-xl bg-white/90 px-3 py-2 text-xs shadow-md">
               <span className="flex items-center gap-1.5">
                 <span className="inline-block h-3 w-3 rounded-full" style={{ background: '#0050aa' }} />
-                Guichet Navigo
+                {m.pdv_legend_guichet()}
               </span>
               <span className="flex items-center gap-1.5">
                 <span className="inline-block h-3 w-3 rounded-full" style={{ background: '#007d44' }} />
-                Commerce de proximité
+                {m.pdv_legend_commerce()}
               </span>
             </div>
           </main>

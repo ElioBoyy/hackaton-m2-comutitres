@@ -123,6 +123,18 @@ function isFutureDate(iso: string | null): boolean {
   return target.getTime() > today.getTime()
 }
 
+const STATUT_I18N: Record<string, () => string> = {
+  BROUILLON:           m.dashboard_statut_brouillon,
+  EN_VERIFICATION:     m.dashboard_statut_en_verification,
+  INCOMPLET:           m.dashboard_statut_incomplet,
+  EN_ATTENTE_PAIEMENT: m.dashboard_statut_en_attente_paiement,
+  ACTIF:               m.dashboard_statut_actif,
+  VALIDE:              m.dashboard_statut_actif,
+  EXPIRE:              m.dashboard_statut_expire,
+  REJETE:              m.dashboard_statut_rejete,
+  RESILIE:             m.dashboard_statut_resilie,
+}
+
 export function DossierCard({ dossier }: { dossier: DossierDashboard }) {
   const showRenewal = dossier.dateRenouvellement !== null
     && dossier.statut.categorie === 'en_cours'
@@ -133,7 +145,7 @@ export function DossierCard({ dossier }: { dossier: DossierDashboard }) {
   const actifFutur = dossier.statut.code === 'ACTIF' && isFutureDate(dossier.dateDebutDroits)
   const libelleStatut = actifFutur
     ? m.dossier_card_active_from({ date: formatDate(dossier.dateDebutDroits) })
-    : dossier.statut.libelle
+    : (STATUT_I18N[dossier.statut.code]?.() ?? dossier.statut.libelle)
 
   return (
     <article
@@ -167,7 +179,9 @@ export function DossierCard({ dossier }: { dossier: DossierDashboard }) {
             <p className="mt-1 text-sm text-gray-500">
               {m.dashboard_for_holder()}{' '}
               <span className="font-semibold text-gray-700">
-                {dossier.porteurIdentite.prenom} {dossier.porteurIdentite.nom}
+                {dossier.beneficiaireNomComplet
+                  ? dossier.beneficiaireNomComplet
+                  : `${dossier.porteurIdentite.prenom} ${dossier.porteurIdentite.nom}`}
               </span>
             </p>
             <p className="text-sm text-gray-500">

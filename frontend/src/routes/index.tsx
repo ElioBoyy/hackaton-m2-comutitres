@@ -2,7 +2,6 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import { ArrowRight, ChevronLeft, ChevronRight, Info, LogOut, Menu, Sparkles, X } from 'lucide-react'
 import { UserSidebar } from '~/components/UserSidebar'
-import { LanguageSwitcher } from '~/components/LanguageSwitcher'
 import { NavigoIllustration } from '~/components/illustrations/NavigoIllustration'
 import { ImagineRIllustration } from '~/components/illustrations/ImagineRIllustration'
 import { AmethysteIllustration } from '~/components/illustrations/AmethysteIllustration'
@@ -296,13 +295,37 @@ function Carousel({ categorie, items }: { categorie: string; items: TypeAbonneme
 
 function CarouselSkeleton() {
   return (
-    <div className="flex gap-3 px-1">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="shrink-0 rounded-2xl">
-          <div className="h-24 animate-pulse rounded-t-2xl bg-gray-200" />
-          <div className="h-20 animate-pulse rounded-b-2xl bg-gray-100 mt-0.5" />
-        </div>
-      ))}
+    <div className="flex flex-col gap-3" aria-hidden="true">
+      {/* Titre catégorie placeholder */}
+      <div className="flex items-center gap-3">
+        <div className="h-3 w-32 animate-pulse rounded bg-gray-200" />
+        <div className="h-px flex-1 bg-gray-100" />
+      </div>
+
+      {/* Cards placeholder (4) — meme h-64 et w-64 que les vraies AbonnementCard */}
+      <div className="flex gap-3 overflow-hidden px-1">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <article
+            key={i}
+            className="flex h-64 w-64 shrink-0 flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm"
+            style={{ animationDelay: `${i * 80}ms` }}
+          >
+            {/* Bandeau image */}
+            <div className="h-28 animate-pulse bg-gray-200" />
+
+            {/* Corps */}
+            <div className="flex flex-1 flex-col gap-3 p-4">
+              <div className="h-4 w-3/4 animate-pulse rounded bg-gray-200" />
+              <div className="h-3 w-full animate-pulse rounded bg-gray-100" />
+              <div className="h-3 w-5/6 animate-pulse rounded bg-gray-100" />
+              <div className="mt-auto flex items-center justify-between gap-2">
+                <div className="h-6 w-20 animate-pulse rounded-full bg-gray-200" />
+                <div className="h-7 w-16 animate-pulse rounded-lg bg-gray-200" />
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
     </div>
   )
 }
@@ -314,13 +337,26 @@ function HomePage() {
   const [abonnements, setAbonnements] = useState<TypeAbonnement[]>([])
   const [loading, setLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [authentifie, setAuthentifie] = useState(false)
+  // null = etat inconnu (SSR + 1er render client avant useEffect). On rend
+  // un skeleton pendant ce temps : ni "Se connecter" ni "Bonjour X" ne sont
+  // affiches a la place de l'autre, donc pas de flash de texte au refresh.
+  // authResolu reste false tant que (a) le 1er useEffect n'a pas tourne ET,
+  // si l'user est connecte, (b) me() n'a pas fini : evite le micro-flash
+  // entre "logout seul" et "avatar + Bonjour X".
+  const [authentifie, setAuthentifie] = useState<boolean | null>(null)
+  const [authResolu, setAuthResolu] = useState(false)
   const [utilisateur, setUtilisateur] = useState<MeResponse | null>(null)
 
   useEffect(() => {
-    if (isAuthenticated()) {
-      setAuthentifie(true)
-      me().then(setUtilisateur).catch(() => {})
+    const co = isAuthenticated()
+    setAuthentifie(co)
+    if (co) {
+      me()
+        .then(setUtilisateur)
+        .catch(() => {})
+        .finally(() => setAuthResolu(true))
+    } else {
+      setAuthResolu(true)
     }
     getAbonnements()
       .then(setAbonnements)
@@ -355,11 +391,11 @@ function HomePage() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-100">
-      <UserSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <UserSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} loading={!authResolu} />
 
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Top bar */}
-        <header className="flex h-16 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 lg:justify-end lg:px-6">
+        <header className="flex h-16 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 lg:justify-end lg:pl-6 lg:pr-10">
           {/* Hamburger — mobile only */}
           <button
             type="button"
@@ -370,10 +406,17 @@ function HomePage() {
             <Menu size={20} />
           </button>
 
-          {/* Auth zone — desktop only */}
+          {/* Auth zone — desktop only. Tant que authentifie === null (SSR +
+              avant useEffect), on rend un skeleton de meme hauteur pour
+              eviter le flash de texte entre etat suppose et etat reel. */}
           <div className="hidden items-center gap-3 lg:flex">
-            <LanguageSwitcher />
-            {authentifie ? (
+            {!authResolu ? (
+              <div className="flex items-center gap-2" aria-hidden="true">
+                <div className="h-8 w-8 animate-pulse rounded-full bg-gray-100" />
+                <div className="h-4 w-28 animate-pulse rounded-md bg-gray-100" />
+                <div className="h-9 w-9 animate-pulse rounded-full bg-gray-100" />
+              </div>
+            ) : authentifie ? (
               <>
                 {prenom && (
                   <div className="flex items-center gap-2">
@@ -427,10 +470,10 @@ function HomePage() {
             />
             <div className="relative flex h-full flex-col justify-center gap-3 p-5 sm:flex-row sm:items-center sm:justify-between" style={{ minHeight: '13rem' }}>
               <div>
-                <p className="font-heading text-sm font-semibold text-white">
+                <p className="font-heading text-xl font-bold text-white leading-snug">
                   {m.home_recommend_title()}
                 </p>
-                <p className="text-xs text-white/70">
+                <p className="mt-1 text-sm text-white/80">
                   {m.home_recommend_subtitle()}
                 </p>
               </div>
@@ -454,8 +497,8 @@ function HomePage() {
           <footer className="mt-6 flex items-center justify-between text-xs text-gray-400">
             <p>© 2026 Comutitres — Île-de-France Mobilités</p>
             <div className="flex gap-4">
-              <Link to="/aide" className="hover:text-gray-600 transition-colors">Aide</Link>
-              <Link to="/aide" hash="contact" className="hover:text-gray-600 transition-colors">Contact</Link>
+              <Link to="/sav" className="hover:text-gray-600 transition-colors">Aide</Link>
+              <Link to="/sav" hash="contact" className="hover:text-gray-600 transition-colors">Contact</Link>
             </div>
           </footer>
         </main>
