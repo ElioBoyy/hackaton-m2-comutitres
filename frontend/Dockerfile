@@ -1,5 +1,5 @@
 # --- Build : install deps + build SSR (Vite / TanStack Start) ---
-FROM node:22-alpine AS build
+FROM node:24-alpine AS build
 WORKDIR /app
 
 COPY package.json package-lock.json ./
@@ -14,14 +14,17 @@ COPY . .
 RUN npm run build
 
 # --- Runtime : sert le build SSR avec srvx (cf. script "start") ---
-FROM node:22-alpine
+FROM node:24-alpine
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 
-COPY package.json package-lock.json ./
-RUN npm ci --omit=dev && npm install -g srvx
+COPY package.json ./
+# Copie node_modules depuis le build stage — srvx y est inclus, pas besoin de réinstaller.
+COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
+# srvx cherche les fichiers statiques dans public/ par defaut — symlink vers dist/client.
+RUN ln -sf /app/dist/client /app/public
 
 EXPOSE 3000
 # srvx ecoute sur $PORT (defaut 3000). "npm start" -> npx srvx --prod ...
