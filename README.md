@@ -7,7 +7,25 @@
 
 ---
 
-## 🚀 TL;DR — Lancer le projet en local
+## 🚀 TL;DR — Tout en Docker, une seule commande
+
+Aucun Java/Node/Maven requis sur la machine, juste **Docker** :
+
+```sh
+git clone https://github.com/ElioBoyy/hackaton-m2-comutitres.git
+cd hackaton-m2-comutitres
+cp backend/.env.example backend/.env       # → renseigner VOYAGE_API_KEY + MISTRAL_API_KEY (pour le chat IA)
+
+docker compose up --build                  # build + lance postgres + minio + backend + frontend
+```
+
+Ouvrir ensuite <http://localhost:3000>. Arrêter avec `docker compose down` (ajouter `-v` pour effacer les données).
+
+> ⚠️ **Ingestion RAG désactivée par défaut** dans ce mode : avec une clé Voyage *free tier* (3 req/min, 10K tokens/min), la vectorisation du corpus renvoie 429 et fait planter le boot. Pour l'activer une fois la limite Voyage levée : `RAG_INGESTION_AU_DEMARRAGE=true docker compose up --build`.
+
+---
+
+## 🧑‍💻 TL;DR — Lancer en local (dev, sans tout containeriser)
 
 ```sh
 git clone https://github.com/ElioBoyy/hackaton-m2-comutitres.git
@@ -153,6 +171,7 @@ Déploiement par **Coolify** (orchestration Docker Compose + reverse proxy Traef
 
 ```
 hackaton-m2-comutitres/
+├── compose.yaml                  # stack complete locale (postgres + minio + backend + frontend)
 ├── backend/                      # API Spring Boot (4 modules)
 │   ├── domain/                   # entités, VO, règles métier (Java pur)
 │   ├── application/              # use cases, CQRS, pipeline middleware

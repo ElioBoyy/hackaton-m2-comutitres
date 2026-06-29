@@ -1,0 +1,100 @@
+# Stack complete en local, TOUT en containers (postgres + minio + backend +
+# frontend). Aucun Java/Node/Maven requis sur la machine, juste Docker.
+#
+#   docker compose up --build           # build + lance les 4 services
+#   docker compose up -d --build        # idem en arriere-plan
+#   docker compose down                 # arrete (les volumes data sont conserves)
+#   docker compose down -v              # arrete ET supprime les donnees
+#
+# Une fois "healthy" :
+#   - Frontend      http://localhost:3000
+#   - API / Swagger http://localhost:8080/swagger-ui.html
+#   - MinIO console http://localhost:9001  (jgmcn / jgmcnjgmcn)
+#
+# Les cles API (VOYAGE_API_KEY, MISTRAL_API_KEY, etc.) sont lues depuis
+# backend/.env (cf. backend/.env.example). Ce fichier doit exister.
+#
+# A ne pas confondre avec backend/compose.yaml (postgres + minio seuls, lance
+# automatiquement par Spring Boot quand on dev le backend hors container) ni
+# avec deploy/compose.prod.yaml (production Coolify + Traefik).
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: jegeremacartenavigo
+      POSTGRES_USER: jgmcn
+      POSTGRES_PASSWORD: jgmcn
+    # Port hote 5434 (5432/5433 souvent pris par d'autres projets sur ce poste).
+    ports:
+      - "5434:5432"
+    volumes:
+      - jegeremacartenavigo-pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jgmcn -d jegeremacartenavigo"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:RELEASE.2025-01-20T14-49-07Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: jgmcn
+      MINIO_ROOT_PASSWORD: jgmcnjgmcn
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - jegeremacartenavigo-minio-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "mc ready local || curl -fsS http://localhost:9000/minio/health/ready"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: backend
+    # Cles API (VOYAGE_API_KEY, MISTRAL_API_KEY, INFOBIP_*, RESEND_*) : injectees
+    # depuis backend/.env directement dans l'environnement du container.
+    env_file:
+      - backend/.env
+    environment:
+      # Profil "docker" : desactive spring.docker.compose (inutile en container)
+      # et cable la datasource sur le service "postgres". "seed" insere les
+      # comptes + donnees de demo (cf. README).
+      SPRING_PROFILES_ACTIVE: docker,seed
+      APP_STORAGE_ENDPOINT: http://minio:9000
+      APP_STORAGE_ACCESS_KEY: jgmcn
+      APP_STORAGE_SECRET_KEY: jgmcnjgmcn
+      # Ingestion du corpus RAG au demarrage : DESACTIVEE par defaut. Avec une cle
+      # Voyage free tier (3 req/min, 10K tokens/min, sans moyen de paiement), la
+      # vectorisation des 555 fragments renvoie 429 et FAIT PLANTER le boot. Pour
+      # l'activer (cle Voyage a tarif standard) : RAG_INGESTION_AU_DEMARRAGE=true docker compose up
+      RAG_INGESTION_AU_DEMARRAGE: "${RAG_INGESTION_AU_DEMARRAGE:-false}"
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: frontend
+      args:
+        # VITE_API_URL est inlinee dans le bundle au build (Vite) et utilisee par
+        # le NAVIGATEUR : c'est donc l'URL publique de l'API cote hote.
+        VITE_API_URL: http://localhost:8080
+    environment:
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  jegeremacartenavigo-pg-data:
+  jegeremacartenavigo-minio-data:
